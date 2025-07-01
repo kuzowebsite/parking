@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { onAuthStateChanged, createUserWithEmailAndPassword, signOut, type User } from "firebase/auth"
-import { ref, onValue, set, remove, update } from "firebase/database"
+import { ref, onValue, set, remove, update, push } from "firebase/database"
 import { auth, database } from "@/lib/firebase"
 import type { UserProfile, DriverRegistration } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -74,6 +74,18 @@ export default function ManagerPage() {
   const [reportFilterDriverName, setReportFilterDriverName] = useState("")
   const [reportLoading, setReportLoading] = useState(false)
 
+  // Employee states
+  const [employees, setEmployees] = useState<any[]>([])
+  const [newEmployee, setNewEmployee] = useState({
+    name: "",
+    position: "",
+    phone: "",
+    startDate: "",
+  })
+  const [editingEmployee, setEditingEmployee] = useState<any>(null)
+  const [showEmployeeDialog, setShowEmployeeDialog] = useState(false)
+  const [employeeLoading, setEmployeeLoading] = useState(false)
+
   // Filter drivers based on search
   useEffect(() => {
     let filtered = [...drivers]
@@ -101,7 +113,7 @@ export default function ManagerPage() {
     active: true,
   })
   const [registrationLoading, setRegistrationLoading] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<"manager" | "driver">("driver")
+  const [selectedRole, setSelectedRole] = useState<"manager" | "driver" | "employee">("employee")
 
   // Edit driver states
   const [editingDriver, setEditingDriver] = useState<UserProfile | null>(null)
@@ -134,8 +146,8 @@ export default function ManagerPage() {
   const [siteLoading, setSiteLoading] = useState(false)
 
   // Profile image and password states
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showPassword, setShowConfirmPassword] = useState(false)
+  const [showConfirmPassword, setShowPassword] = useState(false)
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -210,6 +222,121 @@ export default function ManagerPage() {
     setTimeout(() => {
       loadReportRecords()
     }, 500)
+
+    // Add this line after loadReportRecords() call:
+    loadEmployees()
+  }
+
+  // Load employees
+  const loadEmployees = () => {
+    const employeesRef = ref(database, "employees")
+    onValue(employeesRef, (snapshot) => {
+      const data = snapshot.val()
+      if (data) {
+        const employeesList = Object.keys(data)
+          .map((key) => ({ id: key, ...data[key] }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+        setEmployees(employeesList)
+      } else {
+        setEmployees([])
+      }
+    })
+  }
+
+  // Add employee
+  const handleAddEmployee = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!newEmployee.name.trim()) {
+      alert("Ажилчны нэрийг оруулна уу")
+      return
+    }
+
+    setEmployeeLoading(true)
+    try {
+      const employeeData = {
+        name: newEmployee.name.trim(),
+        position: newEmployee.position.trim(),
+        phone: newEmployee.phone.trim(),
+        startDate: newEmployee.startDate,
+        createdAt: new Date().toISOString(),
+        createdBy: userProfile?.name || "Manager",
+      }
+
+      await push(ref(database, "employees"), employeeData)
+      alert("Ажилчин амжилттай нэмэгдлээ")
+
+      // Reset form
+      setNewEmployee({
+        name: "",
+        position: "",
+        phone: "",
+        startDate: "",
+      })
+    } catch (error) {
+      alert("Ажилчин нэмэхэд алдаа гарлаа")
+    }
+    setEmployeeLoading(false)
+  }
+
+  // Edit employee
+  const handleEditEmployee = (employee: any) => {
+    setEditingEmployee(employee)
+    setNewEmployee({
+      name: employee.name,
+      position: employee.position || "",
+      phone: employee.phone || "",
+      startDate: employee.startDate || "",
+    })
+    setShowEmployeeDialog(true)
+  }
+
+  // Save employee edit
+  const handleSaveEmployeeEdit = async () => {
+    if (!newEmployee.name.trim()) {
+      alert("Ажилчны нэрийг оруулна уу")
+      return
+    }
+
+    setEmployeeLoading(true)
+    try {
+      const updateData = {
+        name: newEmployee.name.trim(),
+        position: newEmployee.position.trim(),
+        phone: newEmployee.phone.trim(),
+        startDate: newEmployee.startDate,
+        updatedAt: new Date().toISOString(),
+        updatedBy: userProfile?.name || "Manager",
+      }
+
+      await update(ref(database, `employees/${editingEmployee.id}`), updateData)
+      alert("Ажилчны мэдээлэл амжилттай шинэчлэгдлээ")
+      setShowEmployeeDialog(false)
+      setEditingEmployee(null)
+      setNewEmployee({
+        name: "",
+        position: "",
+        phone: "",
+        startDate: "",
+      })
+    } catch (error) {
+      alert("Ажилчны мэдээлэл шинэчлэхэд алдаа гарлаа")
+    }
+    setEmployeeLoading(false)
+  }
+
+  // Delete employee
+  const handleDeleteEmployee = async (employeeId: string, employeeName: string) => {
+    if (!confirm(`${employeeName} ажилчныг устгахдаа итгэлтэй байна уу?`)) {
+      return
+    }
+
+    try {
+      await remove(ref(database, `employees/${employeeId}`))
+      alert("Ажилчин амжилттай устгагдлаа")
+    } catch (error) {
+      alert("Ажилчин устгахад алдаа гарлаа")
+    }
   }
 
   const loadReportRecords = () => {
@@ -287,8 +414,9 @@ export default function ManagerPage() {
       const entryDate = new Date(record.entryTime)
       const exitDate = new Date(record.exitTime || "")
       const diffInMs = exitDate.getTime() - entryDate.getTime()
-      const diffInMinutes = Math.ceil(diffInMs / (1000 * 60))
-      return `${diffInMinutes} минут`
+      const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60)) // Calculate in hours
+      const hoursToShow = Math.max(1, diffInHours) // Minimum 1 hour
+      return `${hoursToShow} цаг`
     }
     return "-"
   }
@@ -302,7 +430,7 @@ export default function ManagerPage() {
       const excelData = filteredReportRecords.map((record) => ({
         "Машины дугаар": record.carNumber,
         "Жолоочийн нэр": record.driverName,
-        Талбай: record.parkingArea,
+        "Машины марк": record.parkingArea,
         "Орсон цаг": record.entryTime || "-",
         "Гарсан цаг": record.exitTime || "-",
         "Зогссон хугацаа": calculateParkingDurationForReport(record),
@@ -316,7 +444,7 @@ export default function ManagerPage() {
       const colWidths = [
         { wch: 15 }, // Машины дугаар
         { wch: 20 }, // Жолоочийн нэр
-        { wch: 10 }, // Талбай
+        { wch: 10 }, // Машины марк
         { wch: 20 }, // Орсон цаг
         { wch: 20 }, // Гарсан цаг
         { wch: 15 }, // Зогссон хугацаа
@@ -424,7 +552,7 @@ export default function ManagerPage() {
         name: newDriver.name.trim(),
         phone: newDriver.phone.trim(),
         email: newDriver.email,
-        role: selectedRole, // Use selected role
+        role: selectedRole === "employee" ? "employee" : selectedRole, // employee role нэмэх
         active: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -432,7 +560,9 @@ export default function ManagerPage() {
 
       await set(ref(database, `users/${newUserId}`), userData)
 
-      alert(`${selectedRole === "manager" ? "Менежер" : "Жолооч"} амжилттай бүртгэгдлээ`)
+      alert(
+        `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Жолооч" : "Ажилчин"} амжилттай бүртгэгдлээ`,
+      )
 
       // Form цэвэрлэх
       setNewDriver({
@@ -778,10 +908,21 @@ export default function ManagerPage() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="drivers" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="drivers">
               <Users className="w-4 h-4 mr-2" />
               Жолоочдын жагсаалт
+            </TabsTrigger>
+            <TabsTrigger value="employees">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              Ажилчид
             </TabsTrigger>
             <TabsTrigger value="register">
               <UserPlus className="w-4 h-4 mr-2" />
@@ -904,6 +1045,148 @@ export default function ManagerPage() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="employees" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Ажилчдын жагсаалт</CardTitle>
+                <CardDescription>Нийт {employees.length} ажилчин бүртгэлтэй байна</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Add Employee Form */}
+                <div className="mb-6 p-4 border rounded-lg bg-muted/50">
+                  <h3 className="text-lg font-medium mb-4">Шинэ ажилчин нэмэх</h3>
+                  <form onSubmit={handleAddEmployee} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="employeeName">Ажилчны нэр *</Label>
+                        <Input
+                          id="employeeName"
+                          value={newEmployee.name}
+                          onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                          placeholder="Ажилчны нэрийг оруулна уу"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="employeePosition">Албан тушаал</Label>
+                        <Input
+                          id="employeePosition"
+                          value={newEmployee.position}
+                          onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
+                          placeholder="Жишээ: Хамгаалагч, Цэвэрлэгч"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="employeePhone">Утасны дугаар</Label>
+                        <Input
+                          id="employeePhone"
+                          value={newEmployee.phone}
+                          onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                          placeholder="Утасны дугаар"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="employeeStartDate">Ажилд орсон огноо</Label>
+                        <Input
+                          id="employeeStartDate"
+                          type="date"
+                          value={newEmployee.startDate}
+                          onChange={(e) => setNewEmployee({ ...newEmployee, startDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setNewEmployee({ name: "", position: "", phone: "", startDate: "" })}
+                      >
+                        Цэвэрлэх
+                      </Button>
+                      <Button type="submit" disabled={employeeLoading}>
+                        {employeeLoading ? "Нэмж байна..." : "Ажилчин нэмэх"}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Employees List */}
+                {employees.length === 0 ? (
+                  <div className="text-center py-8">
+                    <svg
+                      className="w-12 h-12 mx-auto text-muted-foreground mb-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                      />
+                    </svg>
+                    <p className="text-muted-foreground">Бүртгэлтэй ажилчин байхгүй байна</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {employees.map((employee) => (
+                      <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <Avatar>
+                            <AvatarFallback>{employee.name?.charAt(0).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{employee.name}</p>
+                            {employee.position && <p className="text-sm text-muted-foreground">{employee.position}</p>}
+                            {employee.phone && <p className="text-sm text-muted-foreground">{employee.phone}</p>}
+                            {employee.startDate && (
+                              <p className="text-xs text-muted-foreground">
+                                Ажилд орсон: {new Date(employee.startDate).toLocaleDateString("mn-MN")}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {/* Edit Button */}
+                          <Button variant="outline" size="sm" onClick={() => handleEditEmployee(employee)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+
+                          {/* Delete Button */}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Ажилчин устгах</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {employee.name} ажилчныг устгахдаа итгэлтэй байна уу? Энэ үйлдлийг буцаах боломжгүй.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Цуцлах</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteEmployee(employee.id, employee.name)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Устгах
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="register" className="space-y-6">
             <Card>
               <CardHeader>
@@ -934,6 +1217,17 @@ export default function ManagerPage() {
                   >
                     Жолооч бүртгэх
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRole("employee")}
+                    className={`flex-1 py-3 px-4 rounded-xl border transition-colors ${
+                      selectedRole === "employee"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border hover:bg-muted"
+                    }`}
+                  >
+                    Ажилчин бүртгэх
+                  </button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -941,15 +1235,47 @@ export default function ManagerPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="driverName">
-                        {selectedRole === "manager" ? "Менежерийн нэр" : "Жолоочийн нэр"} *
+                        {selectedRole === "manager"
+                          ? "Менежерийн нэр"
+                          : selectedRole === "driver"
+                            ? "Жолоочийн нэр"
+                            : "Ажилчны нэр"}{" "}
+                        *
                       </Label>
-                      <Input
-                        id="driverName"
-                        value={newDriver.name}
-                        onChange={(e) => setNewDriver({ ...newDriver, name: e.target.value })}
-                        placeholder="Жолоочийн нэрийг оруулна уу"
-                        required
-                      />
+                      {selectedRole === "employee" ? (
+                        <select
+                          id="employeeSelect"
+                          value={newDriver.name}
+                          onChange={(e) => {
+                            const selectedEmployee = employees.find((emp) => emp.name === e.target.value)
+                            setNewDriver({
+                              ...newDriver,
+                              name: e.target.value,
+                              phone: selectedEmployee?.phone || "",
+                            })
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        >
+                          <option value="">Ажилчин сонгоно уу</option>
+                          {employees.map((employee) => (
+                            <option key={employee.id} value={employee.name}>
+                              {employee.name} {employee.position ? `- ${employee.position}` : ""}{" "}
+                              {employee.phone ? `(${employee.phone})` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input
+                          id="driverName"
+                          value={newDriver.name}
+                          onChange={(e) => setNewDriver({ ...newDriver, name: e.target.value })}
+                          placeholder={
+                            selectedRole === "manager" ? "Менежерийн нэрийг оруулна уу" : "Жолоочийн нэрийг оруулна уу"
+                          }
+                          required
+                        />
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -1012,7 +1338,7 @@ export default function ManagerPage() {
                     <Button type="submit" disabled={registrationLoading}>
                       {registrationLoading
                         ? "Бүртгэж байна..."
-                        : `${selectedRole === "manager" ? "Менежер" : "Жолооч"} бүртгэх`}
+                        : `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Жолооч" : "Ажилчин"} бүртгэх`}
                     </Button>
                   </div>
                 </form>
@@ -1165,7 +1491,7 @@ export default function ManagerPage() {
                               Жолоочийн нэр
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                              Талбай
+                              Машины марк
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                               Орсон цаг
@@ -1544,11 +1870,11 @@ export default function ManagerPage() {
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Үнийн тохиргоо</DialogTitle>
-            <DialogDescription>1 минутын зогсоолын үнэ тохируулах</DialogDescription>
+            <DialogDescription>1 цагийн зогсоолын үнэ тохируулах</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="pricePerMinute">1 минутын үнэ (₮) *</Label>
+              <Label htmlFor="pricePerMinute">1 цагийн үнэ (₮) *</Label>
               <Input
                 id="pricePerMinute"
                 type="number"
@@ -1558,16 +1884,16 @@ export default function ManagerPage() {
                 onChange={(e) => setPricingConfig({ ...pricingConfig, pricePerMinute: Number(e.target.value) })}
                 placeholder="Жишээ: 100"
               />
-              <p className="text-xs text-muted-foreground">Одоогийн тохиргоо: {pricingConfig.pricePerMinute}₮/минут</p>
+              <p className="text-xs text-muted-foreground">Одоогийн тохиргоо: {pricingConfig.pricePerMinute}₮/цаг</p>
             </div>
 
             {/* Example calculation */}
             <div className="bg-muted p-3 rounded-lg">
               <h4 className="font-medium mb-2">Жишээ тооцоо:</h4>
               <div className="text-sm space-y-1">
-                <p>• 30 минут = {pricingConfig.pricePerMinute * 30}₮</p>
-                <p>• 1 цаг = {pricingConfig.pricePerMinute * 60}₮</p>
-                <p>• 2 цаг = {pricingConfig.pricePerMinute * 120}₮</p>
+                <p>• 1 цаг = {pricingConfig.pricePerMinute * 1}₮</p>
+                <p>• 2 цаг = {pricingConfig.pricePerMinute * 2}₮</p>
+                <p>• 4 цаг = {pricingConfig.pricePerMinute * 4}₮</p>
               </div>
             </div>
           </div>
@@ -1577,6 +1903,69 @@ export default function ManagerPage() {
             </Button>
             <Button onClick={handleSavePricingConfig} disabled={pricingLoading}>
               {pricingLoading ? "Хадгалж байна..." : "Хадгалах"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Employee Edit Dialog */}
+      <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Ажилчны мэдээлэл засах</DialogTitle>
+            <DialogDescription>{editingEmployee?.name} ажилчны мэдээлэл шинэчлэх</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editEmployeeName">Ажилчны нэр *</Label>
+              <Input
+                id="editEmployeeName"
+                value={newEmployee.name}
+                onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                placeholder="Ажилчны нэр"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editEmployeePosition">Албан тушаал</Label>
+              <Input
+                id="editEmployeePosition"
+                value={newEmployee.position}
+                onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
+                placeholder="Албан тушаал"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editEmployeePhone">Утасны дугаар</Label>
+              <Input
+                id="editEmployeePhone"
+                value={newEmployee.phone}
+                onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                placeholder="Утасны дугаар"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editEmployeeStartDate">Ажилд орсон огноо</Label>
+              <Input
+                id="editEmployeeStartDate"
+                type="date"
+                value={newEmployee.startDate}
+                onChange={(e) => setNewEmployee({ ...newEmployee, startDate: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowEmployeeDialog(false)
+                setEditingEmployee(null)
+                setNewEmployee({ name: "", position: "", phone: "", startDate: "" })
+              }}
+            >
+              Цуцлах
+            </Button>
+            <Button onClick={handleSaveEmployeeEdit} disabled={employeeLoading}>
+              {employeeLoading ? "Хадгалж байна..." : "Хадгалах"}
             </Button>
           </DialogFooter>
         </DialogContent>
