@@ -3,11 +3,17 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User as FirebaseUser } from "firebase/auth"
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  updatePassword,
+  type User as FirebaseUser,
+} from "firebase/auth"
 import { ref, push, onValue, set, update } from "firebase/database"
 import { auth, database } from "@/lib/firebase"
 import type { ParkingRecord, UserProfile } from "@/types"
-import { Home, History, User, LogOut, Search, X } from "lucide-react"
+import { Home, History, User, LogOut, Search, X, Car, Eye, EyeOff } from "lucide-react"
 
 export default function ParkingSystem() {
   const [user, setUser] = useState<FirebaseUser | null>(null)
@@ -27,6 +33,10 @@ export default function ParkingSystem() {
   const [recentRecords, setRecentRecords] = useState<ParkingRecord[]>([])
   const [actionLoading, setActionLoading] = useState(false)
 
+  // Add new state for images after other home states
+  const [capturedImages, setCapturedImages] = useState<string[]>([])
+  const [showCamera, setShowCamera] = useState(false)
+
   // History states
   const [allRecords, setAllRecords] = useState<ParkingRecord[]>([])
   const [filteredRecords, setFilteredRecords] = useState<ParkingRecord[]>([])
@@ -35,7 +45,6 @@ export default function ParkingSystem() {
   const [filterYear, setFilterYear] = useState("")
   const [filterMonth, setFilterMonth] = useState("")
   const [filterCarNumber, setFilterCarNumber] = useState("")
-  const [filterType, setFilterType] = useState("") // Add this new state
 
   // Profile states
   const [profile, setProfile] = useState<UserProfile>({
@@ -48,6 +57,19 @@ export default function ParkingSystem() {
   })
   const [editing, setEditing] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
+
+  // Employee profile states
+  const [employeeProfile, setEmployeeProfile] = useState<any>(null)
+
+  // Password change states for employees
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
 
   // Pricing state
   const [pricingConfig, setPricingConfig] = useState({
@@ -63,13 +85,24 @@ export default function ParkingSystem() {
   // Filter collapse state
   const [filterCollapsed, setFilterCollapsed] = useState(true)
 
-  // Add after other state declarations
-  const [isCarParked, setIsCarParked] = useState(false)
-  const [checkingParkingStatus, setCheckingParkingStatus] = useState(false)
+  // Employee states for dropdown
+  const [employees, setEmployees] = useState<any[]>([])
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false)
 
-  // Real-time pricing states
-  const [currentParkingFees, setCurrentParkingFees] = useState<{ [key: string]: number }>({})
-  const [parkingTimers, setParkingTimers] = useState<{ [key: string]: NodeJS.Timeout }>({})
+  // Active parking records states
+  const [activeParkingRecords, setActiveParkingRecords] = useState<ParkingRecord[]>([])
+  const [filteredActiveParkingRecords, setFilteredActiveParkingRecords] = useState<ParkingRecord[]>([])
+  const [activeRecordsSearch, setActiveRecordsSearch] = useState("")
+
+  // Custom exit confirmation modal states
+  const [showExitModal, setShowExitModal] = useState(false)
+  const [exitingRecord, setExitingRecord] = useState<ParkingRecord | null>(null)
+  const [exitDetails, setExitDetails] = useState({
+    exitTime: "",
+    duration: 0,
+    fee: 0,
+  })
 
   useEffect(() => {
     // Splash screen loading animation
@@ -129,13 +162,22 @@ export default function ParkingSystem() {
       filtered = filtered.filter((record) => record.carNumber.toLowerCase().includes(filterCarNumber.toLowerCase()))
     }
 
-    // Filter by type
-    if (filterType) {
-      filtered = filtered.filter((record) => record.type === filterType)
+    // Filter only completed/exit records for history tab
+    filtered = filtered.filter(
+      (record) =>
+        record.type === "completed" || record.type === "exit" || (record.exitTime && record.exitTime.trim() !== ""),
+    )
+
+    // If user is employee, filter by employee name
+    if (profile.role === "employee" && profile.name) {
+      filtered = filtered.filter((record) => {
+        // Check if the record's driverName contains the employee's name
+        return record.driverName && record.driverName.includes(profile.name)
+      })
     }
 
     setFilteredRecords(filtered)
-  }, [allRecords, filterYear, filterMonth, filterCarNumber, filterType])
+  }, [allRecords, filterYear, filterMonth, filterCarNumber, profile.role, profile.name])
 
   // Update the loadRecentRecords function to ensure proper data fetching
   const loadRecentRecords = () => {
@@ -156,6 +198,10 @@ export default function ParkingSystem() {
             .map((key) => ({ id: key, ...data[key] }))
             .filter((record) => {
               // Filter by current user's records (using user ID or driver name)
+              if (profile.role === "employee" && profile.name) {
+                // For employees, show records where their name is in driverName
+                return record.driverName && record.driverName.includes(profile.name)
+              }
               return (
                 record.driverName === profile.name ||
                 (user?.email && record.driverName === user.email.split("@")[0]) ||
@@ -183,49 +229,113 @@ export default function ParkingSystem() {
     )
   }
 
-  // Update the loadAllRecords function to ensure proper data fetching
-  const loadAllRecords = () => {
-    if (!user?.uid) {
-      console.log("No authenticated user, skipping all records load")
-      return
-    }
-
-    console.log("Loading all records for user:", user.uid)
+  // loadActiveParkingRecords функцийг бүрэн засварлах
+  const loadActiveParkingRecords = () => {
+    console.log("Loading active parking records...")
 
     const recordsRef = ref(database, "parking_records")
     onValue(
       recordsRef,
       (snapshot) => {
         const data = snapshot.val()
+        console.log("Raw parking records data:", data)
+
         if (data) {
-          const records: ParkingRecord[] = Object.keys(data)
-            .map((key) => ({ id: key, ...data[key] }))
+          const allRecords = Object.keys(data).map((key) => ({ id: key, ...data[key] }))
+          console.log("All records:", allRecords)
+
+          // Илүү энгийн filtering logic ашиглах
+          const activeRecords: ParkingRecord[] = allRecords
             .filter((record) => {
-              // Filter by current user's records (using user ID or driver name)
-              return (
-                record.driverName === profile.name ||
-                (user?.email && record.driverName === user.email.split("@")[0]) ||
-                record.driverName === "Систем Админ" // Allow test records
-              )
+              // Зөвхөн entry type бөгөөд exitTime байхгүй бүртгэлүүдийг авах
+              const isActive = record.type === "entry" && !record.exitTime && record.type !== "completed"
+
+              // If user is employee, filter by employee name
+              if (profile.role === "employee" && profile.name) {
+                const isEmployeeRecord = record.driverName && record.driverName.includes(profile.name)
+                return isActive && isEmployeeRecord
+              }
+
+              console.log(`Record ${record.id}: type=${record.type}, exitTime=${record.exitTime}, isActive=${isActive}`)
+              return isActive
             })
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
-          setAllRecords(records)
-          console.log("All records loaded:", records.length, "records")
+          console.log("Filtered active records:", activeRecords)
+          setActiveParkingRecords(activeRecords)
+          setFilteredActiveParkingRecords(activeRecords)
         } else {
-          setAllRecords([])
+          console.log("No parking records data found")
+          setActiveParkingRecords([])
+          setFilteredActiveParkingRecords([])
+        }
+      },
+      (error) => {
+        console.error("Error loading active parking records:", error)
+        setActiveParkingRecords([])
+        setFilteredActiveParkingRecords([])
+      },
+    )
+  }
+
+  // loadAllRecords функцийг засварлах - бүх бүртгэлүүдийг ачаалах
+  const loadAllRecords = () => {
+    console.log("Loading all records...")
+
+    const recordsRef = ref(database, "parking_records")
+    onValue(
+      recordsRef,
+      (snapshot) => {
+        const data = snapshot.val()
+        console.log("All records raw data:", data)
+
+        if (data) {
+          const records: ParkingRecord[] = Object.keys(data)
+            .map((key) => ({ id: key, ...data[key] }))
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+          console.log("All records processed:", records)
+          setAllRecords(records)
+        } else {
           console.log("No records found in database")
+          setAllRecords([])
         }
       },
       (error) => {
         console.error("Error loading all records:", error)
-        // Don't show alert for permission errors during initial load
-        if (error.code !== "PERMISSION_DENIED") {
-          console.error("Database error:", error.message)
-        }
         setAllRecords([])
       },
     )
+  }
+
+  // Load employees from database
+  const loadEmployees = () => {
+    const employeesRef = ref(database, "employees")
+    onValue(employeesRef, (snapshot) => {
+      const data = snapshot.val()
+      if (data) {
+        const employeesList = Object.keys(data)
+          .map((key) => ({ id: key, ...data[key] }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+        setEmployees(employeesList)
+      } else {
+        setEmployees([])
+      }
+    })
+  }
+
+  // Load employee profile from employees database
+  const loadEmployeeProfile = (employeeName: string) => {
+    const employeesRef = ref(database, "employees")
+    onValue(employeesRef, (snapshot) => {
+      const data = snapshot.val()
+      if (data) {
+        const employee = Object.values(data).find((emp: any) => emp.name === employeeName)
+        if (employee) {
+          setEmployeeProfile(employee)
+        }
+      }
+    })
   }
 
   // Update the loadProfile function to call record loading functions
@@ -269,6 +379,11 @@ export default function ParkingSystem() {
             return
           }
 
+          // Load employee profile if user is employee
+          if (userProfile.role === "employee" && userProfile.name) {
+            loadEmployeeProfile(userProfile.name)
+          }
+
           console.log("Profile loaded, now loading records...")
 
           // Load pricing configuration
@@ -282,14 +397,14 @@ export default function ParkingSystem() {
             }
           })
 
-          // Load records after profile is loaded and we have user context
+          // loadProfile функц дотор records ачаалах хэсгийг засварлах
+          // Load records after profile is loaded and we have user context хэсгийг солих
           setTimeout(() => {
+            console.log("Loading all data after profile load...")
             loadRecentRecords()
             loadAllRecords()
-            // Load persistent parking status after profile and records are loaded
-            setTimeout(() => {
-              loadPersistentParkingStatus()
-            }, 1000)
+            loadActiveParkingRecords() // Load active parking records
+            loadEmployees() // Load employees for dropdown
           }, 500)
         } else {
           // Create default profile for new users
@@ -303,14 +418,13 @@ export default function ParkingSystem() {
           }
           setProfile(defaultProfile)
 
-          // Still try to load records even if profile is empty
+          // Still try to load records even if profile is empty хэсгийг солих
           setTimeout(() => {
+            console.log("Loading data with empty profile...")
             loadRecentRecords()
             loadAllRecords()
-            // Load persistent parking status after profile and records are loaded
-            setTimeout(() => {
-              loadPersistentParkingStatus()
-            }, 1000)
+            loadActiveParkingRecords() // Load active parking records
+            loadEmployees() // Load employees for dropdown
           }, 500)
         }
       },
@@ -345,14 +459,12 @@ export default function ParkingSystem() {
       }
 
       const diffInMs = currentTime.getTime() - entryDate.getTime()
-      const diffInMinutes = Math.floor(diffInMs / (1000 * 60)) // Use Math.floor instead of Math.ceil
+      const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60)) // Calculate in hours and round up
 
-      // Хэрэв 1 минутаас бага бол 0 буцаах
-      if (diffInMinutes < 1) {
-        return 0
-      }
+      // Хэрэв 1 цагаас бага бол 1 цаг гэж тооцох
+      const hoursToCharge = Math.max(1, diffInHours)
 
-      return diffInMinutes * (pricingConfig.pricePerMinute || 100)
+      return hoursToCharge * (pricingConfig.pricePerMinute || 100) // pricePerMinute is now price per hour
     } catch (error) {
       console.error("Error calculating current parking fee:", error)
       return 0
@@ -370,14 +482,10 @@ export default function ParkingSystem() {
       }
 
       const diffInMs = endDate.getTime() - entryDate.getTime()
-      const diffInMinutes = Math.floor(diffInMs / (1000 * 60)) // Use Math.floor instead of Math.ceil
+      const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60)) // Calculate in hours and round up
 
-      // Хэрэв 1 минутаас бага бол 0 буцаах
-      if (diffInMinutes < 1) {
-        return 0
-      }
-
-      return diffInMinutes
+      // Хэрэв 1 цагаас бага бол 1 цаг гэж тооцох
+      return Math.max(1, diffInHours)
     } catch (error) {
       console.error("Error calculating parking duration:", error)
       return 0
@@ -456,84 +564,74 @@ export default function ParkingSystem() {
     setLoginLoading(false)
   }
 
-  // Add function to check if car is currently parked:
-  const checkCarParkingStatus = async (carNumber: string) => {
-    if (!carNumber.trim()) {
-      setIsCarParked(false)
-      return
-    }
-
-    setCheckingParkingStatus(true)
-
-    try {
-      const recordsRef = ref(database, "parking_records")
-      const snapshot = await new Promise((resolve, reject) => {
-        onValue(recordsRef, resolve, reject, { onlyOnce: true })
-      })
-
-      const data = snapshot.val()
-      let hasActiveEntry = false
-
-      if (data) {
-        // Check if there's an active entry (entry without exit) for this car and driver
-        const records = Object.keys(data)
-          .map((key) => ({ id: key, ...data[key] }))
-          .filter(
-            (record) =>
-              record.carNumber.toUpperCase() === carNumber.trim().toUpperCase() &&
-              record.driverName === (profile.name || user?.email?.split("@")[0] || "Тодорхойгүй") &&
-              record.type === "entry" &&
-              !record.exitTime,
-          )
-
-        hasActiveEntry = records.length > 0
-      }
-
-      setIsCarParked(hasActiveEntry)
-    } catch (error) {
-      console.error("Error checking parking status:", error)
-      setIsCarParked(false)
-    }
-
-    setCheckingParkingStatus(false)
+  // Add camera functionality functions after other functions
+  const startCamera = () => {
+    setShowCamera(true)
   }
 
-  // Add this new function after the existing checkCarParkingStatus function
-  const loadPersistentParkingStatus = async () => {
-    if (!user?.uid || !profile.name) {
-      return
-    }
-
+  const captureImage = async () => {
     try {
-      const recordsRef = ref(database, "parking_records")
-      const snapshot = await new Promise((resolve, reject) => {
-        onValue(recordsRef, resolve, reject, { onlyOnce: true })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }, // Use back camera if available
       })
 
-      const data = snapshot.val()
-      if (data) {
-        // Find any active parking record for this driver
-        const activeRecord = Object.keys(data)
-          .map((key) => ({ id: key, ...data[key] }))
-          .find((record) => record.driverName === profile.name && record.type === "entry" && !record.exitTime)
+      // Create video element
+      const video = document.createElement("video")
+      video.srcObject = stream
+      video.play()
 
-        if (activeRecord) {
-          // Restore the car number and parking area from the active record
-          setCarNumber(activeRecord.carNumber)
-          setParkingArea(activeRecord.parkingArea)
-          setIsCarParked(true)
-          console.log("Restored parking status:", activeRecord)
-        } else {
-          setIsCarParked(false)
+      // Wait for video to load
+      video.onloadedmetadata = () => {
+        // Create canvas to capture frame
+        const canvas = document.createElement("canvas")
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        const ctx = canvas.getContext("2d")
+
+        if (ctx) {
+          ctx.drawImage(video, 0, 0)
+          const imageData = canvas.toDataURL("image/jpeg", 0.8)
+
+          // Add image if less than 2 images
+          if (capturedImages.length < 2) {
+            setCapturedImages((prev) => [...prev, imageData])
+          }
+
+          // Stop camera
+          stream.getTracks().forEach((track) => track.stop())
+          setShowCamera(false)
         }
       }
     } catch (error) {
-      console.error("Error loading persistent parking status:", error)
-      setIsCarParked(false)
+      console.error("Camera access error:", error)
+      alert("Камер ашиглахад алдаа гарлаа")
+      setShowCamera(false)
     }
   }
 
-  // handleEntry функцийг засварлах - шууд timer эхлүүлэхгүй
+  const removeImage = (index: number) => {
+    setCapturedImages((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleImageUploadFromFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && capturedImages.length < 2) {
+      // Check file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Зургийн хэмжээ 5MB-аас бага байх ёстой")
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const base64String = event.target?.result as string
+        setCapturedImages((prev) => [...prev, base64String])
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // Update handleEntry function to include images
   const handleEntry = async () => {
     if (!carNumber.trim()) {
       alert("Машины дугаарыг оруулна уу")
@@ -541,7 +639,12 @@ export default function ParkingSystem() {
     }
 
     if (!parkingArea.trim()) {
-      alert("Талбайг оруулна уу")
+      alert("Машины маркийг оруулна уу")
+      return
+    }
+
+    if (selectedEmployees.length === 0) {
+      alert("Ажилчин сонгоно уу")
       return
     }
 
@@ -550,7 +653,7 @@ export default function ParkingSystem() {
     const currentTime = new Date()
     const record: Omit<ParkingRecord, "id"> = {
       carNumber: carNumber.trim().toUpperCase(),
-      driverName: profile.name || user?.email?.split("@")[0] || "Тодорхойгүй",
+      driverName: selectedEmployees.join(", "),
       parkingArea: parkingArea.trim().toUpperCase(),
       entryTime: currentTime.toLocaleString("mn-MN", {
         year: "numeric",
@@ -562,6 +665,7 @@ export default function ParkingSystem() {
       amount: 0,
       type: "entry",
       timestamp: currentTime.toISOString(),
+      images: capturedImages, // Add images to the record
     }
 
     try {
@@ -572,10 +676,14 @@ export default function ParkingSystem() {
       setTimeout(() => {
         loadRecentRecords()
         loadAllRecords()
+        loadActiveParkingRecords()
       }, 500)
 
-      // Don't clear form after entry, just update parking status
-      setIsCarParked(true)
+      // Clear form after successful entry
+      setCarNumber("")
+      setParkingArea("")
+      setSelectedEmployees([])
+      setCapturedImages([]) // Clear captured images
     } catch (error) {
       console.error("Entry record error:", error)
       alert("Бүртгэл хийхэд алдаа гарлаа")
@@ -586,112 +694,72 @@ export default function ParkingSystem() {
   // Function to calculate parking fee
   const calculateParkingFee = (entryTime: string, exitTime: string): number => {
     const duration = calculateParkingDuration(entryTime, exitTime)
-    return duration * (pricingConfig.pricePerMinute || 100)
+    return duration * (pricingConfig.pricePerMinute || 100) // pricePerMinute is now price per hour
   }
 
-  // Update the handleExit function to calculate and save duration & fee
-  const handleExit = async () => {
-    if (!carNumber.trim()) {
-      alert("Машины дугаарыг оруулна уу")
-      return
-    }
+  // Handle exit from records tab - show custom confirmation
+  const handleExitFromRecord = (recordId: string, record: ParkingRecord) => {
+    const currentTime = new Date()
+    const exitTimeFormatted = currentTime.toLocaleString("mn-MN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
 
-    if (!parkingArea.trim()) {
-      alert("Талбайг оруулна уу")
-      return
-    }
+    // Calculate parking duration and fee
+    const calculatedFee = calculateParkingFee(record.entryTime || "", exitTimeFormatted)
+    const parkingDuration = calculateParkingDuration(record.entryTime || "", exitTimeFormatted)
 
-    setActionLoading(true)
+    // Set exit details and show modal
+    setExitingRecord({ ...record, id: recordId })
+    setExitDetails({
+      exitTime: exitTimeFormatted,
+      duration: parkingDuration,
+      fee: calculatedFee,
+    })
+    setShowExitModal(true)
+  }
+
+  // Confirm exit action
+  const confirmExit = async () => {
+    if (!exitingRecord) return
 
     try {
-      // Find the most recent entry record for this car and driver
-      const recordsRef = ref(database, "parking_records")
-      const snapshot = await new Promise((resolve, reject) => {
-        onValue(recordsRef, resolve, reject, { onlyOnce: true })
-      })
-
-      const data = snapshot.val()
-      let entryRecordId = null
-      let entryRecord = null
-
-      if (data) {
-        // Find the most recent entry record for this car number and driver that doesn't have an exit time
-        const records = Object.keys(data)
-          .map((key) => ({ id: key, ...data[key] }))
-          .filter(
-            (record) =>
-              record.carNumber.toUpperCase() === carNumber.trim().toUpperCase() &&
-              record.driverName === (profile.name || user?.email?.split("@")[0] || "Тодорхойгүй") &&
-              record.type === "entry" &&
-              !record.exitTime,
-          )
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
-        if (records.length > 0) {
-          entryRecord = records[0]
-          entryRecordId = entryRecord.id
-        }
-      }
-
       const currentTime = new Date()
-      const exitTimeFormatted = currentTime.toLocaleString("mn-MN", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
+
+      // Update existing entry record with exit information, duration, and fee
+      await update(ref(database, `parking_records/${exitingRecord.id}`), {
+        exitTime: exitDetails.exitTime,
+        amount: exitDetails.fee,
+        parkingDuration: exitDetails.duration,
+        type: "completed",
+        updatedAt: currentTime.toISOString(),
       })
 
-      if (entryRecordId && entryRecord) {
-        // Calculate parking duration and fee
-        const calculatedFee = calculateParkingFee(entryRecord.entryTime, exitTimeFormatted)
-        const parkingDuration = calculateParkingDuration(entryRecord.entryTime, exitTimeFormatted)
-
-        // Update existing entry record with exit information, duration, and fee
-        await update(ref(database, `parking_records/${entryRecordId}`), {
-          exitTime: exitTimeFormatted,
-          amount: calculatedFee,
-          parkingDuration: parkingDuration, // Зогссон хугацаа (минутаар)
-          type: "completed", // Change type to indicate it's a completed parking session
-          updatedAt: currentTime.toISOString(),
-        })
-
-        alert(
-          `Гарсан бүртгэл амжилттай хийгдлээ.\nЗогссон хугацаа: ${parkingDuration} минут\nТөлбөр: ${calculatedFee}₮`,
-        )
-      } else {
-        // No matching entry found, create a standalone exit record
-        const record = {
-          carNumber: carNumber.trim().toUpperCase(),
-          driverName: profile.name || user?.email?.split("@")[0] || "Тодорхойгүй",
-          parkingArea: parkingArea.trim().toUpperCase(),
-          exitTime: exitTimeFormatted,
-          amount: 0,
-          parkingDuration: 0,
-          type: "exit",
-          timestamp: currentTime.toISOString(),
-        }
-
-        await push(ref(database, "parking_records"), record)
-        alert("Гарсан бүртгэл хийгдлээ (Орсон бүртгэл олдсонгүй)")
-      }
-
-      // After successful exit, add:
-      setIsCarParked(false)
-      // Keep existing form clearing:
-      setCarNumber("")
-      setParkingArea("")
+      // Close modal and reset states
+      setShowExitModal(false)
+      setExitingRecord(null)
+      setExitDetails({ exitTime: "", duration: 0, fee: 0 })
 
       // Refresh records after updating
       setTimeout(() => {
         loadRecentRecords()
         loadAllRecords()
+        loadActiveParkingRecords()
       }, 500)
     } catch (error) {
       console.error("Exit record error:", error)
-      alert("Бүртгэл хийхэд алдаа гарлаа")
+      alert("Гарсан бүртгэл хийхэд алдаа гарлаа")
     }
-    setActionLoading(false)
+  }
+
+  // Cancel exit action
+  const cancelExit = () => {
+    setShowExitModal(false)
+    setExitingRecord(null)
+    setExitDetails({ exitTime: "", duration: 0, fee: 0 })
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -712,7 +780,82 @@ export default function ParkingSystem() {
     }
   }
 
+  // Save profile function for employees
+  const saveEmployeeProfile = async () => {
+    const userId = auth.currentUser?.uid
+    if (!userId || !profile.name.trim()) {
+      alert("Нэрээ оруулна уу")
+      return
+    }
+
+    // Validate password if provided
+    if (passwordData.newPassword) {
+      if (passwordData.newPassword.length < 6) {
+        alert("Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой")
+        return
+      }
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        alert("Нууц үг таарахгүй байна")
+        return
+      }
+    }
+
+    setProfileLoading(true)
+    try {
+      // Update user profile in users database
+      await update(ref(database, `users/${userId}`), {
+        name: profile.name.trim(),
+        phone: profile.phone.trim(),
+        email: profile.email.trim(),
+        profileImage: profile.profileImage || "",
+        updatedAt: new Date().toISOString(),
+      })
+
+      // Update employee profile in employees database if exists
+      if (employeeProfile && employeeProfile.id) {
+        await update(ref(database, `employees/${employeeProfile.id}`), {
+          name: profile.name.trim(),
+          phone: profile.phone.trim(),
+          updatedAt: new Date().toISOString(),
+        })
+      }
+
+      // Update password if provided
+      if (passwordData.newPassword && auth.currentUser) {
+        try {
+          await updatePassword(auth.currentUser, passwordData.newPassword)
+          alert("Профайл болон нууц үг амжилттай шинэчлэгдлээ")
+        } catch (error: any) {
+          if (error.code === "auth/requires-recent-login") {
+            alert("Профайл шинэчлэгдлээ. Нууц үг солихын тулд дахин нэвтэрнэ үү.")
+          } else {
+            alert("Профайл шинэчлэгдлээ. Нууц үг солихад алдаа гарлаа.")
+          }
+        }
+      } else {
+        alert("Профайл амжилттай шинэчлэгдлээ")
+      }
+
+      setEditing(false)
+      // Reset password fields
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      })
+    } catch (error) {
+      console.error("Error updating employee profile:", error)
+      alert("Профайл шинэчлэхэд алдаа гарлаа")
+    }
+    setProfileLoading(false)
+  }
+
   const saveProfile = async () => {
+    if (profile.role === "employee") {
+      await saveEmployeeProfile()
+      return
+    }
+
     const userId = auth.currentUser?.uid
     if (!userId || !profile.name.trim()) {
       alert("Нэрээ оруулна уу")
@@ -762,107 +905,45 @@ export default function ParkingSystem() {
     if (user && !showSplash && user.uid && profile.name) {
       console.log("User authenticated, loading data...")
       // Add a delay to ensure Firebase auth is fully initialized
+      // useEffect-ийн дотор records ачаалах хэсгийг засварлах
       const timeoutId = setTimeout(() => {
+        console.log("Loading data from useEffect...")
         loadRecentRecords()
         loadAllRecords()
-        // Load persistent parking status
-        const statusTimeoutId = setTimeout(() => {
-          loadPersistentParkingStatus()
-        }, 1500)
-
-        return () => clearTimeout(statusTimeoutId)
+        loadActiveParkingRecords() // Энэ мөрийг нэмэх
       }, 1000)
 
       return () => clearTimeout(timeoutId)
     } else {
       console.log("User not ready:", { user: !!user, showSplash, uid: user?.uid, profileName: profile.name })
     }
-  }, [user, profile.name, showSplash]) // More specific dependencies
+  }, [user, profile.name, showSplash])
 
-  // Add this useEffect after other useEffects
+  // Close employee dropdown when clicking outside
   useEffect(() => {
-    // Only check parking status if we're not already in a parked state
-    // This prevents overriding the persistent status loaded from database
-    if (carNumber.trim() && profile.name && !isCarParked) {
-      const timeoutId = setTimeout(() => {
-        checkCarParkingStatus(carNumber)
-      }, 500) // Add small delay to prevent rapid calls
-
-      return () => clearTimeout(timeoutId)
-    }
-  }, [carNumber, profile.name, isCarParked]) // Add isCarParked to dependencies
-
-  // Setup real-time timers функцийг засварлах
-  useEffect(() => {
-    // Clear existing timers
-    Object.values(parkingTimers).forEach((timer) => clearInterval(timer))
-
-    // Filter active parking records (entry without exit)
-    const activeRecords = recentRecords.filter((record) => record.type === "entry" && !record.exitTime)
-
-    if (activeRecords.length === 0) {
-      setParkingTimers({})
-      setCurrentParkingFees({})
-      return
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest(".employee-dropdown-container")) {
+        setShowEmployeeDropdown(false)
+      }
     }
 
-    const newTimers: { [key: string]: NodeJS.Timeout } = {}
-    const newFees: { [key: string]: number } = {}
-
-    activeRecords.forEach((record) => {
-      // Calculate initial fee (0 эхлэх)
-      const initialFee = calculateCurrentParkingFee(record.entryTime || "")
-      newFees[record.id] = initialFee
-
-      // Save initial state to database (only once)
-      update(ref(database, `parking_records/${record.id}`), {
-        currentAmount: initialFee,
-        currentDuration: calculateParkingDuration(record.entryTime || ""),
-        lastUpdated: new Date().toISOString(),
-      }).catch((error) => console.error("Error updating initial parking data:", error))
-
-      // Set up timer to update fee every 60 seconds (1 minute)
-      newTimers[record.id] = setInterval(() => {
-        const currentFee = calculateCurrentParkingFee(record.entryTime || "")
-        const currentDuration = calculateParkingDuration(record.entryTime || "")
-
-        console.log(`Updating fee for ${record.carNumber}: ${currentFee}₮, Duration: ${currentDuration} minutes`)
-
-        // Update local state
-        setCurrentParkingFees((prev) => ({
-          ...prev,
-          [record.id]: currentFee,
-        }))
-
-        // Update database with current fee and duration
-        update(ref(database, `parking_records/${record.id}`), {
-          currentAmount: currentFee,
-          currentDuration: currentDuration,
-          lastUpdated: new Date().toISOString(),
-        }).catch((error) => console.error("Error updating parking data:", error))
-      }, 60000) // Update every 60 seconds (1 minute)
-    })
-
-    setParkingTimers(newTimers)
-    setCurrentParkingFees(newFees)
-
-    // Cleanup function
-    return () => {
-      Object.values(newTimers).forEach((timer) => clearInterval(timer))
+    if (showEmployeeDropdown) {
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => document.removeEventListener("mousedown", handleClickOutside)
     }
-  }, [recentRecords.length, pricingConfig.pricePerMinute]) // Only depend on length, not the entire array
+  }, [showEmployeeDropdown])
 
-  // Remove the separate duration timer useEffect and replace with this simpler one
+  // Filter active parking records based on search хэсгийг нэмэх (useEffect-ийн дараа)
   useEffect(() => {
-    // Set up a separate timer for duration updates every minute
-    const durationTimer = setInterval(() => {
-      // Force re-render by updating a timestamp (this won't cause infinite loops)
-      const now = Date.now()
-      console.log("Duration update tick:", now)
-    }, 60000) // Update every 60 seconds (1 minute)
+    let filtered = [...activeParkingRecords]
 
-    return () => clearInterval(durationTimer)
-  }, []) // Empty dependency array - only run once
+    if (activeRecordsSearch) {
+      filtered = filtered.filter((record) => record.carNumber.toLowerCase().includes(activeRecordsSearch.toLowerCase()))
+    }
+
+    setFilteredActiveParkingRecords(filtered)
+  }, [activeParkingRecords, activeRecordsSearch])
 
   // Splash Screen
   if (showSplash) {
@@ -1000,7 +1081,7 @@ export default function ParkingSystem() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Нууц үгээ оруулна уу"
-                  className="w-full px-4 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                  className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
                   required
                 />
                 <button
@@ -1126,6 +1207,22 @@ export default function ParkingSystem() {
                   Нүүр
                 </span>
               </button>
+              {/* Hide records tab for employees */}
+              {profile.role !== "employee" && (
+                <button
+                  onClick={() => setActiveTab("records")}
+                  className={`flex flex-col items-center p-4 rounded-2xl transition-colors ${
+                    activeTab === "records" ? "bg-emerald-400" : ""
+                  }`}
+                >
+                  <Car className={`w-8 h-8 ${activeTab === "records" ? "text-black" : "text-white/70"}`} />
+                  <span
+                    className={`text-xs xl:text-sm mt-2 ${activeTab === "records" ? "text-black" : "text-white/70"}`}
+                  >
+                    Бүртгэл
+                  </span>
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab("history")}
                 className={`flex flex-col items-center p-4 rounded-2xl transition-colors ${
@@ -1163,86 +1260,290 @@ export default function ParkingSystem() {
         <main className="relative z-10 container mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8 lg:py-10 pb-20 md:pb-24 lg:pb-10 lg:ml-20 xl:ml-24">
           {activeTab === "home" && (
             <div className="space-y-6 md:space-y-8 lg:space-y-10 max-w-4xl mx-auto">
-              {/* Машины бүртгэл */}
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-10">
-                <div className="mb-6 md:mb-8">
-                  <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-2">Машины бүртгэл</h2>
-                  <p className="text-white/70 text-sm md:text-base">Машины орсон/гарсан бүртгэл хийх</p>
+              {/* Show entry form only for non-employee users */}
+              {profile.role !== "employee" && (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-10">
+                  <div className="mb-6 md:mb-8">
+                    <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-2">Машины бүртгэл</h2>
+                    <p className="text-white/70 text-sm md:text-base">Машины орсон бүртгэл хийх</p>
+                  </div>
+                  <div className="space-y-4 md:space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm md:text-base">Машины дугаар</label>
+                        <input
+                          value={carNumber}
+                          onChange={(e) => setCarNumber(e.target.value.toUpperCase())}
+                          placeholder="1234 УНМ"
+                          className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm md:text-base"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm md:text-base">Машины марк</label>
+                        <input
+                          value={parkingArea}
+                          onChange={(e) => setParkingArea(e.target.value.toUpperCase())}
+                          placeholder="Жишээ: Приус, Камри, Соната"
+                          className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm md:text-base"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="employee-dropdown-container">
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm md:text-base">Ажилчин</label>
+                        <div className="relative">
+                          <div
+                            onClick={() => setShowEmployeeDropdown(!showEmployeeDropdown)}
+                            className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white cursor-pointer flex items-center justify-between text-sm md:text-base min-h-[48px] md:min-h-[56px]"
+                          >
+                            <span className={selectedEmployees.length > 0 ? "text-white" : "text-white/50"}>
+                              {selectedEmployees.length > 0 ? selectedEmployees.join(", ") : "Ажилчин сонгоно уу"}
+                            </span>
+                            <svg
+                              className={`w-5 h-5 transition-transform ${showEmployeeDropdown ? "rotate-0" : "rotate-180"}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+
+                          {showEmployeeDropdown && (
+                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl max-h-48 overflow-y-auto z-50">
+                              {employees.length === 0 ? (
+                                <div className="p-4 text-white/50 text-center text-sm">Ажилчин бүртгэлгүй байна</div>
+                              ) : (
+                                <div className="p-2 max-h-44 overflow-y-auto">
+                                  {employees.map((employee) => (
+                                    <div
+                                      key={employee.id}
+                                      onClick={() => {
+                                        const isSelected = selectedEmployees.includes(employee.name)
+                                        if (isSelected) {
+                                          setSelectedEmployees(
+                                            selectedEmployees.filter((name) => name !== employee.name),
+                                          )
+                                        } else {
+                                          setSelectedEmployees([...selectedEmployees, employee.name])
+                                        }
+                                      }}
+                                      className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                                        selectedEmployees.includes(employee.name)
+                                          ? "bg-emerald-400/20 text-emerald-400"
+                                          : "hover:bg-white/10 text-white"
+                                      }`}
+                                    >
+                                      <div
+                                        className={`w-4 h-4 border-2 rounded flex items-center justify-center ${
+                                          selectedEmployees.includes(employee.name)
+                                            ? "border-emerald-400 bg-emerald-400"
+                                            : "border-white/30"
+                                        }`}
+                                      >
+                                        {selectedEmployees.includes(employee.name) && (
+                                          <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20">
+                                            <path
+                                              fillRule="evenodd"
+                                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                              clipRule="evenodd"
+                                            />
+                                          </svg>
+                                        )}
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="font-medium">{employee.name}</p>
+                                        <div className="flex items-center space-x-2 text-xs opacity-70">
+                                          {employee.position && <span>{employee.position}</span>}
+                                          {employee.phone && (
+                                            <>
+                                              {employee.position && <span>•</span>}
+                                              <span>{employee.phone}</span>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {selectedEmployees.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {selectedEmployees.map((employeeName) => {
+                              const employee = employees.find((emp) => emp.name === employeeName)
+                              return (
+                                <span
+                                  key={employeeName}
+                                  className="inline-flex items-center px-3 py-1 bg-emerald-400/20 text-emerald-400 border border-emerald-400/30 rounded-lg text-sm"
+                                >
+                                  <div className="flex flex-col">
+                                    <span>{employeeName}</span>
+                                    {employee?.phone && <span className="text-xs opacity-70">{employee.phone}</span>}
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setSelectedEmployees(selectedEmployees.filter((name) => name !== employeeName))
+                                    }}
+                                    className="ml-2 hover:text-emerald-300"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                      />
+                                    </svg>
+                                  </button>
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 md:space-y-6">
+                      {/* Image Capture Section */}
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm md:text-base">Зураг</label>
+
+                        {/* Image Controls */}
+                        <div className="flex flex-wrap gap-3">
+                          {capturedImages.length < 2 && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={startCamera}
+                                className="flex items-center px-4 py-2 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
+                              >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                                  />
+                                </svg>
+                                Камер
+                              </button>
+
+                              <label className="flex items-center px-4 py-2 bg-emerald-400/20 border border-emerald-400/30 text-emerald-400 rounded-lg hover:bg-emerald-400/30 transition-colors text-sm cursor-pointer">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                Файл сонгох
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleImageUploadFromFile}
+                                  className="hidden"
+                                />
+                              </label>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Image Preview */}
+                        {capturedImages.length > 0 && (
+                          <div className="grid grid-cols-2 gap-3 mt-4">
+                            {capturedImages.map((image, index) => (
+                              <div key={index} className="relative group">
+                                <img
+                                  src={image || "/placeholder.svg"}
+                                  alt={`Зураг ${index + 1}`}
+                                  className="w-full h-32 object-cover rounded-lg border border-white/20"
+                                />
+                                <button
+                                  onClick={() => removeImage(index)}
+                                  className="absolute top-2 right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M6 18L18 6M6 6l12 12"
+                                    />
+                                  </svg>
+                                </button>
+                                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs rounded">
+                                  {index + 1}/2
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {capturedImages.length >= 2 && (
+                          <p className="text-yellow-400 text-xs">Хамгийн ихдээ 2 зураг оруулах боломжтой</p>
+                        )}
+                      </div>
+
+                      {/* Submit Button */}
+                      <div className="flex flex-col pt-4">
+                        <button
+                          onClick={handleEntry}
+                          disabled={actionLoading}
+                          className="w-full py-3 md:py-4 font-semibold rounded-xl md:rounded-2xl transition-colors disabled:opacity-50 text-sm md:text-base bg-emerald-400 hover:bg-emerald-500 text-black"
+                        >
+                          {actionLoading ? "Бүртгэж байна..." : "Орсон"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-4 md:space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    <div className="space-y-2">
-                      <label className={`text-white/70 text-sm md:text-base ${isCarParked ? "opacity-50" : ""}`}>
-                        Машины дугаар {isCarParked && <span className="text-yellow-400 text-xs">(Зогсоолд байна)</span>}
-                      </label>
-                      <input
-                        value={carNumber}
-                        onChange={(e) => setCarNumber(e.target.value.toUpperCase())}
-                        placeholder="1234 УНМ"
-                        disabled={isCarParked}
-                        className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
-                    </div>
+              )}
 
-                    <div className="space-y-2">
-                      <label className={`text-white/70 text-sm md:text-base ${isCarParked ? "opacity-50" : ""}`}>
-                        Талбай {isCarParked && <span className="text-yellow-400 text-xs">(Зогсоолд байна)</span>}
-                      </label>
-                      <input
-                        value={parkingArea}
-                        onChange={(e) => setParkingArea(e.target.value.toUpperCase())}
-                        placeholder="Жишээ: A, B, C, D"
-                        disabled={isCarParked}
-                        className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
-                    </div>
+              {/* Active Records Section for Employees */}
+              {profile.role === "employee" && (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
+                  <div className="mb-4">
+                    <h2 className="text-xl font-semibold text-white">Миний зогсож байгаа машинууд</h2>
+                    <p className="text-white/70 text-sm">Таны нэр дээр бүртгэгдсэн зогсож байгаа машинууд</p>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-white/70 text-sm md:text-base">Жолоочийн нэр</label>
-                    <div className="px-4 py-3 md:px-6 md:py-4 bg-white/5 border border-white/10 rounded-xl md:rounded-2xl text-white/70 text-sm md:text-base">
-                      {profile.name || "Профайлд нэр оруулна уу"}
+                  <div className="mb-4 text-white/70 text-sm">
+                    Нийт {filteredActiveParkingRecords.length} машин зогсож байна
+                  </div>
+
+                  {filteredActiveParkingRecords.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
+                        <Car className="w-8 h-8 text-white/50" />
+                      </div>
+                      <p className="text-white/50 text-lg mb-2">Зогсож байгаа машин байхгүй</p>
+                      <p className="text-white/30 text-sm">Таны нэр дээр зогсож байгаа машин байхгүй байна</p>
                     </div>
-                  </div>
-
-                  <div className="flex flex-col pt-4">
-                    <button
-                      onClick={isCarParked ? handleExit : handleEntry}
-                      disabled={actionLoading || checkingParkingStatus}
-                      className={`w-full py-3 md:py-4 font-semibold rounded-xl md:rounded-2xl transition-colors disabled:opacity-50 text-sm md:text-base ${
-                        isCarParked
-                          ? "bg-red-500 hover:bg-red-600 text-white"
-                          : "bg-emerald-400 hover:bg-emerald-500 text-black"
-                      }`}
-                    >
-                      {actionLoading
-                        ? "Бүртгэж байна..."
-                        : checkingParkingStatus
-                          ? "Шалгаж байна..."
-                          : isCarParked
-                            ? "Гарсан"
-                            : "Орсон"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Одоо зогсоолд байна */}
-              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
-                <h2 className="text-xl font-semibold text-white mb-4">Одоо зогсоолд байгаа</h2>
-                {recentRecords.length === 0 ? (
-                  <p className="text-center text-white/50 py-8">Одоо зогсоолд машин байхгүй байгаа</p>
-                ) : (
-                  <div className="space-y-3">
-                    {recentRecords
-                      .filter((record) => record.type === "entry" && !record.exitTime) // Show only active parking
-                      .map((record) => {
-                        const currentFee = currentParkingFees[record.id] || 0
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredActiveParkingRecords.map((record) => {
+                        const currentFee = calculateCurrentParkingFee(record.entryTime || "")
                         const duration = calculateParkingDuration(record.entryTime || "")
 
                         return (
-                          <div key={record.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
-                            <div className="flex items-center justify-between">
+                          <div
+                            key={record.id}
+                            className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors"
+                          >
+                            <div className="flex items-start justify-between">
                               <div className="space-y-2 flex-1">
                                 <div className="flex items-center space-x-2">
                                   <span className="px-2 py-1 rounded-lg text-xs font-medium bg-emerald-400/20 text-emerald-400 border border-emerald-400/30">
@@ -1256,34 +1557,229 @@ export default function ParkingSystem() {
                                   <span className="text-white/70">Машин:</span> {record.carNumber}
                                 </p>
                                 <p className="text-white text-sm">
-                                  <span className="text-white/70">Жолооч:</span> {record.driverName}
-                                </p>
-                                <p className="text-white text-sm">
-                                  <span className="text-white/70">Талбай:</span> {record.parkingArea}
+                                  <span className="text-white/70">Машины марк:</span> {record.parkingArea}
                                 </p>
                                 <p className="text-white/50 text-xs">
-                                  Зогссон хугацаа: {duration === 0 ? "1 минутаас бага" : `${duration} минут`}
+                                  Зогссон хугацаа: {duration === 0 ? "1 цагаас бага" : `${duration} цаг`}
                                 </p>
+
+                                {/* Images Section */}
+                                {record.images && record.images.length > 0 && (
+                                  <div className="mt-3">
+                                    <p className="text-white/70 text-xs mb-2">Зургууд:</p>
+                                    <div className="flex space-x-2">
+                                      {record.images.map((image, index) => (
+                                        <div key={index} className="relative group">
+                                          <img
+                                            src={image || "/placeholder.svg"}
+                                            alt={`Зураг ${index + 1}`}
+                                            className="w-16 h-16 object-cover rounded-lg border border-white/20 cursor-pointer hover:border-emerald-400/50 transition-colors"
+                                            onClick={() => {
+                                              // Create modal for enlarged image
+                                              const modal = document.createElement("div")
+                                              modal.className =
+                                                "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                                              modal.innerHTML = `
+                                                <div class="relative max-w-4xl max-h-[90vh] bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl overflow-hidden">
+                                                  <img src="${image}" alt="Зураг ${index + 1}" class="w-full h-full object-contain" />
+                                                  <button class="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                  </button>
+                                                </div>
+                                              `
+                                              document.body.appendChild(modal)
+
+                                              // Close modal on click
+                                              modal.addEventListener("click", (e) => {
+                                                if (e.target === modal || e.target.closest("button")) {
+                                                  document.body.removeChild(modal)
+                                                }
+                                              })
+                                            }}
+                                          />
+                                          <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/50 text-white text-xs rounded">
+                                            {index + 1}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                              <div className="text-right ml-4">
-                                <p className="font-semibold text-emerald-400 text-lg animate-pulse">
+                              <div className="text-right ml-4 space-y-2">
+                                <p className="font-semibold text-emerald-400 text-lg">
                                   {currentFee === 0 ? "Үнэгүй" : `${currentFee} ₮`}
                                 </p>
-                                <p className="text-xs text-white/50">{pricingConfig.pricePerMinute}₮/минут</p>
+                                <p className="text-xs text-white/50">{pricingConfig.pricePerMinute}₮/цаг</p>
                               </div>
                             </div>
                           </div>
                         )
                       })}
-                    {recentRecords.filter((record) => record.type === "entry" && !record.exitTime).length === 0 && (
-                      <p className="text-center text-white/50 py-8">Одоо зогсоолд машин байхгүй байгаа</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {/* records tab-ийн UI хэсгийг засварлах - илүү дэлгэрэнгүй мэдээлэл харуулах */}
+          {activeTab === "records" && profile.role !== "employee" && (
+            <div className="space-y-6">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
+                <div className="mb-4">
+                  <h2 className="text-xl font-semibold text-white">Идэвхтэй бүртгэлүүд</h2>
+                </div>
+
+                {/* Search Section */}
+                <div className="mb-6">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={activeRecordsSearch}
+                      onChange={(e) => setActiveRecordsSearch(e.target.value)}
+                      placeholder="Машины дугаараар хайх..."
+                      className="w-full px-4 py-3 pl-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all duration-200"
+                    />
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                      <Search className="w-5 h-5 text-white/50" />
+                    </div>
+                    {activeRecordsSearch && (
+                      <button
+                        onClick={() => setActiveRecordsSearch("")}
+                        className="absolute inset-y-0 right-0 flex items-center pr-4 text-white/50 hover:text-white transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     )}
+                  </div>
+                </div>
+
+                <div className="mb-4 text-white/70 text-sm">
+                  {activeRecordsSearch
+                    ? `${filteredActiveParkingRecords.length} бүртгэл олдлоо (нийт ${activeParkingRecords.length})`
+                    : `Нийт ${activeParkingRecords.length} идэвхтэй бүртгэл`}
+                </div>
+
+                {filteredActiveParkingRecords.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
+                      <Car className="w-8 h-8 text-white/50" />
+                    </div>
+                    {activeRecordsSearch ? (
+                      <>
+                        <p className="text-white/50 text-lg mb-2">Хайлтын үр дүн олдсонгүй</p>
+                        <p className="text-white/30 text-sm">"{activeRecordsSearch}" дугаартай машин олдсонгүй</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-white/50 text-lg mb-2">Идэвхтэй бүртгэл байхгүй байна</p>
+                        <p className="text-white/30 text-sm">Машин орсон бүртгэл хийснээр энд харагдана</p>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredActiveParkingRecords.map((record) => {
+                      const currentFee = calculateCurrentParkingFee(record.entryTime || "")
+                      const duration = calculateParkingDuration(record.entryTime || "")
+
+                      return (
+                        <div
+                          key={record.id}
+                          className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2 flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="px-2 py-1 rounded-lg text-xs font-medium bg-emerald-400/20 text-emerald-400 border border-emerald-400/30">
+                                  Зогсож байна
+                                </span>
+                                <span className="text-white/50 text-xs">
+                                  {formatDetailedTime(record.entryTime || "")}
+                                </span>
+                              </div>
+                              <p className="text-white text-sm">
+                                <span className="text-white/70">Машин:</span> {record.carNumber}
+                              </p>
+                              <p className="text-white text-sm">
+                                <span className="text-white/70">Ажилчин:</span> {record.driverName}
+                              </p>
+                              <p className="text-white text-sm">
+                                <span className="text-white/70">Машины марк:</span> {record.parkingArea}
+                              </p>
+                              <p className="text-white/50 text-xs">
+                                Зогссон хугацаа: {duration === 0 ? "1 цагаас бага" : `${duration} цаг`}
+                              </p>
+
+                              {/* Images Section */}
+                              {record.images && record.images.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-white/70 text-xs mb-2">Зургууд:</p>
+                                  <div className="flex space-x-2">
+                                    {record.images.map((image, index) => (
+                                      <div key={index} className="relative group">
+                                        <img
+                                          src={image || "/placeholder.svg"}
+                                          alt={`Зураг ${index + 1}`}
+                                          className="w-16 h-16 object-cover rounded-lg border border-white/20 cursor-pointer hover:border-emerald-400/50 transition-colors"
+                                          onClick={() => {
+                                            // Create modal for enlarged image
+                                            const modal = document.createElement("div")
+                                            modal.className =
+                                              "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                                            modal.innerHTML = `
+                                              <div class="relative max-w-4xl max-h-[90vh] bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl overflow-hidden">
+                                                <img src="${image}" alt="Зураг ${index + 1}" class="w-full h-full object-contain" />
+                                                <button class="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors">
+                                                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                  </svg>
+                                                </button>
+                                              </div>
+                                            `
+                                            document.body.appendChild(modal)
+
+                                            // Close modal on click
+                                            modal.addEventListener("click", (e) => {
+                                              if (e.target === modal || e.target.closest("button")) {
+                                                document.body.removeChild(modal)
+                                              }
+                                            })
+                                          }}
+                                        />
+                                        <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/50 text-white text-xs rounded">
+                                          {index + 1}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right ml-4 space-y-2">
+                              <p className="font-semibold text-emerald-400 text-lg">
+                                {currentFee === 0 ? "Үнэгүй" : `${currentFee} ₮`}
+                              </p>
+                              <p className="text-xs text-white/50">{pricingConfig.pricePerMinute}₮/цаг</p>
+                              <button
+                                onClick={() => handleExitFromRecord(record.id, record)}
+                                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
+                              >
+                                Гарсан
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
             </div>
           )}
-
+          {/* History хэсгийн records харуулах логикийг засварлах */}
           {activeTab === "history" && (
             <div className="space-y-6">
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
@@ -1292,8 +1788,14 @@ export default function ParkingSystem() {
                   {/* Header with Filter Toggle */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-xl font-semibold text-white mb-2">Түүх харах</h2>
-                      <p className="text-white/70 text-sm">Бүх орсон/гарсан бүртгэлийн түүх</p>
+                      <h2 className="text-xl font-semibold text-white mb-2">
+                        {profile.role === "employee" ? "Миний түүх" : "Түүх харах"}
+                      </h2>
+                      <p className="text-white/70 text-sm">
+                        {profile.role === "employee"
+                          ? "Таны нэр дээр бүртгэгдсэн гарсан машинуудын түүх"
+                          : "Бүх орсон/гарсан бүртгэлийн түүх"}
+                      </p>
                     </div>
                     <button
                       onClick={() => setFilterCollapsed(!filterCollapsed)}
@@ -1313,7 +1815,7 @@ export default function ParkingSystem() {
                   {/* Collapsible Filter Content */}
                   {!filterCollapsed && (
                     <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 animate-in slide-in-from-top duration-300 ease-out">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Year Filter */}
                         <div className="space-y-3">
                           <label className="text-white/80 text-sm font-medium flex items-center">
@@ -1427,48 +1929,6 @@ export default function ParkingSystem() {
                           </div>
                         </div>
 
-                        {/* Type Filter - NEW */}
-                        <div className="space-y-3">
-                          <label className="text-white/80 text-sm font-medium flex items-center">
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                              />
-                            </svg>
-                            Төрөл сонгох
-                          </label>
-                          <div className="relative">
-                            <select
-                              value={filterType}
-                              onChange={(e) => setFilterType(e.target.value)}
-                              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all duration-200 appearance-none cursor-pointer"
-                            >
-                              <option value="" className="bg-gray-900 text-white">
-                                Бүх төрөл
-                              </option>
-                              <option value="entry" className="bg-gray-900 text-white">
-                                Орсон
-                              </option>
-                              <option value="exit" className="bg-gray-900 text-white">
-                                Гарсан
-                              </option>
-                            </select>
-                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                              <svg
-                                className="w-5 h-5 text-white/50"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-
                         {/* Car Number Filter */}
                         <div className="space-y-3">
                           <label className="text-white/80 text-sm font-medium flex items-center">
@@ -1499,7 +1959,7 @@ export default function ParkingSystem() {
                       </div>
 
                       {/* Active Filters Display */}
-                      {(filterYear || filterMonth || filterCarNumber || filterType) && (
+                      {(filterYear || filterMonth || filterCarNumber) && (
                         <div className="mt-6 pt-4 border-t border-white/10">
                           <div className="flex flex-wrap gap-2">
                             <span className="text-white/70 text-sm">Идэвхтэй шүүлтүүр:</span>
@@ -1515,14 +1975,6 @@ export default function ParkingSystem() {
                               <span className="inline-flex items-center px-3 py-1 bg-emerald-400/20 text-emerald-400 border border-emerald-400/30 rounded-lg text-sm">
                                 Сар: {filterMonth}
                                 <button onClick={() => setFilterMonth("")} className="ml-2 hover:text-emerald-300">
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </span>
-                            )}
-                            {filterType && (
-                              <span className="inline-flex items-center px-3 py-1 bg-emerald-400/20 text-emerald-400 border border-emerald-400/30 rounded-lg text-sm">
-                                Төрөл: {filterType === "entry" ? "Орсон" : "Гарсан"}
-                                <button onClick={() => setFilterType("")} className="ml-2 hover:text-emerald-300">
                                   <X className="w-3 h-3" />
                                 </button>
                               </span>
@@ -1549,75 +2001,156 @@ export default function ParkingSystem() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H9z"
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2-2H9z"
                         />
                       </svg>
                       <span className="font-medium">{filteredRecords.length} бүртгэл олдлоо</span>
+                      <span className="text-white/50 text-sm ml-2">(Нийт: {allRecords.length})</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Records List */}
+                {/* Records List - Бүх бүртгэлүүдийг харуулах */}
                 {filteredRecords.length === 0 ? (
-                  <p className="text-center text-white/50 py-12">
-                    {filterYear || filterMonth || filterCarNumber || filterType
-                      ? "Хайлтын үр дүн олдсонгүй"
-                      : "Түүх байхгүй байна"}
-                  </p>
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
+                      <History className="w-8 h-8 text-white/50" />
+                    </div>
+                    {filterYear || filterMonth || filterCarNumber ? (
+                      <>
+                        <p className="text-white/50 text-lg mb-2">Хайлтын үр дүн олдсонгүй</p>
+                        <p className="text-white/30 text-sm">Шүүлтүүрийг өөрчилж дахин оролдоно уу</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-white/50 text-lg mb-2">Түүх байхгүй байна</p>
+                        <p className="text-white/30 text-sm">
+                          {profile.role === "employee"
+                            ? "Таны нэр дээр гарсан машины бүртгэл байхгүй байна"
+                            : "Машин орсон/гарсан бүртгэл хийснээр энд харагдана"}
+                        </p>
+                      </>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-4">
-                    {filteredRecords
-                      .filter(
-                        (record) =>
-                          record.type === "exit" ||
-                          record.type === "completed" ||
-                          (record.type === "entry" && record.exitTime),
-                      )
-                      .map((record) => (
-                        <div key={record.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <span
-                              className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                                record.type === "entry"
+                    {filteredRecords.map((record) => (
+                      <div key={record.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <span
+                            className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                              record.type === "completed" || record.exitTime
+                                ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                : record.type === "entry"
                                   ? "bg-emerald-400/20 text-emerald-400 border border-emerald-400/30"
-                                  : "bg-red-500/20 text-red-400 border border-red-500/30"
-                              }`}
-                            >
-                              {record.type === "entry" ? "Орсон" : "Гарсан"}
-                            </span>
-                            <span className="text-white/50 text-sm">{record.entryTime || record.exitTime}</span>
+                                  : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                            }`}
+                          >
+                            {record.type === "completed" || record.exitTime
+                              ? "Гарсан"
+                              : record.type === "entry"
+                                ? "Орсон"
+                                : record.type === "exit"
+                                  ? "Гарсан"
+                                  : "Бүртгэл"}
+                          </span>
+                          <div className="text-right">
+                            <div className="text-white/50 text-xs">
+                              {new Date(record.timestamp).toLocaleString("mn-MN")}
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <p className="text-white">
-                              <span className="text-white/70">Машин:</span> {record.carNumber}
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-white">
+                            <span className="text-white/70">Машин:</span> {record.carNumber}
+                          </p>
+                          <p className="text-white">
+                            <span className="text-white/70">Ажилчин:</span> {record.driverName}
+                          </p>
+                          <p className="text-white">
+                            <span className="text-white/70">Машины марк:</span> {record.parkingArea}
+                          </p>
+                          {record.entryTime && (
+                            <p className="text-white/50 text-sm">
+                              <span className="text-white/70">Орсон:</span> {record.entryTime}
                             </p>
-                            <p className="text-white">
-                              <span className="text-white/70">Жолооч:</span> {record.driverName}
+                          )}
+                          {record.exitTime && (
+                            <p className="text-white/50 text-sm">
+                              <span className="text-white/70">Гарсан:</span> {record.exitTime}
                             </p>
-                            <p className="text-white">
-                              <span className="text-white/70">Талбай:</span> {record.parkingArea}
-                            </p>
+                          )}
+
+                          {/* Images Section */}
+                          {record.images && record.images.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-white/70 text-sm mb-2">Зургууд:</p>
+                              <div className="flex space-x-2">
+                                {record.images.map((image, index) => (
+                                  <div key={index} className="relative group">
+                                    <img
+                                      src={image || "/placeholder.svg"}
+                                      alt={`Зураг ${index + 1}`}
+                                      className="w-20 h-20 object-cover rounded-lg border border-white/20 cursor-pointer hover:border-emerald-400/50 transition-colors"
+                                      onClick={() => {
+                                        // Create modal for enlarged image
+                                        const modal = document.createElement("div")
+                                        modal.className =
+                                          "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                                        modal.innerHTML = `
+                                          <div class="relative max-w-4xl max-h-[90vh] bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl overflow-hidden">
+                                            <img src="${image}" alt="Зураг ${index + 1}" class="w-full h-full object-contain" />
+                                            <button class="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors">
+                                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                              </svg>
+                                            </button>
+                                          </div>
+                                        `
+                                        document.body.appendChild(modal)
+
+                                        // Close modal on click
+                                        modal.addEventListener("click", (e) => {
+                                          if (e.target === modal || e.target.closest("button")) {
+                                            document.body.removeChild(modal)
+                                          }
+                                        })
+                                      }}
+                                    />
+                                    <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/50 text-white text-xs rounded">
+                                      {index + 1}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center">
                             <p className="text-emerald-400 text-lg font-semibold">
-                              <span className="text-white/70 text-base font-normal">Төлбөр:</span> {record.amount} ₮
+                              <span className="text-white/70 text-base font-normal">Төлбөр:</span> {record.amount || 0}{" "}
+                              ₮
                             </p>
                             {record.parkingDuration && (
-                              <p className="text-white/50 text-sm">Зогссон хугацаа: {record.parkingDuration} минут</p>
+                              <p className="text-white/50 text-sm">Зогссон: {record.parkingDuration} цаг</p>
                             )}
                           </div>
                         </div>
-                      ))}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             </div>
           )}
-
           {activeTab === "profile" && (
             <div className="space-y-6">
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
                 <div className="mb-6">
                   <h2 className="text-xl font-semibold text-white mb-2">Профайл</h2>
-                  <p className="text-white/70 text-sm">Хувийн мэдээлэл засах</p>
+                  <p className="text-white/70 text-sm">
+                    {profile.role === "employee" ? "Ажилчны мэдээлэл" : "Хувийн мэдээлэл засах"}
+                  </p>
                 </div>
 
                 <div className="flex justify-center mb-8">
@@ -1678,10 +2211,71 @@ export default function ParkingSystem() {
                     <label className="text-white/70 text-sm">И-мэйл</label>
                     <input
                       value={profile.email}
-                      disabled
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white/50"
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      placeholder="И-мэйл хаяг"
+                      disabled={!editing}
+                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 disabled:opacity-50"
                     />
                   </div>
+
+                  {/* Show start date only for employees and only when not editing */}
+                  {profile.role === "employee" && employeeProfile && employeeProfile.startDate && !editing && (
+                    <div className="space-y-2">
+                      <label className="text-white/70 text-sm">Ажилд орсон огноо</label>
+                      <input
+                        value={new Date(employeeProfile.startDate).toLocaleDateString("mn-MN")}
+                        disabled
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white/50"
+                      />
+                    </div>
+                  )}
+
+                  {/* Password change section for employees when editing */}
+                  {profile.role === "employee" && editing && (
+                    <div className="space-y-4 border-t border-white/10 pt-6">
+                      <h4 className="text-white font-medium">Нууц үг солих</h4>
+
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm">Шинэ нууц үг</label>
+                        <div className="relative">
+                          <input
+                            type={showNewPassword ? "text" : "password"}
+                            value={passwordData.newPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                            placeholder="Шинэ нууц үг (хамгийн багадаа 6 тэмдэгт)"
+                            className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                          >
+                            {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm">Нууц үг баталгаажуулах</label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={passwordData.confirmPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                            placeholder="Нууц үг дахин оруулах"
+                            className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                          >
+                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="border-t border-white/10 pt-6">
                     <div className="flex space-x-4">
@@ -1697,6 +2291,12 @@ export default function ParkingSystem() {
                           <button
                             onClick={() => {
                               setEditing(false)
+                              // Reset password fields
+                              setPasswordData({
+                                currentPassword: "",
+                                newPassword: "",
+                                confirmPassword: "",
+                              })
                               loadProfile()
                             }}
                             disabled={profileLoading}
@@ -1734,6 +2334,17 @@ export default function ParkingSystem() {
                 className={`w-6 h-6 md:w-7 md:h-7 ${activeTab === "home" ? "text-emerald-400" : "text-white/70"}`}
               />
             </button>
+            {/* Hide records tab for employees */}
+            {profile.role !== "employee" && (
+              <button
+                onClick={() => setActiveTab("records")}
+                className="flex items-center justify-center p-3 md:p-4 rounded-lg transition-colors"
+              >
+                <Car
+                  className={`w-6 h-6 md:w-7 md:h-7 ${activeTab === "records" ? "text-emerald-400" : "text-white/70"}`}
+                />
+              </button>
+            )}
             <button
               onClick={() => setActiveTab("history")}
               className="flex items-center justify-center p-3 md:p-4 rounded-lg transition-colors"
@@ -1760,39 +2371,172 @@ export default function ParkingSystem() {
         </div>
       </div>
 
-      {/* Custom Logout Confirmation Modal */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      {/* Custom Exit Confirmation Modal */}
+      {showExitModal && exitingRecord && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelLogout}></div>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelExit}></div>
 
-          {/* Modal */}
-          <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mx-4 max-w-sm w-full animate-in fade-in zoom-in duration-200">
+          {/* Modal - responsive sizing */}
+          <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 md:p-6 mx-4 w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
             <div className="text-center">
               {/* Icon */}
-              <div className="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
-                <LogOut className="w-8 h-8 text-red-400" />
+              <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
+                <Car className="w-6 h-6 md:w-8 md:h-8 text-red-400" />
               </div>
 
               {/* Title */}
-              <h3 className="text-lg font-semibold text-white mb-2">Гарах</h3>
+              <h3 className="text-lg md:text-xl font-semibold text-white mb-4">Гарсан бүртгэл</h3>
 
-              {/* Message */}
-              <p className="text-white/70 text-sm mb-6">Та гарахдаа итгэлтэй байна уу?</p>
+              {/* Details */}
+              <div className="bg-white/5 rounded-xl p-3 md:p-4 mb-4 md:mb-6 text-left space-y-3">
+                <div className="flex justify-between text-sm md:text-base">
+                  <span className="text-white/70">Орсон цаг:</span>
+                  <span className="text-white font-medium">{formatDetailedTime(exitingRecord.entryTime || "")}</span>
+                </div>
+                <div className="flex justify-between text-sm md:text-base">
+                  <span className="text-white/70">Машины дугаар:</span>
+                  <span className="text-white font-medium">{exitingRecord.carNumber}</span>
+                </div>
+                <div className="flex justify-between text-sm md:text-base">
+                  <span className="text-white/70">Ажилчин:</span>
+                  <span className="text-white font-medium">{exitingRecord.driverName}</span>
+                </div>
+                <div className="flex justify-between text-sm md:text-base">
+                  <span className="text-white/70">Машины марк:</span>
+                  <span className="text-white font-medium">{exitingRecord.parkingArea}</span>
+                </div>
+
+                {/* Images Section */}
+                {exitingRecord.images && exitingRecord.images.length > 0 && (
+                  <div className="border-t border-white/10 pt-3">
+                    <p className="text-white/70 text-sm mb-2">Зургууд:</p>
+                    <div className="flex space-x-2 justify-center">
+                      {exitingRecord.images.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={image || "/placeholder.svg"}
+                            alt={`Зураг ${index + 1}`}
+                            className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-lg border border-white/20 cursor-pointer hover:border-emerald-400/50 transition-colors"
+                            onClick={() => {
+                              // Create modal for enlarged image
+                              const modal = document.createElement("div")
+                              modal.className =
+                                "fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                              modal.innerHTML = `
+                                <div class="relative w-full h-full max-w-4xl max-h-[90vh] bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl overflow-hidden flex items-center justify-center">
+                                  <img src="${image}" alt="Зураг ${index + 1}" class="max-w-full max-h-full object-contain" />
+                                  <button class="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" view-box="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              `
+                              document.body.appendChild(modal)
+
+                              // Close modal on click
+                              modal.addEventListener("click", (e) => {
+                                if (e.target === modal || e.target.closest("button")) {
+                                  document.body.removeChild(modal)
+                                }
+                              })
+                            }}
+                          />
+                          <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/50 text-white text-xs rounded">
+                            {index + 1}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t border-white/10 pt-3 space-y-2">
+                  <div className="flex justify-between text-sm md:text-base">
+                    <span className="text-white/70">Зогссон хугацаа:</span>
+                    <span className="text-emerald-400 font-medium">
+                      {exitDetails.duration === 0 ? "1 цагаас бага" : `${exitDetails.duration} цаг`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-base md:text-lg">
+                    <span className="text-white/70">Төлбөр:</span>
+                    <span className="text-emerald-400 font-bold">
+                      {exitDetails.fee === 0 ? "Үнэгүй" : `${exitDetails.fee} ₮`}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
               {/* Buttons */}
-              <div className="flex space-x-3">
+              <div className="flex space-x-3 md:space-x-4">
+                <button
+                  onClick={cancelExit}
+                  className="flex-1 py-2 md:py-3 px-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-medium rounded-xl hover:bg-white/20 transition-colors text-sm md:text-base"
+                >
+                  Цуцлах
+                </button>
+                <button
+                  onClick={confirmExit}
+                  className="flex-1 py-2 md:py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition-colors text-sm md:text-base"
+                >
+                  Гарсан
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Modal */}
+      {showCamera && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+          <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 w-full max-w-md">
+            <div className="text-center">
+              <h3 className="text-xl font-semibold text-white mb-4">Камер</h3>
+              <div className="space-y-4">
+                <button
+                  onClick={captureImage}
+                  className="w-full py-3 bg-emerald-400 hover:bg-emerald-500 text-black font-semibold rounded-xl transition-colors"
+                >
+                  Зураг авах
+                </button>
+                <button
+                  onClick={() => setShowCamera(false)}
+                  className="w-full py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 transition-colors"
+                >
+                  Цуцлах
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelLogout}></div>
+          <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mx-4 w-full max-w-sm animate-in fade-in zoom-in duration-200">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
+                <LogOut className="w-8 h-8 text-red-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">Гарах уу?</h3>
+              <p className="text-white/70 text-sm mb-6">Та системээс гарахдаа итгэлтэй байна уу?</p>
+              <div className="flex space-x-4">
                 <button
                   onClick={cancelLogout}
                   className="flex-1 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-medium rounded-xl hover:bg-white/20 transition-colors"
                 >
-                  Үгүй
+                  Цуцлах
                 </button>
                 <button
                   onClick={confirmLogout}
-                  className="flex-1 py-3 bg-emerald-400 hover:bg-emerald-500 text-black font-medium rounded-xl transition-colors"
+                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition-colors"
                 >
-                  Тийм
+                  Гарах
                 </button>
               </div>
             </div>
