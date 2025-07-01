@@ -8,12 +8,11 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Зогсоолын систем",
   description: "Зогсоолын удирдлагын систем",
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({
   children,
-}: {
+}: 
   children: React.ReactNode
 }) {
   return (
