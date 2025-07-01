@@ -286,7 +286,11 @@ export default function ParkingSystem() {
           setTimeout(() => {
             loadRecentRecords()
             loadAllRecords()
-          }, 500) // Increased timeout to ensure authentication is complete
+            // Load persistent parking status after profile and records are loaded
+            setTimeout(() => {
+              loadPersistentParkingStatus()
+            }, 1000)
+          }, 500)
         } else {
           // Create default profile for new users
           const defaultProfile = {
@@ -303,6 +307,10 @@ export default function ParkingSystem() {
           setTimeout(() => {
             loadRecentRecords()
             loadAllRecords()
+            // Load persistent parking status after profile and records are loaded
+            setTimeout(() => {
+              loadPersistentParkingStatus()
+            }, 1000)
           }, 500)
         }
       },
@@ -321,107 +329,105 @@ export default function ParkingSystem() {
     )
   }
 
-  const calculateParkingFee = (entryTime: string, exitTime: string): number => {
-    if (!entryTime || !exitTime || pricingConfig.pricePerMinute === 0) {
-      return 0
-    }
-
-    try {
-      // Parse the Mongolian formatted dates
-      const parseMongoDate = (dateStr: string) => {
-        // Format: "2024.01.15, 14:30" or similar
-        const cleanStr = dateStr.replace(/[^\d\s:.,]/g, "")
-        const parts = cleanStr.split(/[,\s]+/)
-
-        if (parts.length >= 2) {
-          const datePart = parts[0] // "2024.01.15"
-          const timePart = parts[1] // "14:30"
-
-          const [year, month, day] = datePart.split(".").map(Number)
-          const [hour, minute] = timePart.split(":").map(Number)
-
-          return new Date(year, month - 1, day, hour, minute)
-        }
-
-        // Fallback to direct parsing
-        return new Date(dateStr)
-      }
-
-      const entryDate = parseMongoDate(entryTime)
-      const exitDate = parseMongoDate(exitTime)
-
-      if (isNaN(entryDate.getTime()) || isNaN(exitDate.getTime())) {
-        return 0
-      }
-
-      const diffInMs = exitDate.getTime() - entryDate.getTime()
-      const diffInMinutes = Math.ceil(diffInMs / (1000 * 60)) // Round up to next minute
-
-      return Math.max(0, diffInMinutes * pricingConfig.pricePerMinute)
-    } catch (error) {
-      console.error("Error calculating parking fee:", error)
-      return 0
-    }
-  }
-
-  // Real-time parking fee calculation
+  // Real-time parking fee calculation функцийг засварлах
   const calculateCurrentParkingFee = (entryTime: string): number => {
     if (!entryTime || pricingConfig.pricePerMinute === 0) {
       return 0
     }
 
     try {
-      const parseMongoDate = (dateStr: string) => {
-        const cleanStr = dateStr.replace(/[^\d\s:.,]/g, "")
-        const parts = cleanStr.split(/[,\s]+/)
-
-        if (parts.length >= 2) {
-          const datePart = parts[0]
-          const timePart = parts[1]
-          const [year, month, day] = datePart.split(".").map(Number)
-          const [hour, minute] = timePart.split(":").map(Number)
-          return new Date(year, month - 1, day, hour, minute)
-        }
-        return new Date(dateStr)
-      }
-
-      const entryDate = parseMongoDate(entryTime)
+      const entryDate = parseFlexibleDate(entryTime)
       const currentTime = new Date()
 
       if (isNaN(entryDate.getTime())) {
+        console.error("Invalid entry time after parsing:", entryTime)
         return 0
       }
 
       const diffInMs = currentTime.getTime() - entryDate.getTime()
-      const diffInMinutes = Math.ceil(diffInMs / (1000 * 60))
+      const diffInMinutes = Math.floor(diffInMs / (1000 * 60)) // Use Math.floor instead of Math.ceil
 
-      return Math.max(0, diffInMinutes * pricingConfig.pricePerMinute)
+      // Хэрэв 1 минутаас бага бол 0 буцаах
+      if (diffInMinutes < 1) {
+        return 0
+      }
+
+      return diffInMinutes * (pricingConfig.pricePerMinute || 100)
     } catch (error) {
       console.error("Error calculating current parking fee:", error)
       return 0
     }
   }
 
+  // Calculate parking duration функцийг засварлах
+  const calculateParkingDuration = (entryTime: string, exitTime?: string): number => {
+    try {
+      const entryDate = parseFlexibleDate(entryTime)
+      const endDate = exitTime ? parseFlexibleDate(exitTime) : new Date()
+
+      if (isNaN(entryDate.getTime()) || isNaN(endDate.getTime())) {
+        return 0
+      }
+
+      const diffInMs = endDate.getTime() - entryDate.getTime()
+      const diffInMinutes = Math.floor(diffInMs / (1000 * 60)) // Use Math.floor instead of Math.ceil
+
+      // Хэрэв 1 минутаас бага бол 0 буцаах
+      if (diffInMinutes < 1) {
+        return 0
+      }
+
+      return diffInMinutes
+    } catch (error) {
+      console.error("Error calculating parking duration:", error)
+      return 0
+    }
+  }
+
+  // Unified date parsing function
+  const parseFlexibleDate = (dateStr: string): Date => {
+    if (!dateStr) return new Date()
+
+    const cleanStr = dateStr.trim()
+
+    // Format 1: "07/01/2025, 08:42 AM" (US format with AM/PM)
+    if (cleanStr.includes("AM") || cleanStr.includes("PM")) {
+      return new Date(cleanStr)
+    }
+
+    // Format 2: "2025.01.07, 14:30" (Mongolian format)
+    if (cleanStr.includes(".")) {
+      const parts = cleanStr.replace(/[^\d\s:.,]/g, "").split(/[,\s]+/)
+      if (parts.length >= 2) {
+        const datePart = parts[0] // "2025.01.07"
+        const timePart = parts[1] // "14:30"
+        const [year, month, day] = datePart.split(".").map(Number)
+        const [hour, minute] = timePart.split(":").map(Number)
+        return new Date(year, month - 1, day, hour, minute)
+      }
+    }
+
+    // Format 3: ISO string or other standard formats
+    const standardDate = new Date(cleanStr)
+    if (!isNaN(standardDate.getTime())) {
+      return new Date(cleanStr)
+    }
+
+    // Format 4: Try to parse as locale string
+    try {
+      return new Date(Date.parse(cleanStr))
+    } catch {
+      console.error("Unable to parse date:", cleanStr)
+      return new Date()
+    }
+  }
+
   // Format detailed time display
   const formatDetailedTime = (timeString: string): string => {
     try {
-      const parseMongoDate = (dateStr: string) => {
-        const cleanStr = dateStr.replace(/[^\d\s:.,]/g, "")
-        const parts = cleanStr.split(/[,\s]+/)
-
-        if (parts.length >= 2) {
-          const datePart = parts[0]
-          const timePart = parts[1]
-          const [year, month, day] = datePart.split(".").map(Number)
-          const [hour, minute] = timePart.split(":").map(Number)
-          return new Date(year, month - 1, day, hour, minute)
-        }
-        return new Date(dateStr)
-      }
-
-      const date = parseMongoDate(timeString)
+      const date = parseFlexibleDate(timeString)
       if (isNaN(date.getTime())) {
-        return timeString
+        return timeString // Return original if parsing fails
       }
 
       const year = date.getFullYear()
@@ -432,38 +438,8 @@ export default function ParkingSystem() {
 
       return `${year}/${month.toString().padStart(2, "0")}/${day.toString().padStart(2, "0")}, ${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
     } catch (error) {
-      return timeString
-    }
-  }
-
-  // Calculate parking duration in minutes
-  const calculateParkingDuration = (entryTime: string): number => {
-    try {
-      const parseMongoDate = (dateStr: string) => {
-        const cleanStr = dateStr.replace(/[^\d\s:.,]/g, "")
-        const parts = cleanStr.split(/[,\s]+/)
-
-        if (parts.length >= 2) {
-          const datePart = parts[0]
-          const timePart = parts[1]
-          const [year, month, day] = datePart.split(".").map(Number)
-          const [hour, minute] = timePart.split(":").map(Number)
-          return new Date(year, month - 1, day, hour, minute)
-        }
-        return new Date(dateStr)
-      }
-
-      const entryDate = parseMongoDate(entryTime)
-      const currentTime = new Date()
-
-      if (isNaN(entryDate.getTime())) {
-        return 0
-      }
-
-      const diffInMs = currentTime.getTime() - entryDate.getTime()
-      return Math.ceil(diffInMs / (1000 * 60))
-    } catch (error) {
-      return 0
+      console.error("Error formatting time:", error)
+      return timeString // Return original string on error
     }
   }
 
@@ -522,7 +498,42 @@ export default function ParkingSystem() {
     setCheckingParkingStatus(false)
   }
 
-  // Update the handleEntry function to ensure proper data saving
+  // Add this new function after the existing checkCarParkingStatus function
+  const loadPersistentParkingStatus = async () => {
+    if (!user?.uid || !profile.name) {
+      return
+    }
+
+    try {
+      const recordsRef = ref(database, "parking_records")
+      const snapshot = await new Promise((resolve, reject) => {
+        onValue(recordsRef, resolve, reject, { onlyOnce: true })
+      })
+
+      const data = snapshot.val()
+      if (data) {
+        // Find any active parking record for this driver
+        const activeRecord = Object.keys(data)
+          .map((key) => ({ id: key, ...data[key] }))
+          .find((record) => record.driverName === profile.name && record.type === "entry" && !record.exitTime)
+
+        if (activeRecord) {
+          // Restore the car number and parking area from the active record
+          setCarNumber(activeRecord.carNumber)
+          setParkingArea(activeRecord.parkingArea)
+          setIsCarParked(true)
+          console.log("Restored parking status:", activeRecord)
+        } else {
+          setIsCarParked(false)
+        }
+      }
+    } catch (error) {
+      console.error("Error loading persistent parking status:", error)
+      setIsCarParked(false)
+    }
+  }
+
+  // handleEntry функцийг засварлах - шууд timer эхлүүлэхгүй
   const handleEntry = async () => {
     if (!carNumber.trim()) {
       alert("Машины дугаарыг оруулна уу")
@@ -556,11 +567,13 @@ export default function ParkingSystem() {
     try {
       await push(ref(database, "parking_records"), record)
       alert("Орсон бүртгэл амжилттай хийгдлээ")
+
       // Refresh records after adding new entry
       setTimeout(() => {
         loadRecentRecords()
         loadAllRecords()
       }, 500)
+
       // Don't clear form after entry, just update parking status
       setIsCarParked(true)
     } catch (error) {
@@ -570,7 +583,13 @@ export default function ParkingSystem() {
     setActionLoading(false)
   }
 
-  // Update the handleExit function to find and update existing entry record
+  // Function to calculate parking fee
+  const calculateParkingFee = (entryTime: string, exitTime: string): number => {
+    const duration = calculateParkingDuration(entryTime, exitTime)
+    return duration * (pricingConfig.pricePerMinute || 100)
+  }
+
+  // Update the handleExit function to calculate and save duration & fee
   const handleExit = async () => {
     if (!carNumber.trim()) {
       alert("Машины дугаарыг оруулна уу")
@@ -624,17 +643,22 @@ export default function ParkingSystem() {
       })
 
       if (entryRecordId && entryRecord) {
-        // Update existing entry record with exit information
+        // Calculate parking duration and fee
         const calculatedFee = calculateParkingFee(entryRecord.entryTime, exitTimeFormatted)
+        const parkingDuration = calculateParkingDuration(entryRecord.entryTime, exitTimeFormatted)
 
+        // Update existing entry record with exit information, duration, and fee
         await update(ref(database, `parking_records/${entryRecordId}`), {
           exitTime: exitTimeFormatted,
           amount: calculatedFee,
+          parkingDuration: parkingDuration, // Зогссон хугацаа (минутаар)
           type: "completed", // Change type to indicate it's a completed parking session
           updatedAt: currentTime.toISOString(),
         })
 
-        alert(`Гарсан бүртгэл амжилттай хийгдлээ. Төлбөр: ${calculatedFee}₮`)
+        alert(
+          `Гарсан бүртгэл амжилттай хийгдлээ.\nЗогссон хугацаа: ${parkingDuration} минут\nТөлбөр: ${calculatedFee}₮`,
+        )
       } else {
         // No matching entry found, create a standalone exit record
         const record = {
@@ -643,6 +667,7 @@ export default function ParkingSystem() {
           parkingArea: parkingArea.trim().toUpperCase(),
           exitTime: exitTimeFormatted,
           amount: 0,
+          parkingDuration: 0,
           type: "exit",
           timestamp: currentTime.toISOString(),
         }
@@ -734,60 +759,110 @@ export default function ParkingSystem() {
 
   // Add useEffect to load records when user changes
   useEffect(() => {
-    if (user && !showSplash && user.uid) {
+    if (user && !showSplash && user.uid && profile.name) {
       console.log("User authenticated, loading data...")
       // Add a delay to ensure Firebase auth is fully initialized
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         loadRecentRecords()
         loadAllRecords()
+        // Load persistent parking status
+        const statusTimeoutId = setTimeout(() => {
+          loadPersistentParkingStatus()
+        }, 1500)
+
+        return () => clearTimeout(statusTimeoutId)
       }, 1000)
+
+      return () => clearTimeout(timeoutId)
     } else {
-      console.log("User not ready:", { user: !!user, showSplash, uid: user?.uid })
+      console.log("User not ready:", { user: !!user, showSplash, uid: user?.uid, profileName: profile.name })
     }
-  }, [user, profile.name, showSplash])
+  }, [user, profile.name, showSplash]) // More specific dependencies
 
   // Add this useEffect after other useEffects
   useEffect(() => {
-    if (carNumber.trim() && profile.name) {
-      checkCarParkingStatus(carNumber)
-    } else {
-      setIsCarParked(false)
-    }
-  }, [carNumber, profile.name])
+    // Only check parking status if we're not already in a parked state
+    // This prevents overriding the persistent status loaded from database
+    if (carNumber.trim() && profile.name && !isCarParked) {
+      const timeoutId = setTimeout(() => {
+        checkCarParkingStatus(carNumber)
+      }, 500) // Add small delay to prevent rapid calls
 
-  // Setup real-time timers for active parking records
+      return () => clearTimeout(timeoutId)
+    }
+  }, [carNumber, profile.name, isCarParked]) // Add isCarParked to dependencies
+
+  // Setup real-time timers функцийг засварлах
   useEffect(() => {
     // Clear existing timers
     Object.values(parkingTimers).forEach((timer) => clearInterval(timer))
-    setParkingTimers({})
 
     // Filter active parking records (entry without exit)
     const activeRecords = recentRecords.filter((record) => record.type === "entry" && !record.exitTime)
+
+    if (activeRecords.length === 0) {
+      setParkingTimers({})
+      setCurrentParkingFees({})
+      return
+    }
 
     const newTimers: { [key: string]: NodeJS.Timeout } = {}
     const newFees: { [key: string]: number } = {}
 
     activeRecords.forEach((record) => {
-      // Calculate initial fee
-      newFees[record.id] = calculateCurrentParkingFee(record.entryTime || "")
+      // Calculate initial fee (0 эхлэх)
+      const initialFee = calculateCurrentParkingFee(record.entryTime || "")
+      newFees[record.id] = initialFee
 
-      // Set up timer to update fee every minute
+      // Save initial state to database (only once)
+      update(ref(database, `parking_records/${record.id}`), {
+        currentAmount: initialFee,
+        currentDuration: calculateParkingDuration(record.entryTime || ""),
+        lastUpdated: new Date().toISOString(),
+      }).catch((error) => console.error("Error updating initial parking data:", error))
+
+      // Set up timer to update fee every 60 seconds (1 minute)
       newTimers[record.id] = setInterval(() => {
+        const currentFee = calculateCurrentParkingFee(record.entryTime || "")
+        const currentDuration = calculateParkingDuration(record.entryTime || "")
+
+        console.log(`Updating fee for ${record.carNumber}: ${currentFee}₮, Duration: ${currentDuration} minutes`)
+
+        // Update local state
         setCurrentParkingFees((prev) => ({
           ...prev,
-          [record.id]: calculateCurrentParkingFee(record.entryTime || ""),
+          [record.id]: currentFee,
         }))
-      }, 60000) // Update every minute
+
+        // Update database with current fee and duration
+        update(ref(database, `parking_records/${record.id}`), {
+          currentAmount: currentFee,
+          currentDuration: currentDuration,
+          lastUpdated: new Date().toISOString(),
+        }).catch((error) => console.error("Error updating parking data:", error))
+      }, 60000) // Update every 60 seconds (1 minute)
     })
 
-    setCurrentParkingFees(newFees)
     setParkingTimers(newTimers)
+    setCurrentParkingFees(newFees)
 
     // Cleanup function
     return () => {
       Object.values(newTimers).forEach((timer) => clearInterval(timer))
     }
-  }, [recentRecords, pricingConfig.pricePerMinute])
+  }, [recentRecords.length, pricingConfig.pricePerMinute]) // Only depend on length, not the entire array
+
+  // Remove the separate duration timer useEffect and replace with this simpler one
+  useEffect(() => {
+    // Set up a separate timer for duration updates every minute
+    const durationTimer = setInterval(() => {
+      // Force re-render by updating a timestamp (this won't cause infinite loops)
+      const now = Date.now()
+      console.log("Duration update tick:", now)
+    }, 60000) // Update every 60 seconds (1 minute)
+
+    return () => clearInterval(durationTimer)
+  }, []) // Empty dependency array - only run once
 
   // Splash Screen
   if (showSplash) {
@@ -1154,9 +1229,9 @@ export default function ParkingSystem() {
 
               {/* Одоо зогсоолд байна */}
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
-                <h2 className="text-xl font-semibold text-white mb-4">Одоо зогсоолд байна</h2>
+                <h2 className="text-xl font-semibold text-white mb-4">Одоо зогсоолд байгаа</h2>
                 {recentRecords.length === 0 ? (
-                  <p className="text-center text-white/50 py-8">Одоо зогсоолд машин байхгүй байна</p>
+                  <p className="text-center text-white/50 py-8">Одоо зогсоолд машин байхгүй байгаа</p>
                 ) : (
                   <div className="space-y-3">
                     {recentRecords
@@ -1186,10 +1261,14 @@ export default function ParkingSystem() {
                                 <p className="text-white text-sm">
                                   <span className="text-white/70">Талбай:</span> {record.parkingArea}
                                 </p>
-                                <p className="text-white/50 text-xs">Зогссон хугацаа: {duration} минут</p>
+                                <p className="text-white/50 text-xs">
+                                  Зогссон хугацаа: {duration === 0 ? "1 минутаас бага" : `${duration} минут`}
+                                </p>
                               </div>
                               <div className="text-right ml-4">
-                                <p className="font-semibold text-emerald-400 text-lg animate-pulse">{currentFee} ₮</p>
+                                <p className="font-semibold text-emerald-400 text-lg animate-pulse">
+                                  {currentFee === 0 ? "Үнэгүй" : `${currentFee} ₮`}
+                                </p>
                                 <p className="text-xs text-white/50">{pricingConfig.pricePerMinute}₮/минут</p>
                               </div>
                             </div>
@@ -1197,7 +1276,7 @@ export default function ParkingSystem() {
                         )
                       })}
                     {recentRecords.filter((record) => record.type === "entry" && !record.exitTime).length === 0 && (
-                      <p className="text-center text-white/50 py-8">Одоо зогсоолд машин байхгүй байна</p>
+                      <p className="text-center text-white/50 py-8">Одоо зогсоолд машин байхгүй байгаа</p>
                     )}
                   </div>
                 )}
@@ -1398,7 +1477,8 @@ export default function ParkingSystem() {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0
+01.293.707V19a2 2 0 01-2 2z"
                               />
                             </svg>
                             Машины дугаар
@@ -1486,49 +1566,46 @@ export default function ParkingSystem() {
                   </p>
                 ) : (
                   <div className="space-y-4">
-                    {filteredRecords.map((record) => (
-                      <div key={record.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <span
-                            className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                              record.type === "entry"
-                                ? "bg-emerald-400/20 text-emerald-400 border border-emerald-400/30"
-                                : "bg-red-500/20 text-red-400 border border-red-500/30"
-                            }`}
-                          >
-                            {record.type === "entry" ? "Орсон" : "Гарсан"}
-                          </span>
-                          <span className="text-white/50 text-sm">{record.entryTime || record.exitTime}</span>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-white">
-                            <span className="text-white/70">Машин:</span> {record.carNumber}
-                          </p>
-                          <p className="text-white">
-                            <span className="text-white/70">Жолооч:</span> {record.driverName}
-                          </p>
-                          <p className="text-white">
-                            <span className="text-white/70">Талбай:</span> {record.parkingArea}
-                          </p>
-                          <p className="text-emerald-400 text-lg font-semibold">
-                            <span className="text-white/70 text-base font-normal">Төлбөр:</span>
-                            {record.type === "exit" && record.entryTime
-                              ? `${calculateParkingFee(record.entryTime, record.exitTime || "")} ₮`
-                              : `${record.amount} ₮`}
-                          </p>
-                          {record.type === "exit" && record.entryTime && (
-                            <p className="text-white/50 text-sm">
-                              Зогссон хугацаа:{" "}
-                              {Math.ceil(
-                                (new Date(record.exitTime || "").getTime() - new Date(record.entryTime).getTime()) /
-                                  (1000 * 60),
-                              )}{" "}
-                              минут
+                    {filteredRecords
+                      .filter(
+                        (record) =>
+                          record.type === "exit" ||
+                          record.type === "completed" ||
+                          (record.type === "entry" && record.exitTime),
+                      )
+                      .map((record) => (
+                        <div key={record.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <span
+                              className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                                record.type === "entry"
+                                  ? "bg-emerald-400/20 text-emerald-400 border border-emerald-400/30"
+                                  : "bg-red-500/20 text-red-400 border border-red-500/30"
+                              }`}
+                            >
+                              {record.type === "entry" ? "Орсон" : "Гарсан"}
+                            </span>
+                            <span className="text-white/50 text-sm">{record.entryTime || record.exitTime}</span>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-white">
+                              <span className="text-white/70">Машин:</span> {record.carNumber}
                             </p>
-                          )}
+                            <p className="text-white">
+                              <span className="text-white/70">Жолооч:</span> {record.driverName}
+                            </p>
+                            <p className="text-white">
+                              <span className="text-white/70">Талбай:</span> {record.parkingArea}
+                            </p>
+                            <p className="text-emerald-400 text-lg font-semibold">
+                              <span className="text-white/70 text-base font-normal">Төлбөр:</span> {record.amount} ₮
+                            </p>
+                            {record.parkingDuration && (
+                              <p className="text-white/50 text-sm">Зогссон хугацаа: {record.parkingDuration} минут</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 )}
               </div>
