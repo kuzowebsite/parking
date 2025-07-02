@@ -71,7 +71,7 @@ export default function ManagerPage() {
   const [reportFilterYear, setReportFilterYear] = useState("")
   const [reportFilterMonth, setReportFilterMonth] = useState("")
   const [reportFilterCarNumber, setReportFilterCarNumber] = useState("")
-  const [reportFilterDriverName, setReportFilterDriverName] = useState("")
+  const [reportFilterMechanic, setReportFilterMechanic] = useState("")
   const [reportLoading, setReportLoading] = useState(false)
 
   // Employee states
@@ -427,14 +427,16 @@ export default function ManagerPage() {
       const wb = XLSX.utils.book_new()
 
       // Prepare data for Excel
-      const excelData = filteredReportRecords.map((record) => ({
+      const excelData = filteredReportRecords.map((record, index) => ({
+        "№": index + 1,
         "Машины дугаар": record.carNumber,
-        "Жолоочийн нэр": record.driverName,
-        "Машины марк": record.parkingArea,
+        Засварчин: record.mechanicName || record.driverName || "-",
+        "Машины марк": record.carBrand || record.parkingArea || "-",
         "Орсон цаг": record.entryTime || "-",
         "Гарсан цаг": record.exitTime || "-",
         "Зогссон хугацаа": calculateParkingDurationForReport(record),
         "Төлбөр (₮)": calculateParkingFeeForReport(record),
+        Зураг: record.images && record.images.length > 0 ? "Байна" : "Байхгүй",
       }))
 
       // Create worksheet
@@ -442,13 +444,15 @@ export default function ManagerPage() {
 
       // Set column widths
       const colWidths = [
+        { wch: 5 }, // №
         { wch: 15 }, // Машины дугаар
-        { wch: 20 }, // Жолоочийн нэр
-        { wch: 10 }, // Машины марк
+        { wch: 20 }, // Засварчин
+        { wch: 15 }, // Машины марк
         { wch: 20 }, // Орсон цаг
         { wch: 20 }, // Гарсан цаг
         { wch: 15 }, // Зогссон хугацаа
         { wch: 12 }, // Төлбөр
+        { wch: 10 }, // Зураг
       ]
       ws["!cols"] = colWidths
 
@@ -469,10 +473,10 @@ export default function ManagerPage() {
     }
   }
 
-  // Get unique driver names for filter
-  const getAvailableDriverNames = () => {
-    const names = reportRecords.map((record) => record.driverName)
-    return [...new Set(names)].sort()
+  // Get unique mechanic names for filter
+  const getAvailableMechanicNames = () => {
+    const names = reportRecords.map((record) => record.mechanicName || record.driverName)
+    return [...new Set(names)].filter((name) => name).sort()
   }
 
   // Get unique years for report filter
@@ -518,14 +522,15 @@ export default function ManagerPage() {
       )
     }
 
-    if (reportFilterDriverName) {
-      filtered = filtered.filter((record) =>
-        record.driverName.toLowerCase().includes(reportFilterDriverName.toLowerCase()),
-      )
+    if (reportFilterMechanic) {
+      filtered = filtered.filter((record) => {
+        const mechanicName = record.mechanicName || record.driverName || ""
+        return mechanicName.toLowerCase().includes(reportFilterMechanic.toLowerCase())
+      })
     }
 
     setFilteredReportRecords(filtered)
-  }, [reportRecords, reportFilterYear, reportFilterMonth, reportFilterCarNumber, reportFilterDriverName])
+  }, [reportRecords, reportFilterYear, reportFilterMonth, reportFilterCarNumber, reportFilterMechanic])
 
   const handleRegisterDriver = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1429,17 +1434,17 @@ export default function ManagerPage() {
                       />
                     </div>
 
-                    {/* Driver Name Filter */}
+                    {/* Mechanic Name Filter */}
                     <div className="space-y-2">
-                      <Label htmlFor="reportDriverName">Жолоочийн нэр</Label>
+                      <Label htmlFor="reportMechanic">Засварчин</Label>
                       <select
-                        id="reportDriverName"
-                        value={reportFilterDriverName}
-                        onChange={(e) => setReportFilterDriverName(e.target.value)}
+                        id="reportMechanic"
+                        value={reportFilterMechanic}
+                        onChange={(e) => setReportFilterMechanic(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="">Бүх жолооч</option>
-                        {getAvailableDriverNames().map((name) => (
+                        <option value="">Бүх засварчин</option>
+                        {getAvailableMechanicNames().map((name) => (
                           <option key={name} value={name}>
                             {name}
                           </option>
@@ -1451,7 +1456,7 @@ export default function ManagerPage() {
                   {/* Results count */}
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>Нийт {filteredReportRecords.length} бүртгэл</span>
-                    {(reportFilterYear || reportFilterMonth || reportFilterCarNumber || reportFilterDriverName) && (
+                    {(reportFilterYear || reportFilterMonth || reportFilterCarNumber || reportFilterMechanic) && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -1459,7 +1464,7 @@ export default function ManagerPage() {
                           setReportFilterYear("")
                           setReportFilterMonth("")
                           setReportFilterCarNumber("")
-                          setReportFilterDriverName("")
+                          setReportFilterMechanic("")
                         }}
                       >
                         Шүүлтүүр цэвэрлэх
@@ -1485,10 +1490,13 @@ export default function ManagerPage() {
                         <thead className="bg-muted">
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                              №
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                               Машины дугаар
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                              Жолоочийн нэр
+                              Засварчин
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                               Машины марк
@@ -1505,17 +1513,25 @@ export default function ManagerPage() {
                             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                               Төлбөр (₮)
                             </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                              Зураг
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {filteredReportRecords.map((record, index) => (
                             <tr key={record.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                               <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {index + 1}
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {record.carNumber}
                               </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{record.driverName}</td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {record.parkingArea}
+                                {record.mechanicName || record.driverName || "-"}
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {record.carBrand || record.parkingArea || "-"}
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {record.entryTime || "-"}
@@ -1528,6 +1544,29 @@ export default function ManagerPage() {
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-green-600">
                                 {calculateParkingFeeForReport(record)}
+                              </td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {record.images && record.images.length > 0 ? (
+                                  <div className="flex space-x-1">
+                                    {record.images.slice(0, 2).map((image: string, imgIndex: number) => (
+                                      <img
+                                        key={imgIndex}
+                                        src={image || "/placeholder.svg"}
+                                        alt={`Зураг ${imgIndex + 1}`}
+                                        className="w-8 h-8 object-cover rounded cursor-pointer hover:scale-110 transition-transform"
+                                        onClick={() => {
+                                          // Open image in new tab
+                                          window.open(image, "_blank")
+                                        }}
+                                      />
+                                    ))}
+                                    {record.images.length > 2 && (
+                                      <span className="text-xs text-muted-foreground">+{record.images.length - 2}</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )}
                               </td>
                             </tr>
                           ))}
