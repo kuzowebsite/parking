@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -36,6 +36,14 @@ export default function ParkingSystem() {
   // Add new state for images after other home states
   const [capturedImages, setCapturedImages] = useState<string[]>([])
   const [showCamera, setShowCamera] = useState(false)
+
+  // Camera refs
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+
+  // Add camera facing state
+  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
 
   // History states
   const [allRecords, setAllRecords] = useState<ParkingRecord[]>([])
@@ -104,6 +112,9 @@ export default function ParkingSystem() {
     fee: 0,
   })
 
+  // Add state to track if user is manager to prevent showing main interface
+  const [isManager, setIsManager] = useState(false)
+
   useEffect(() => {
     // Splash screen loading animation
     if (showSplash) {
@@ -128,9 +139,10 @@ export default function ParkingSystem() {
     if (!showSplash) {
       const unsubscribe = onAuthStateChanged(auth, (user) => {
         setUser(user)
-        setLoading(false)
         if (user) {
           loadProfile() // Эхлээд profile ачаалах, дараа нь records ачаалагдана
+        } else {
+          setLoading(false)
         }
       })
       return unsubscribe
@@ -343,6 +355,7 @@ export default function ParkingSystem() {
     const userId = auth.currentUser?.uid
     if (!userId) {
       console.log("No authenticated user for profile load")
+      setLoading(false)
       return
     }
 
@@ -372,10 +385,12 @@ export default function ParkingSystem() {
             return
           }
 
-          // Redirect manager to manager page
+          // Redirect manager to manager page immediately
           if (userProfile.role === "manager") {
             console.log("Manager detected, redirecting to manager page...")
-            window.location.href = "/manager"
+            setIsManager(true)
+            // Use window.location.replace instead of href to avoid showing main interface
+            window.location.replace("/manager")
             return
           }
 
@@ -397,8 +412,7 @@ export default function ParkingSystem() {
             }
           })
 
-          // loadProfile функц дотор records ачаалах хэсгийг засварлах
-          // Load records after profile is loaded and we have user context хэсгийг солих
+          // Load records after profile is loaded and we have user context
           setTimeout(() => {
             console.log("Loading all data after profile load...")
             loadRecentRecords()
@@ -406,6 +420,8 @@ export default function ParkingSystem() {
             loadActiveParkingRecords() // Load active parking records
             loadEmployees() // Load employees for dropdown
           }, 500)
+
+          setLoading(false)
         } else {
           // Create default profile for new users
           const defaultProfile = {
@@ -418,7 +434,7 @@ export default function ParkingSystem() {
           }
           setProfile(defaultProfile)
 
-          // Still try to load records even if profile is empty хэсгийг солих
+          // Still try to load records even if profile is empty
           setTimeout(() => {
             console.log("Loading data with empty profile...")
             loadRecentRecords()
@@ -426,6 +442,8 @@ export default function ParkingSystem() {
             loadActiveParkingRecords() // Load active parking records
             loadEmployees() // Load employees for dropdown
           }, 500)
+
+          setLoading(false)
         }
       },
       (error) => {
@@ -439,6 +457,7 @@ export default function ParkingSystem() {
           profileImage: "",
           active: true,
         })
+        setLoading(false)
       },
     )
   }
@@ -564,49 +583,77 @@ export default function ParkingSystem() {
     setLoginLoading(false)
   }
 
-  // Add camera functionality functions after other functions
-  const startCamera = () => {
-    setShowCamera(true)
-  }
-
-  const captureImage = async () => {
+  // Updated camera functionality functions
+  const startCamera = async (facingMode: "user" | "environment" = cameraFacing) => {
     try {
+      // Stop existing stream if any
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, // Use back camera if available
+        video: {
+          facingMode: facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
       })
 
-      // Create video element
-      const video = document.createElement("video")
-      video.srcObject = stream
-      video.play()
+      streamRef.current = stream
+      setCameraFacing(facingMode)
+      setShowCamera(true)
 
-      // Wait for video to load
-      video.onloadedmetadata = () => {
-        // Create canvas to capture frame
-        const canvas = document.createElement("canvas")
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        const ctx = canvas.getContext("2d")
-
-        if (ctx) {
-          ctx.drawImage(video, 0, 0)
-          const imageData = canvas.toDataURL("image/jpeg", 0.8)
-
-          // Add image if less than 2 images
-          if (capturedImages.length < 2) {
-            setCapturedImages((prev) => [...prev, imageData])
-          }
-
-          // Stop camera
-          stream.getTracks().forEach((track) => track.stop())
-          setShowCamera(false)
+      // Wait for the modal to render before setting video source
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
         }
-      }
+      }, 100)
     } catch (error) {
       console.error("Camera access error:", error)
-      alert("Камер ашиглахад алдаа гарлаа")
-      setShowCamera(false)
+      alert("Камер ашиглахад алдаа гарлаа. Камерын эрхийг олгоно уу.")
     }
+  }
+
+  const switchCamera = async () => {
+    const newFacing = cameraFacing === "environment" ? "user" : "environment"
+    await startCamera(newFacing)
+  }
+
+  const captureImage = () => {
+    if (!videoRef.current || !canvasRef.current) return
+
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext("2d")
+
+    if (!ctx) return
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+
+    // Draw the current video frame to canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    // Convert canvas to base64 image
+    const imageData = canvas.toDataURL("image/jpeg", 0.8)
+
+    // Add image if less than 2 images
+    if (capturedImages.length < 2) {
+      setCapturedImages((prev) => [...prev, imageData])
+    }
+
+    // Close camera after capture
+    stopCamera()
+  }
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    setShowCamera(false)
   }
 
   const removeImage = (index: number) => {
@@ -902,22 +949,21 @@ export default function ParkingSystem() {
 
   // Add useEffect to load records when user changes
   useEffect(() => {
-    if (user && !showSplash && user.uid && profile.name) {
+    if (user && !showSplash && user.uid && profile.name && !isManager) {
       console.log("User authenticated, loading data...")
       // Add a delay to ensure Firebase auth is fully initialized
-      // useEffect-ийн дотор records ачаалах хэсгийг засварлах
       const timeoutId = setTimeout(() => {
         console.log("Loading data from useEffect...")
         loadRecentRecords()
         loadAllRecords()
-        loadActiveParkingRecords() // Энэ мөрийг нэмэх
+        loadActiveParkingRecords()
       }, 1000)
 
       return () => clearTimeout(timeoutId)
     } else {
-      console.log("User not ready:", { user: !!user, showSplash, uid: user?.uid, profileName: profile.name })
+      console.log("User not ready:", { user: !!user, showSplash, uid: user?.uid, profileName: profile.name, isManager })
     }
-  }, [user, profile.name, showSplash])
+  }, [user, profile.name, showSplash, isManager])
 
   // Close employee dropdown when clicking outside
   useEffect(() => {
@@ -934,7 +980,7 @@ export default function ParkingSystem() {
     }
   }, [showEmployeeDropdown])
 
-  // Filter active parking records based on search хэсгийг нэмэх (useEffect-ийн дараа)
+  // Filter active parking records based on search
   useEffect(() => {
     let filtered = [...activeParkingRecords]
 
@@ -944,6 +990,15 @@ export default function ParkingSystem() {
 
     setFilteredActiveParkingRecords(filtered)
   }, [activeParkingRecords, activeRecordsSearch])
+
+  // Cleanup camera stream when component unmounts
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+      }
+    }
+  }, [])
 
   // Splash Screen
   if (showSplash) {
@@ -1027,6 +1082,18 @@ export default function ParkingSystem() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Ачааллаж байна...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render main interface if user is manager (they will be redirected)
+  if (isManager) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Менежерийн хуудас руу шилжиж байна...</p>
         </div>
       </div>
     )
@@ -2409,7 +2476,7 @@ export default function ParkingSystem() {
 
                 {/* Images Section */}
                 {exitingRecord.images && exitingRecord.images.length > 0 && (
-                  <div className="border-t border-white/10 pt-3">
+                  <div className="mt-3">
                     <p className="text-white/70 text-sm mb-2">Зургууд:</p>
                     <div className="flex space-x-2 justify-center">
                       {exitingRecord.images.map((image, index) => (
@@ -2427,7 +2494,7 @@ export default function ParkingSystem() {
                                 <div class="relative w-full h-full max-w-4xl max-h-[90vh] bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl overflow-hidden flex items-center justify-center">
                                   <img src="${image}" alt="Зураг ${index + 1}" class="max-w-full max-h-full object-contain" />
                                   <button class="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" view-box="0 0 24 24">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                   </button>
@@ -2454,16 +2521,18 @@ export default function ParkingSystem() {
 
                 <div className="border-t border-white/10 pt-3 space-y-2">
                   <div className="flex justify-between text-sm md:text-base">
+                    <span className="text-white/70">Гарах цаг:</span>
+                    <span className="text-white font-medium">{formatDetailedTime(exitDetails.exitTime)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm md:text-base">
                     <span className="text-white/70">Зогссон хугацаа:</span>
-                    <span className="text-emerald-400 font-medium">
+                    <span className="text-white font-medium">
                       {exitDetails.duration === 0 ? "1 цагаас бага" : `${exitDetails.duration} цаг`}
                     </span>
                   </div>
-                  <div className="flex justify-between text-base md:text-lg">
+                  <div className="flex justify-between text-lg md:text-xl font-semibold">
                     <span className="text-white/70">Төлбөр:</span>
-                    <span className="text-emerald-400 font-bold">
-                      {exitDetails.fee === 0 ? "Үнэгүй" : `${exitDetails.fee} ₮`}
-                    </span>
+                    <span className="text-emerald-400">{exitDetails.fee} ₮</span>
                   </div>
                 </div>
               </div>
@@ -2491,24 +2560,91 @@ export default function ParkingSystem() {
       {/* Camera Modal */}
       {showCamera && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
-          <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 w-full max-w-md">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={stopCamera}></div>
+
+          {/* Modal */}
+          <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 mx-4 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-white mb-4">Камер</h3>
-              <div className="space-y-4">
-                <button
-                  onClick={captureImage}
-                  className="w-full py-3 bg-emerald-400 hover:bg-emerald-500 text-black font-semibold rounded-xl transition-colors"
-                >
-                  Зураг авах
-                </button>
-                <button
-                  onClick={() => setShowCamera(false)}
-                  className="w-full py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 transition-colors"
-                >
-                  Цуцлах
-                </button>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">Зураг авах</h3>
+                <div className="flex items-center space-x-2">
+                  {/* Camera type indicator */}
+                  <span className="text-xs text-white/70 bg-white/10 px-2 py-1 rounded">
+                    {cameraFacing === "environment" ? "Арын камер" : "Урдын камер"}
+                  </span>
+                  {/* Switch camera button */}
+                  <button
+                    onClick={switchCamera}
+                    className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                    title="Камер солих"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                      />
+                    </svg>
+                  </button>
+                  {/* Close button */}
+                  <button
+                    onClick={stopCamera}
+                    className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
+
+              {/* Camera View */}
+              <div className="relative mb-4 bg-black rounded-xl overflow-hidden">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-64 object-cover"
+                  style={{ transform: cameraFacing === "user" ? "scaleX(-1)" : "none" }}
+                />
+                <canvas ref={canvasRef} className="hidden" />
+
+                {/* Capture overlay */}
+                <div className="absolute inset-0 border-2 border-white/20 rounded-xl pointer-events-none">
+                  <div className="absolute top-4 left-4 w-6 h-6 border-l-2 border-t-2 border-white/50"></div>
+                  <div className="absolute top-4 right-4 w-6 h-6 border-r-2 border-t-2 border-white/50"></div>
+                  <div className="absolute bottom-4 left-4 w-6 h-6 border-l-2 border-b-2 border-white/50"></div>
+                  <div className="absolute bottom-4 right-4 w-6 h-6 border-r-2 border-b-2 border-white/50"></div>
+                </div>
+              </div>
+
+              {/* Capture Button */}
+              <button
+                onClick={captureImage}
+                className="w-16 h-16 bg-emerald-400 hover:bg-emerald-500 rounded-full flex items-center justify-center transition-colors mx-auto"
+              >
+                <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </button>
+
+              <p className="text-white/50 text-sm mt-4">
+                {capturedImages.length}/2 зураг авсан
+                {capturedImages.length >= 2 && " (Хамгийн ихдээ 2 зураг)"}
+              </p>
             </div>
           </div>
         </div>
@@ -2517,24 +2653,32 @@ export default function ParkingSystem() {
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelLogout}></div>
+
+          {/* Modal */}
           <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mx-4 w-full max-w-sm animate-in fade-in zoom-in duration-200">
             <div className="text-center">
+              {/* Icon */}
               <div className="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
                 <LogOut className="w-8 h-8 text-red-400" />
               </div>
+
+              {/* Title */}
               <h3 className="text-xl font-semibold text-white mb-2">Гарах уу?</h3>
               <p className="text-white/70 text-sm mb-6">Та системээс гарахдаа итгэлтэй байна уу?</p>
+
+              {/* Buttons */}
               <div className="flex space-x-4">
                 <button
                   onClick={cancelLogout}
-                  className="flex-1 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-medium rounded-xl hover:bg-white/20 transition-colors"
+                  className="flex-1 py-3 px-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-medium rounded-xl hover:bg-white/20 transition-colors"
                 >
                   Цуцлах
                 </button>
                 <button
                   onClick={confirmLogout}
-                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition-colors"
+                  className="flex-1 py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-medium rounded-xl transition-colors"
                 >
                   Гарах
                 </button>
