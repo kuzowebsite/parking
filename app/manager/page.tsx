@@ -3043,5 +3043,5 @@ export default function ManagerPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  )\
 }
