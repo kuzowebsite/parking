@@ -1,9 +1,6 @@
-// Firebase Console дээр анхны manager хэрэглэгч үүсгэх
-// Энэ script-ийг зөвхөн нэг удаа ажиллуулна
-
-import { initializeApp } from "firebase/app"
-import { getDatabase, ref, set } from "firebase/database"
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth"
+const { initializeApp } = require("firebase/app")
+const { getAuth, createUserWithEmailAndPassword } = require("firebase/auth")
+const { getDatabase, ref, set } = require("firebase/database")
 
 const firebaseConfig = {
   apiKey: "AIzaSyDReM6qjmJb7EZCDoIoR5j1HsVLmiCRD9s",
@@ -16,40 +13,28 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
-const database = getDatabase(app)
 const auth = getAuth(app)
+const database = getDatabase(app)
 
 async function createManager() {
   try {
-    // Manager хэрэглэгч үүсгэх
-    const managerEmail = "manager@parking.mn"
-    const managerPassword = "manager123"
+    const userCredential = await createUserWithEmailAndPassword(auth, "manager@parking.com", "manager123")
 
-    console.log("Manager хэрэглэгч үүсгэж байна...")
+    const user = userCredential.user
 
-    const userCredential = await createUserWithEmailAndPassword(auth, managerEmail, managerPassword)
-    const managerId = userCredential.user.uid
-
-    // Database дээр manager мэдээлэл хадгалах
-    const managerData = {
-      name: "Систем Админ",
-      phone: "99999999",
-      email: managerEmail,
+    await set(ref(database, `users/${user.uid}`), {
+      name: "Менежер",
+      email: "manager@parking.com",
       role: "manager",
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
+    })
 
-    await set(ref(database, `users/${managerId}`), managerData)
-
-    console.log("✅ Manager амжилттай үүсгэгдлээ!")
-    console.log("И-мэйл:", managerEmail)
-    console.log("Нууц үг:", managerPassword)
-    console.log("Холбоос: /manager")
+    console.log("Manager created successfully!")
+    console.log("Email: manager@parking.com")
+    console.log("Password: manager123")
   } catch (error) {
-    console.error("❌ Алдаа гарлаа:", error)
+    console.error("Error creating manager:", error)
   }
 }
 
-// Script ажиллуулах
 createManager()
