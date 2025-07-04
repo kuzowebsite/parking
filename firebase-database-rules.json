@@ -2,17 +2,7 @@
   "rules": {
     ".read": "auth != null",
     ".write": "auth != null",
-    "siteConfig": {
-      ".read": "true",
-      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'manager'"
-    },
     "users": {
-      "$uid": {
-        ".read": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'manager')",
-        ".write": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'manager')"
-      }
-    },
-    "parkingRecords": {
       ".read": "auth != null",
       ".write": "auth != null"
     },
@@ -23,6 +13,10 @@
     "employees": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "siteConfig": {
+      ".read": "true",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'manager'"
     },
     "pricingConfig": {
       ".read": "auth != null",
