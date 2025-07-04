@@ -1,40 +1,69 @@
+export interface User {
+  uid: string
+  email: string
+  name: string
+  role: "manager" | "employee" | "driver"
+  createdAt: string
+  profileImage?: string
+}
+
+export interface UserData {
+  name: string
+  email: string
+  role: "manager" | "employee" | "driver"
+  createdAt: string
+  profileImage?: string
+}
+
 export interface ParkingRecord {
   id: string
-  carNumber: string
-  driverName: string
-  parkingArea: string
-  entryTime?: string
+  plateNumber: string
+  entryTime: string
   exitTime?: string
-  amount: number
-  type: "entry" | "exit"
-  timestamp: string
+  status: "parked" | "completed"
+  duration?: number
+  amount?: number
+  employeeId: string
+  employeeName: string
 }
 
-export interface UserProfile {
-  name: string
-  phone: string
-  email: string
-  role?: "manager" | "driver"
-  profileImage?: string
-  updatedAt?: string
-  createdAt?: string
-  active?: boolean // Add active status
-}
-
-export interface DriverRegistration {
-  id?: string
-  email: string
-  password: string
-  name: string
-  phone: string
-  role: "driver"
-  createdAt: string
-  createdBy: string
-  active?: boolean // Add active status
+export interface SiteConfig {
+  siteName: string
+  siteLogo: string
+  backgroundColor: string
+  primaryColor: string
+  secondaryColor: string
+  parkingRate: number
+  additionalRate: number
 }
 
 export interface PricingConfig {
-  pricePerMinute: number
-  updatedAt?: string
-  updatedBy?: string
+  firstHourRate: number
+  additionalHourRate: number
+  dailyMaxRate?: number
+  weeklyRate?: number
+  monthlyRate?: number
+}
+
+export interface ReportFilter {
+  startDate: string
+  endDate: string
+  employeeId?: string
+  status?: "all" | "parked" | "completed"
+  plateNumber?: string
+}
+
+export interface DashboardStats {
+  totalCustomers: number
+  totalRevenue: number
+  currentlyParked: number
+  todayRevenue: number
+  weeklyRevenue: number
+  monthlyRevenue: number
+}
+
+export interface ChartData {
+  name: string
+  value: number
+  date?: string
 }
