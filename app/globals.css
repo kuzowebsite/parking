@@ -54,6 +54,49 @@
   animation: spin 1s linear infinite;
 }
 
+/* Shimmer animation for loading bars */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Animate in utility */
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fadeIn;
+}
+
+.duration-500 {
+  animation-duration: 500ms;
+}
+
 /* Custom button hover effects */
 .btn-hover {
   transition: all 0.2s ease-in-out;
@@ -130,22 +173,6 @@
   @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
 }
 
-/* Fade in animation */
-.fade-in {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* Slide in animation */
 .slide-in {
   animation: slideIn 0.3s ease-in-out;
@@ -160,4 +187,15 @@
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* Image preloading styles */
+.preload-hidden {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
