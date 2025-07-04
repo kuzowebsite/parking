@@ -1,6 +1,5 @@
-// Тест өгөгдөл үүсгэх script
-import { initializeApp } from "firebase/app"
-import { getDatabase, ref, push } from "firebase/database"
+const { initializeApp } = require("firebase/app")
+const { getDatabase, ref, push } = require("firebase/database")
 
 const firebaseConfig = {
   apiKey: "AIzaSyDReM6qjmJb7EZCDoIoR5j1HsVLmiCRD9s",
@@ -17,69 +16,55 @@ const database = getDatabase(app)
 
 async function createTestRecords() {
   try {
-    console.log("Тест өгөгдөл үүсгэж байна...")
+    const recordsRef = ref(database, "parkingRecords")
 
-    // Тест бүртгэлүүд
+    // Create some test parking records
     const testRecords = [
       {
-        carNumber: "1234 УНМ",
-        driverName: "Систем Админ",
-        parkingArea: "A",
-        entryTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toLocaleString("mn-MN"),
-        amount: 0,
-        type: "entry",
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        plateNumber: "1234УБА",
+        entryTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+        exitTime: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
+        status: "completed",
+        duration: 60,
+        amount: 1000,
+        employeeId: "test-employee-1",
+        employeeName: "Тест ажилтан 1",
       },
       {
-        carNumber: "1234 УНМ",
-        driverName: "Систем Админ",
-        parkingArea: "A",
-        exitTime: new Date(Date.now() - 1 * 60 * 60 * 1000).toLocaleString("mn-MN"),
-        amount: 5000,
-        type: "exit",
-        timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+        plateNumber: "5678УБА",
+        entryTime: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
+        exitTime: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
+        status: "completed",
+        duration: 150,
+        amount: 1500,
+        employeeId: "test-employee-2",
+        employeeName: "Тест ажилтан 2",
       },
       {
-        carNumber: "5678 МНГ",
-        driverName: "Систем Админ",
-        parkingArea: "B",
-        entryTime: new Date(Date.now() - 30 * 60 * 1000).toLocaleString("mn-MN"),
-        amount: 0,
-        type: "entry",
-        timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        plateNumber: "9999УБА",
+        entryTime: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
+        status: "parked",
+        employeeId: "test-employee-1",
+        employeeName: "Тест ажилтан 1",
       },
       {
-        carNumber: "9999 ТЕС",
-        driverName: "Систем Админ",
-        parkingArea: "C",
-        entryTime: new Date(Date.now() - 10 * 60 * 1000).toLocaleString("mn-MN"),
-        amount: 0,
-        type: "entry",
-        timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-      },
-      {
-        carNumber: "9999 ТЕС",
-        driverName: "Систем Админ",
-        parkingArea: "C",
-        exitTime: new Date().toLocaleString("mn-MN"),
-        amount: 5000,
-        type: "exit",
-        timestamp: new Date().toISOString(),
+        plateNumber: "1111УБА",
+        entryTime: new Date(Date.now() - 45 * 60 * 1000).toISOString(), // 45 minutes ago
+        status: "parked",
+        employeeId: "test-employee-2",
+        employeeName: "Тест ажилтан 2",
       },
     ]
 
-    // Бүртгэлүүдийг database-д хадгалах
     for (const record of testRecords) {
-      await push(ref(database, "parking_records"), record)
-      console.log(`✅ Бүртгэл нэмэгдлээ: ${record.carNumber} - ${record.type}`)
+      await push(recordsRef, record)
+      console.log(`Created record for ${record.plateNumber}`)
     }
 
-    console.log("🎉 Бүх тест өгөгдөл амжилттай үүсгэгдлээ!")
-    console.log("Одоо аппликейшнд нэвтэрч 'Сүүлийн бүртгэл' болон 'Түүх' хэсгийг шалгана уу.")
+    console.log("Test records created successfully!")
   } catch (error) {
-    console.error("❌ Алдаа гарлаа:", error)
+    console.error("Error creating test records:", error)
   }
 }
 
-// Script ажиллуулах
 createTestRecords()
