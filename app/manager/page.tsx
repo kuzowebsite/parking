@@ -170,8 +170,8 @@ export default function ManagerPage() {
   const [siteLoading, setSiteLoading] = useState(false)
 
   // Profile image and password states
-  const [showPassword, setShowConfirmPassword] = useState(false)
-  const [showConfirmPassword, setShowPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -528,10 +528,10 @@ export default function ManagerPage() {
           .filter((employee, index, self) => index === self.findIndex((e) => e.name === employee.name))
           .sort((a, b) => a.name.localeCompare(b.name))
 
-      setEmployees(employeesList)
+        setEmployees(employeesList)
+      })
     })
-  })
-}
+  }
 
   // Load employees with login access (role = 'employee' from users table)
   const loadLoginEmployees = () => {
@@ -1657,7 +1657,7 @@ export default function ManagerPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <BarChart3 className="w-5 h-5 mr-2" />
-                      {customDateRange.useCustomRange ? "Хугацааны орлого" : "Сарын орлого"}
+                      {customDateRange.useCustomRange ? "Х��гацааны орлого" : "Сарын орлого"}
                     </CardTitle>
                     <CardDescription>
                       {customDateRange.useCustomRange
@@ -2002,93 +2002,101 @@ export default function ManagerPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Нэвтрэх эрхтэй ажилчдын жагсаалт</CardTitle>
-                  <CardDescription>Системд нэвтрэх эрхтэй бүртгэгдсэн ажилчдын мэдээлэл</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loginEmployees.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-medium mb-2">Нэвтрэх эрхтэй ажилчин байхгүй</h3>
-                      <p className="text-muted-foreground mb-4">Одоогоор нэвтрэх эрхтэй ажилчин бүртгэгдээгүй байна</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {loginEmployees.map((employee) => (
-                        <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-4">
-                            <Avatar>
-                              {employee.profileImage ? (
-                                <AvatarImage src={employee.profileImage || "/placeholder.svg"} alt={employee.name} />
-                              ) : (
-                                <AvatarFallback>{employee.name?.charAt(0).toUpperCase() || "A"}</AvatarFallback>
-                              )}
-                            </Avatar>
-                            <div>
-                              <h4 className="font-medium">{employee.name}</h4>
-                              <p className="text-sm text-muted-foreground">{employee.email}</p>
-                              <p className="text-sm text-muted-foreground">{employee.phone}</p>
-                              {employee.createdAt && (
-                                <p className="text-xs text-muted-foreground">
-                                  Бүртгэгдсэн: {new Date(employee.createdAt).toLocaleDateString("mn-MN")}
-                                </p>
-                              )}
+                    <CardDescription>Системд нэвтрэх эрхтэй бүртгэгдсэн ажилчдын мэдээлэл</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loginEmployees.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="text-lg font-medium mb-2">Нэвтрэх эрхтэй ажилчин байхгүй</h3>
+                        <p className="text-muted-foreground mb-4">
+                          Одоогоор нэвтрэх эрхтэй ажилчин бүртгэгдээгүй байна
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {loginEmployees.map((employee) => (
+                          <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex items-center space-x-4">
+                              <Avatar>
+                                {employee.profileImage ? (
+                                  <AvatarImage src={employee.profileImage || "/placeholder.svg"} alt={employee.name} />
+                                ) : (
+                                  <AvatarFallback>{employee.name?.charAt(0).toUpperCase() || "A"}</AvatarFallback>
+                                )}
+                              </Avatar>
+                              <div>
+                                <h4 className="font-medium">{employee.name}</h4>
+                                <p className="text-sm text-muted-foreground">{employee.email}</p>
+                                <p className="text-sm text-muted-foreground">{employee.phone}</p>
+                                {employee.createdAt && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Бүртгэгдсэн: {new Date(employee.createdAt).toLocaleDateString("mn-MN")}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Badge variant="outline" className="border-green-200 text-green-700">
+                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                                Нэвтрэх эрх
+                              </Badge>
+                              <Badge variant={employee.active ? "default" : "secondary"}>
+                                {employee.active ? "Идэвхтэй" : "Идэвхгүй"}
+                              </Badge>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                                      />
+                                    </svg>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Засах
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleToggleEmployeeStatus(employee.id!, employee.active, employee.name)
+                                    }
+                                  >
+                                    {employee.active ? (
+                                      <PowerOff className="w-4 h-4 mr-2" />
+                                    ) : (
+                                      <Power className="w-4 h-4 mr-2" />
+                                    )}
+                                    {employee.active ? "Идэвхгүй болгох" : "Идэвхжүүлэх"}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteEmployee(employee.id!, employee.name)}
+                                    className="text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Устгах
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant="outline" className="border-green-200 text-green-700">
-                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              Нэвтрэх эрх
-                            </Badge>
-                            <Badge variant={employee.active ? "default" : "secondary"}>
-                              {employee.active ? "Идэвхтэй" : "Идэвхгүй"}
-                            </Badge>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                                    />
-                                  </svg>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Засах
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleToggleEmployeeStatus(employee.id!, employee.active, employee.name)
-                                  }
-                                >
-                                  {employee.active ? (
-                                    <PowerOff className="w-4 h-4 mr-2" />
-                                  ) : (
-                                    <Power className="w-4 h-4 mr-2" />
-                                  )}
-                                  {employee.active ? "Идэвхгүй болгох" : "Идэвхжүүлэх"}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteEmployee(employee.id!, employee.name)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Устгах
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="drivers" className="space-y-6">
@@ -2415,15 +2423,15 @@ export default function ManagerPage() {
                 <CardDescription>Тайланг шүүж харах</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="space-y-2">
-                    <Label>Он</Label>
+                    <Label>Жил</Label>
                     <select
                       value={reportFilterYear}
                       onChange={(e) => setReportFilterYear(e.target.value)}
                       className="w-full px-3 py-2 border border-input rounded-md"
                     >
-                      <option value="">Бүх он</option>
+                      <option value="">Бүх жил</option>
                       {getReportAvailableYears().map((year) => (
                         <option key={year} value={year.toString()}>
                           {year}
@@ -2431,7 +2439,6 @@ export default function ManagerPage() {
                       ))}
                     </select>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Сар</Label>
                     <select
@@ -2440,30 +2447,21 @@ export default function ManagerPage() {
                       className="w-full px-3 py-2 border border-input rounded-md"
                     >
                       <option value="">Бүх сар</option>
-                      <option value="01">1-р сар</option>
-                      <option value="02">2-р сар</option>
-                      <option value="03">3-р сар</option>
-                      <option value="04">4-р сар</option>
-                      <option value="05">5-р сар</option>
-                      <option value="06">6-р сар</option>
-                      <option value="07">7-р сар</option>
-                      <option value="08">8-р сар</option>
-                      <option value="09">9-р сар</option>
-                      <option value="10">10-р сар</option>
-                      <option value="11">11-р сар</option>
-                      <option value="12">12-р сар</option>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                        <option key={month} value={month.toString().padStart(2, "0")}>
+                          {month}-р сар
+                        </option>
+                      ))}
                     </select>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Машины дугаар</Label>
                     <Input
                       value={reportFilterCarNumber}
                       onChange={(e) => setReportFilterCarNumber(e.target.value)}
-                      placeholder="1234УБА"
+                      placeholder="Машины дугаар хайх"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label>Засварчин</Label>
                     <select
@@ -2480,147 +2478,93 @@ export default function ManagerPage() {
                     </select>
                   </div>
                 </div>
-
-                <div className="mt-4 text-sm text-muted-foreground">
-                  Нийт {filteredReportRecords.length} бүртгэл олдлоо
-                </div>
               </CardContent>
             </Card>
 
-            {/* Records Table */}
+            {/* Report Table */}
             <Card>
               <CardHeader>
-                <CardTitle>Бүртгэлийн жагсаалт</CardTitle>
+                <CardTitle>Зогсоолын бүртгэл ({filteredReportRecords.length})</CardTitle>
+                <CardDescription>
+                  Нийт орлого:{" "}
+                  {filteredReportRecords
+                    .reduce((sum, record) => sum + calculateParkingFeeForReport(record), 0)
+                    .toLocaleString()}
+                  ₮
+                </CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent>
                 {reportLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 ) : filteredReportRecords.length === 0 ? (
                   <div className="text-center py-12">
-                    <svg className="w-12 h-12 mx-auto text-muted-foreground mb-4" fill="none" stroke="currentColor">
+                    <svg
+                      className="w-12 h-12 mx-auto text-muted-foreground mb-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                       />
                     </svg>
                     <h3 className="text-lg font-medium mb-2">Бүртгэл байхгүй</h3>
-                    <p className="text-muted-foreground">Шүүлтүүрт тохирох бүртгэл олдсонгүй</p>
+                    <p className="text-muted-foreground">Одоогоор ямар нэгэн бүртгэл байхгүй байна</p>
                   </div>
                 ) : (
-                  <>
-                    {/* Excel-like Table */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200">
-                              <th className="border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-16">
-                                №
-                              </th>
-                              <th className="border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[120px]">
-                                Машины дугаар
-                              </th>
-                              <th className="border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[140px]">
-                                Засварчин
-                              </th>
-                              <th className="border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[120px]">
-                                Машины марк
-                              </th>
-                              <th className="border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[140px]">
-                                Орсон цаг
-                              </th>
-                              <th className="border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[140px]">
-                                Гарсан цаг
-                              </th>
-                              <th className="border-r border-gray-200 px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[120px]">
-                                Зогссон хугацаа
-                              </th>
-                              <th className="border-r border-gray-200 px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider min-w-[100px]">
-                                Төлбөр (₮)
-                              </th>
-                              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider w-20">
-                                Зураг
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredReportRecords.map((record, index) => (
-                              <tr key={record.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="border-r border-gray-200 px-4 py-3 text-sm text-gray-900 font-medium">
-                                  {index + 1}
-                                </td>
-                                <td className="border-r border-gray-200 px-4 py-3 text-sm font-medium text-gray-900">
-                                  {record.carNumber}
-                                </td>
-                                <td className="border-r border-gray-200 px-4 py-3 text-sm text-gray-700">
-                                  {record.mechanicName || record.driverName || "-"}
-                                </td>
-                                <td className="border-r border-gray-200 px-4 py-3 text-sm text-gray-700">
-                                  {record.carBrand || record.parkingArea || "-"}
-                                </td>
-                                <td className="border-r border-gray-200 px-4 py-3 text-sm text-gray-600 font-mono">
-                                  {record.entryTime || "-"}
-                                </td>
-                                <td className="border-r border-gray-200 px-4 py-3 text-sm text-gray-600 font-mono">
-                                  {record.exitTime || "-"}
-                                </td>
-                                <td className="border-r border-gray-200 px-4 py-3 text-sm text-gray-700">
-                                  {record.parkingDuration || "-"}
-                                </td>
-                                <td className="border-r border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900 text-right">
-                                  {calculateParkingFeeForReport(record).toLocaleString()}
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                  {record.images && record.images.length > 0 ? (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => openImageViewer(record.images, 0)}
-                                      className="h-7 px-2 text-xs"
-                                    >
-                                      <Eye className="w-3 h-3 mr-1" />
-                                      {record.images.length}
-                                    </Button>
-                                  ) : (
-                                    <span className="text-gray-400 text-xs">-</span>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    {/* Summary Section */}
-                    <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-6">
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-                        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-8">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-gray-600">Нийт:</span>
-                            <span className="text-lg font-bold text-gray-900">
-                              {filteredReportRecords.length} үйлчлүүлэгч
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-lg font-bold text-emerald-600">
-                              {filteredReportRecords
-                                .reduce((total, record) => total + calculateParkingFeeForReport(record), 0)
-                                .toLocaleString()}
-                              ₮
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Хүснэгтийн мэдээлэл: {new Date().toLocaleDateString("mn-MN")}
-                        </div>
-                      </div>
-                    </div>
-                  </>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2 font-medium">№</th>
+                          <th className="text-left p-2 font-medium">Машины дугаар</th>
+                          <th className="text-left p-2 font-medium">Засварчин</th>
+                          <th className="text-left p-2 font-medium">Машины марк</th>
+                          <th className="text-left p-2 font-medium">Орсон цаг</th>
+                          <th className="text-left p-2 font-medium">Гарсан цаг</th>
+                          <th className="text-left p-2 font-medium">Зогссон хугацаа</th>
+                          <th className="text-left p-2 font-medium">Төлбөр</th>
+                          <th className="text-left p-2 font-medium">Зураг</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredReportRecords.map((record, index) => (
+                          <tr key={record.id} className="border-b hover:bg-muted/50">
+                            <td className="p-2">{index + 1}</td>
+                            <td className="p-2 font-medium">{record.carNumber}</td>
+                            <td className="p-2">{record.mechanicName || record.driverName || "-"}</td>
+                            <td className="p-2">{record.carBrand || record.parkingArea || "-"}</td>
+                            <td className="p-2 text-sm">{record.entryTime || "-"}</td>
+                            <td className="p-2 text-sm">{record.exitTime || "-"}</td>
+                            <td className="p-2 text-sm">{record.parkingDuration || "-"}</td>
+                            <td className="p-2 font-medium">
+                              {calculateParkingFeeForReport(record).toLocaleString()}₮
+                            </td>
+                            <td className="p-2">
+                              {record.images && record.images.length > 0 ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openImageViewer(record.images, 0)}
+                                  className="h-8"
+                                >
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  {record.images.length}
+                                </Button>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -2659,7 +2603,7 @@ export default function ManagerPage() {
             <Button variant="outline" onClick={() => setShowDateRangePicker(false)}>
               Цуцлах
             </Button>
-            <Button onClick={applyCustomDateRange}>Хайх</Button>
+            <Button onClick={applyCustomDateRange}>Хэрэглэх</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2675,11 +2619,16 @@ export default function ManagerPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Эхлэх огноо</Label>
-                <Input type="date" value={dateRangeStart} onChange={(e) => setDateRangeStart(e.target.value)} />
+                <Input
+                  type="date"
+                  value={dateRangeStart}
+                  onChange={(e) => setDateRangeStart(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label>Дуусах огноо</Label>
-                <Input type="date" value={dateRangeEnd} onChange={(e) => setDateRangeEnd(e.target.value)} />
+                <Input type="date" value={dateRangeEnd} onChange={(e) => setDateRangeEnd(e.target.value)} required />
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -2694,8 +2643,10 @@ export default function ManagerPage() {
             </div>
             {deleteAfterExport && (
               <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                <p className="text-sm text-destructive">
-                  ⚠️ Анхаар: Энэ үйлдэл нь сонгосон хугацааны бүх бүртгэлийг өгөгдлийн сангаас бүрмөсөн устгана.
+                <p className="text-sm text-destructive font-medium">⚠️ Анхааруулга</p>
+                <p className="text-sm text-destructive/80">
+                  Энэ үйлдэл нь сонгосон хугацааны бүх бүртгэлийг өгөгдлийн сангаас бүрмөсөн устгана. Энэ үйлдлийг
+                  буцаах боломжгүй.
                 </p>
               </div>
             )}
@@ -2712,56 +2663,54 @@ export default function ManagerPage() {
       </Dialog>
 
       {/* Image Viewer Dialog */}
-      <Dialog open={showImageViewer} onOpenChange={closeImageViewer}>
+      <Dialog open={showImageViewer} onOpenChange={setShowImageViewer}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
           <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closeImageViewer}
+              className="absolute top-2 right-2 z-10 bg-black/50 text-white hover:bg-black/70"
+            >
+              <X className="w-4 h-4" />
+            </Button>
             {currentImages.length > 0 && (
-              <>
+              <div className="relative">
                 <img
                   src={currentImages[currentImageIndex] || "/placeholder.svg"}
                   alt={`Зураг ${currentImageIndex + 1}`}
                   className="w-full h-auto max-h-[80vh] object-contain"
                 />
-                <div className="absolute top-4 right-4 flex space-x-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={closeImageViewer}
-                    className="bg-black/50 hover:bg-black/70 text-white"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
                 {currentImages.length > 1 && (
                   <>
                     <Button
-                      variant="secondary"
+                      variant="ghost"
                       size="sm"
                       onClick={prevImage}
-                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white"
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
                     <Button
-                      variant="secondary"
+                      variant="ghost"
                       size="sm"
                       onClick={nextImage}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/50 text-white hover:bg-black/70"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </Button>
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                    <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
                       {currentImageIndex + 1} / {currentImages.length}
                     </div>
                   </>
                 )}
-              </>
+              </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Edit User Dialog */}
+      {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
           <DialogHeader>
@@ -2772,6 +2721,13 @@ export default function ManagerPage() {
                   ? "Жолооч засах"
                   : "Ажилчин засах"}
             </DialogTitle>
+            <DialogDescription>
+              {editingDriver?.role === "manager"
+                ? "Менежерийн мэдээллийг шинэчлэх"
+                : editingDriver?.role === "driver"
+                  ? "Жолоочийн мэдээллийг шинэчлэх"
+                  : "Ажилчны мэдээллийг шинэчлэх"}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -2791,7 +2747,7 @@ export default function ManagerPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>И-мэйл</Label>
+              <Label>И-мэйл хаяг</Label>
               <Input
                 type="email"
                 value={editDriverData.email}
@@ -2800,12 +2756,12 @@ export default function ManagerPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Шинэ нууц үг (хоосон үлдээвэл өөрчлөгдөхгүй)</Label>
+              <Label>Шинэ нууц үг (хоосон үлдээвэл өөрчлөхгүй)</Label>
               <Input
                 type="password"
                 value={editDriverData.newPassword}
                 onChange={(e) => setEditDriverData({ ...editDriverData, newPassword: e.target.value })}
-                placeholder="Шинэ нууц үг"
+                placeholder="Шинэ нууц үг (заавал биш)"
               />
             </div>
           </div>
@@ -2813,7 +2769,12 @@ export default function ManagerPage() {
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               Цуцлах
             </Button>
-            <Button onClick={handleSaveDriverEdit} disabled={editLoading}>
+            <Button
+              onClick={
+                editingDriver?.role === "employee" || editingEmployee ? handleSaveEmployeeEdit : handleSaveDriverEdit
+              }
+              disabled={editLoading}
+            >
               {editLoading ? "Хадгалж байна..." : "Хадгалах"}
             </Button>
           </DialogFooter>
@@ -2822,24 +2783,25 @@ export default function ManagerPage() {
 
       {/* Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Профайл засах</DialogTitle>
+            <DialogDescription>Өөрийн профайлын мэдээллийг шинэчлэх</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="flex justify-center">
-              <div className="relative">
-                <Avatar className="w-20 h-20">
+            <div className="space-y-2">
+              <Label>Профайл зураг</Label>
+              <div className="flex items-center space-x-4">
+                <Avatar className="w-16 h-16">
                   {profileData.profileImage ? (
                     <AvatarImage src={profileData.profileImage || "/placeholder.svg"} alt="Profile" />
                   ) : (
-                    <AvatarFallback className="text-2xl">
-                      {profileData.name?.charAt(0).toUpperCase() || "M"}
-                    </AvatarFallback>
+                    <AvatarFallback>{profileData.name?.charAt(0).toUpperCase() || "M"}</AvatarFallback>
                   )}
                 </Avatar>
-                <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/80 transition-colors">
-                  <Upload className="w-4 h-4 text-primary-foreground" />
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  <span>Зураг солих</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -2849,7 +2811,6 @@ export default function ManagerPage() {
                 </label>
               </div>
             </div>
-
             <div className="space-y-2">
               <Label>Нэр</Label>
               <Input
@@ -2858,7 +2819,6 @@ export default function ManagerPage() {
                 placeholder="Нэрээ оруулна уу"
               />
             </div>
-
             <div className="space-y-2">
               <Label>Утасны дугаар</Label>
               <Input
@@ -2867,9 +2827,8 @@ export default function ManagerPage() {
                 placeholder="Утасны дугаараа оруулна уу"
               />
             </div>
-
             <div className="space-y-2">
-              <Label>И-мэйл</Label>
+              <Label>И-мэйл хаяг</Label>
               <Input
                 type="email"
                 value={profileData.email}
@@ -2878,50 +2837,56 @@ export default function ManagerPage() {
               />
             </div>
 
-            <div className="border-t pt-4">
-              <h4 className="font-medium mb-4">Нууц үг солих</h4>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Шинэ нууц үг</Label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      value={passwordData.newPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                      placeholder="Шинэ нууц үг (хамгийн багадаа 6 тэмдэгт)"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-0 top-0 h-full px-3"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
-                  </div>
+            {/* Password Change Section */}
+            <div className="border-t pt-4 space-y-4">
+              <h4 className="font-medium">Нууц үг өөрчлөх</h4>
+              <div className="space-y-2">
+                <Label>Одоогийн нууц үг</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    placeholder="Одоогийн нууц үгээ оруулна уу"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-0 top-0 h-full px-3"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>Нууц үг баталгаажуулах</Label>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={passwordData.confirmPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                      placeholder="Нууц үг дахин оруулах"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-0 top-0 h-full px-3"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </Button>
-                  </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Шинэ нууц үг</Label>
+                <Input
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  placeholder="Шинэ нууц үгээ оруулна уу"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Шинэ нууц үг давтах</Label>
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    placeholder="Шинэ нууц үгээ дахин оруулна уу"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-0 top-0 h-full px-3"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -2939,9 +2904,10 @@ export default function ManagerPage() {
 
       {/* Site Configuration Dialog */}
       <Dialog open={showSiteDialog} onOpenChange={setShowSiteDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Сайтын тохиргоо</DialogTitle>
+            <DialogDescription>Сайтын нэр, лого болон арын зургийг тохируулах</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -2952,14 +2918,13 @@ export default function ManagerPage() {
                 placeholder="Сайтын нэрийг оруулна уу"
               />
             </div>
-
             <div className="space-y-2">
               <Label>Сайтын лого</Label>
               <div className="flex items-center space-x-4">
                 {siteConfig.siteLogo && (
                   <img
                     src={siteConfig.siteLogo || "/placeholder.svg"}
-                    alt="Logo"
+                    alt="Site Logo"
                     className="w-16 h-16 object-contain border rounded"
                   />
                 )}
@@ -2975,7 +2940,6 @@ export default function ManagerPage() {
                 </label>
               </div>
             </div>
-
             <div className="space-y-2">
               <Label>Арын зураг</Label>
               <div className="flex items-center space-x-4">
@@ -3012,24 +2976,23 @@ export default function ManagerPage() {
 
       {/* Pricing Configuration Dialog */}
       <Dialog open={showPricingDialog} onOpenChange={setShowPricingDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Үнийн тохиргоо</DialogTitle>
-            <DialogDescription>Зогсоолын үнийн тохиргоог өөрчлөх</DialogDescription>
+            <DialogDescription>Зогсоолын минут тутамын үнийг тохируулах</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Цагийн үнэ (₮)</Label>
+              <Label>Минут тутамын үнэ (₮)</Label>
               <Input
                 type="number"
                 min="0"
+                step="1"
                 value={pricingConfig.pricePerMinute}
-                onChange={(e) => setPricingConfig({ ...pricingConfig, pricePerMinute: Number(e.target.value) || 0 })}
-                placeholder="Цагийн үнийг оруулна уу"
+                onChange={(e) => setPricingConfig({ ...pricingConfig, pricePerMinute: Number(e.target.value) })}
+                placeholder="Минут тутамын үнийг оруулна уу"
               />
-              <p className="text-sm text-muted-foreground">
-                Одоогийн үнэ: {pricingConfig.pricePerMinute.toLocaleString()}₮/цаг
-              </p>
+              <p className="text-sm text-muted-foreground">Жишээ: 100₮ гэж оруулбал минут тутам 100₮ тооцогдоно</p>
             </div>
           </div>
           <DialogFooter>
@@ -3043,5 +3006,5 @@ export default function ManagerPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )\
+  )
 }
