@@ -1,474 +1,331 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
-import { onAuthStateChanged, createUserWithEmailAndPassword, signOut, type User } from "firebase/auth"
-import { ref, onValue, set, remove, update, push } from "firebase/database"
+
+import { useState, useEffect, useRef } from "react"
+import { onAuthStateChanged, signOut, updatePassword, type User as FirebaseUser } from "firebase/auth"
+import { ref, push, onValue, set, update } from "firebase/database"
 import { auth, database } from "@/lib/firebase"
-import type { UserProfile, DriverRegistration } from "@/types"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Trash2,
-  UserPlus,
-  Shield,
-  Edit,
-  Power,
-  PowerOff,
-  Settings,
-  UserIcon,
-  Globe,
-  LogOut,
-  Upload,
-  Eye,
-  Calendar,
-  Download,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
-  Users,
-  DollarSign,
-  Car,
-  BarChart3,
-} from "lucide-react"
-import * as XLSX from "xlsx"
+import type { ParkingRecord, UserProfile } from "@/types"
+import { Home, History, User, LogOut, Search, X, Car, Eye, EyeOff } from "lucide-react"
+import { useRouter } from "next/navigation"
 
-export default function ManagerPage() {
-  const [user, setUser] = useState<User | null>(null)
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+export default function ParkingSystem() {
+  const [user, setUser] = useState<FirebaseUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showSplash, setShowSplash] = useState(true)
+  const [loadingProgress, setLoadingProgress] = useState(0)
+  const router = useRouter()
 
-  // Manager states
-  const [managers, setManagers] = useState<UserProfile[]>([])
+  // Home states
+  const [carNumber, setCarNumber] = useState("")
+  const [parkingArea, setParkingArea] = useState("")
+  const [recentRecords, setRecentRecords] = useState<ParkingRecord[]>([])
+  const [actionLoading, setActionLoading] = useState(false)
 
-  // Report states
-  const [reportRecords, setReportRecords] = useState<any[]>([])
-  const [filteredReportRecords, setFilteredReportRecords] = useState<any[]>([])
-  const [reportFilterYear, setReportFilterYear] = useState("")
-  const [reportFilterMonth, setReportFilterMonth] = useState("")
-  const [reportFilterCarNumber, setReportFilterCarNumber] = useState("")
-  const [reportFilterMechanic, setReportFilterMechanic] = useState("")
-  const [reportLoading, setReportLoading] = useState(false)
+  // Add new state for images after other home states
+  const [capturedImages, setCapturedImages] = useState<string[]>([])
+  const [showCamera, setShowCamera] = useState(false)
 
-  // Enhanced Dashboard states
-  const [dashboardStats, setDashboardStats] = useState({
-    totalCustomers: 0,
-    totalRevenue: 0,
-    activeRecords: 0,
-    todayCustomers: 0,
-    todayRevenue: 0,
-    averageSessionTime: 0,
-    averageRevenue: 0,
-  })
-  const [monthlyStats, setMonthlyStats] = useState<any[]>([])
-  const [dailyStats, setDailyStats] = useState<any[]>([])
-  const [recentActivity, setRecentActivity] = useState<any[]>([])
-  const [dashboardLoading, setDashboardLoading] = useState(false)
+  // Camera refs
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
 
-  // Add these new states for custom date range
-  const [customDateRange, setCustomDateRange] = useState({
-    startDate: "",
-    endDate: "",
-    useCustomRange: false,
-  })
-  const [showDateRangePicker, setShowDateRangePicker] = useState(false)
+  // Add camera facing state
+  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
 
-  // Date range filter states
-  const [showDateRangeDialog, setShowDateRangeDialog] = useState(false)
-  const [dateRangeStart, setDateRangeStart] = useState("")
-  const [dateRangeEnd, setDateRangeEnd] = useState("")
-  const [deleteAfterExport, setDeleteAfterExport] = useState(false)
-  const [exportLoading, setExportLoading] = useState(false)
+  // History states
+  const [allRecords, setAllRecords] = useState<ParkingRecord[]>([])
+  const [filteredRecords, setFilteredRecords] = useState<ParkingRecord[]>([])
 
-  // Image viewer states
-  const [showImageViewer, setShowImageViewer] = useState(false)
-  const [currentImages, setCurrentImages] = useState<string[]>([])
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  // Filter states
+  const [filterYear, setFilterYear] = useState("")
+  const [filterMonth, setFilterMonth] = useState("")
+  const [filterCarNumber, setFilterCarNumber] = useState("")
 
-  // Employee states - now using UserProfile type for consistency
-  const [employees, setEmployees] = useState<UserProfile[]>([])
-  const [newEmployee, setNewEmployee] = useState({
+  // Profile states
+  const [profile, setProfile] = useState<UserProfile>({
     name: "",
-    position: "",
     phone: "",
-    startDate: "",
-    profileImage: "",
-  })
-  const [editingEmployee, setEditingEmployee] = useState<UserProfile | null>(null)
-  const [showEmployeeDialog, setShowEmployeeDialog] = useState(false)
-  const [employeeLoading, setEmployeeLoading] = useState(false)
-
-  // Driver registration states
-  const [newDriver, setNewDriver] = useState<DriverRegistration>({
     email: "",
-    password: "",
-    name: "",
-    phone: "",
     role: "driver",
-    createdAt: "",
-    createdBy: "",
+    profileImage: "",
     active: true,
   })
-  const [registrationLoading, setRegistrationLoading] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<"manager" | "driver" | "employee">("employee")
-
-  // Edit driver states
-  const [editingDriver, setEditingDriver] = useState<UserProfile | null>(null)
-  const [editDriverData, setEditDriverData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    newPassword: "",
-  })
-  const [editLoading, setEditLoading] = useState(false)
-  const [showEditDialog, setShowEditDialog] = useState(false)
-
-  // Profile dialog state
-  const [showProfileDialog, setShowProfileDialog] = useState(false)
-  const [profileData, setProfileData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    profileImage: "",
-  })
+  const [editing, setEditing] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
 
-  // Site configuration states
-  const [showSiteDialog, setShowSiteDialog] = useState(false)
-  const [siteConfig, setSiteConfig] = useState({
-    siteName: "",
-    siteLogo: "",
-    siteBackground: "",
-  })
-  const [siteLoading, setSiteLoading] = useState(false)
+  // Employee profile states
+  const [employeeProfile, setEmployeeProfile] = useState<any>(null)
 
-  // Profile image and password states
-  const [showPassword, setShowConfirmPassword] = useState(false)
-  const [showConfirmPassword, setShowPassword] = useState(false)
+  // Password change states for employees
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
 
-  // Pricing states
-  const [showPricingDialog, setShowPricingDialog] = useState(false)
+  // Pricing state
   const [pricingConfig, setPricingConfig] = useState({
     pricePerMinute: 0,
   })
-  const [pricingLoading, setPricingLoading] = useState(false)
+
+  // Site configuration state
+  const [siteConfig, setSiteConfig] = useState({
+    siteName: "",
+    siteLogo: "",
+    siteBackground: "",
+  })
+
+  // Tabs-ийн оронд activeTab state нэмэх
+  const [activeTab, setActiveTab] = useState("home")
+
+  // Logout confirmation modal state
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+
+  // Filter collapse state
+  const [filterCollapsed, setFilterCollapsed] = useState(true)
+
+  // Employee states for dropdown
+  const [employees, setEmployees] = useState<any[]>([])
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false)
+
+  // Active parking records states
+  const [activeParkingRecords, setActiveParkingRecords] = useState<ParkingRecord[]>([])
+  const [filteredActiveParkingRecords, setFilteredActiveParkingRecords] = useState<ParkingRecord[]>([])
+  const [activeRecordsSearch, setActiveRecordsSearch] = useState("")
+
+  // Custom exit confirmation modal states
+  const [showExitModal, setShowExitModal] = useState(false)
+  const [exitingRecord, setExitingRecord] = useState<ParkingRecord | null>(null)
+  const [exitDetails, setExitDetails] = useState({
+    exitTime: "",
+    duration: 0,
+    fee: 0,
+  })
+
+  // Add state to track if user is manager to prevent showing main interface
+  const [isManager, setIsManager] = useState(false)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user)
-      if (user) {
-        await loadUserProfile(user.uid)
-      } else {
-        setLoading(false)
-      }
-    })
-    return unsubscribe
-  }, [])
-
-  const loadUserProfile = async (userId: string) => {
-    const profileRef = ref(database, `users/${userId}`)
-    onValue(profileRef, (snapshot) => {
-      const data = snapshot.val()
-      if (data && data.role === "manager") {
-        setUserProfile(data)
-        setProfileData({
-          name: data.name || "",
-          phone: data.phone || "",
-          email: data.email || "",
-          profileImage: data.profileImage || "",
-        })
-        setLoading(false)
-      } else {
-        // Хэрэв manager биш бол буцаах
-        setUserProfile(null)
-        setLoading(false)
-      }
-    })
-
-    // Load site configuration
-    const siteRef = ref(database, "siteConfig")
-    onValue(siteRef, (snapshot) => {
-      const data = snapshot.val()
-      if (data) {
-        setSiteConfig({
-          siteName: data.siteName || "",
-          siteLogo: data.siteLogo || "",
-          siteBackground: data.siteBackground || "",
-        })
-      }
-    })
-
-    // Load pricing configuration
-    const pricingRef = ref(database, "pricingConfig")
-    onValue(pricingRef, (snapshot) => {
-      const data = snapshot.val()
-      if (data) {
-        setPricingConfig({
-          pricePerMinute: data.pricePerMinute || 0,
-        })
-      }
-    })
-
-    // Load report records after profile is loaded
-    setTimeout(() => {
-      loadReportRecords()
-    }, 500)
-
-    // Add this line after loadReportRecords() call:
-    loadEmployees()
-    loadManagers()
-    loadDashboardData()
-  }
-
-  // Enhanced dashboard data loading with better analytics
-  const loadDashboardData = (startDate?: string, endDate?: string) => {
-    setDashboardLoading(true)
-    const recordsRef = ref(database, "parking_records")
-    onValue(recordsRef, (snapshot) => {
-      const data = snapshot.val()
-      if (data) {
-        let records = Object.keys(data).map((key) => ({ id: key, ...data[key] }))
-
-        // Filter by custom date range if provided
-        if (startDate && endDate) {
-          const start = new Date(startDate)
-          const end = new Date(endDate)
-          end.setHours(23, 59, 59, 999) // Include the entire end date
-
-          records = records.filter((record) => {
-            const recordDate = new Date(record.timestamp)
-            return recordDate >= start && recordDate <= end
-          })
-        }
-
-        // Calculate enhanced statistics
-        const completedRecords = records.filter(
-          (record) => record.type === "completed" || record.type === "exit" || record.exitTime,
-        )
-        const activeRecords = records.filter((record) => record.type === "entry" && !record.exitTime)
-
-        // Today's statistics
-        const today = new Date()
-        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-
-        const todayRecords = completedRecords.filter((record) => {
-          const recordDate = new Date(record.timestamp)
-          return recordDate >= todayStart && recordDate < todayEnd
-        })
-
-        const totalRevenue = completedRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
-        const todayRevenue = todayRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
-
-        // Calculate average session time (in hours)
-        const avgSessionTime =
-          completedRecords.length > 0
-            ? completedRecords.reduce((sum, record) => {
-                if (record.parkingDuration) {
-                  // Assuming parkingDuration is in hours format like "2 цаг"
-                  const duration = Number.parseFloat(record.parkingDuration.toString().replace(/[^\d.]/g, "")) || 0
-                  return sum + duration
-                }
-                return sum
-              }, 0) / completedRecords.length
-            : 0
-
-        const avgRevenue = completedRecords.length > 0 ? totalRevenue / completedRecords.length : 0
-
-        setDashboardStats({
-          totalCustomers: completedRecords.length,
-          totalRevenue: totalRevenue,
-          activeRecords: activeRecords.length,
-          todayCustomers: todayRecords.length,
-          todayRevenue: todayRevenue,
-          averageSessionTime: avgSessionTime,
-          averageRevenue: avgRevenue,
-        })
-
-        // Generate monthly statistics
-        const monthlyStatsData = []
-        const now = new Date()
-
-        if (startDate && endDate) {
-          // Custom date range logic
-          const start = new Date(startDate)
-          const end = new Date(endDate)
-          const diffTime = Math.abs(end.getTime() - start.getTime())
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-          if (diffDays <= 31) {
-            // Show daily data for ranges 31 days or less
-            for (let i = 0; i <= diffDays; i++) {
-              const currentDate = new Date(start)
-              currentDate.setDate(start.getDate() + i)
-
-              const dayStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate())
-              const dayEnd = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1)
-
-              const dayRecords = completedRecords.filter((record) => {
-                const recordDate = new Date(record.timestamp)
-                return recordDate >= dayStart && recordDate < dayEnd
-              })
-
-              const dayRevenue = dayRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
-
-              monthlyStatsData.push({
-                period: currentDate.toLocaleDateString("mn-MN", { month: "short", day: "numeric" }),
-                customers: dayRecords.length,
-                revenue: dayRevenue,
-                date: currentDate.toISOString().split("T")[0],
-              })
-            }
-          } else {
-            // Show monthly data for longer ranges
-            const startMonth = new Date(start.getFullYear(), start.getMonth(), 1)
-            const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
-            const currentMonth = new Date(startMonth)
-
-            while (currentMonth <= endMonth) {
-              const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
-              const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
-
-              const monthRecords = completedRecords.filter((record) => {
-                const recordDate = new Date(record.timestamp)
-                return recordDate >= monthStart && recordDate <= monthEnd
-              })
-
-              const monthRevenue = monthRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
-
-              monthlyStatsData.push({
-                period: currentMonth.toLocaleDateString("mn-MN", { year: "numeric", month: "short" }),
-                customers: monthRecords.length,
-                revenue: monthRevenue,
-                date: currentMonth.toISOString().split("T")[0],
-              })
-
-              currentMonth.setMonth(currentMonth.getMonth() + 1)
-            }
+    // Splash screen loading animation
+    if (showSplash) {
+      const interval = setInterval(() => {
+        setLoadingProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(interval)
+            setTimeout(() => {
+              setShowSplash(false)
+            }, 500) // Жаахан хүлээж splash screen хаах
+            return 100
           }
+          return prev + 2 // 2% -аар нэмэгдэх (50 алхам = 2.5 секунд)
+        })
+      }, 50) // 50ms тутамд шинэчлэх
+
+      return () => clearInterval(interval)
+    }
+  }, [showSplash])
+
+  useEffect(() => {
+    if (!showSplash) {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user) {
+          setUser(user)
+          loadProfile() // Эхлээд profile ачаалах, дараа нь records ачаалагдана
         } else {
-          // Default: Show last 6 months
-          for (let i = 5; i >= 0; i--) {
-            const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
-            const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1)
-            const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0)
-
-            const monthRecords = completedRecords.filter((record) => {
-              const recordDate = new Date(record.timestamp)
-              return recordDate >= monthStart && recordDate <= monthEnd
-            })
-
-            const monthRevenue = monthRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
-
-            monthlyStatsData.push({
-              period: monthDate.toLocaleDateString("mn-MN", { year: "numeric", month: "short" }),
-              customers: monthRecords.length,
-              revenue: monthRevenue,
-              date: monthDate.toISOString().split("T")[0],
-            })
-          }
+          // Redirect to login page if not authenticated
+          router.push("/login")
         }
+      })
+      return unsubscribe
+    }
+  }, [showSplash, router])
 
-        setMonthlyStats(monthlyStatsData)
+  // Filter records based on year, month, car number, and type
+  useEffect(() => {
+    let filtered = [...allRecords]
 
-        // Generate last 7 days statistics for daily chart
-        const dailyStatsData = []
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date()
-          date.setDate(date.getDate() - i)
+    // Filter by year
+    if (filterYear) {
+      filtered = filtered.filter((record) => {
+        const recordDate = new Date(record.timestamp)
+        return recordDate.getFullYear().toString() === filterYear
+      })
+    }
 
-          const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-          const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)
+    // Filter by month
+    if (filterMonth) {
+      filtered = filtered.filter((record) => {
+        const recordDate = new Date(record.timestamp)
+        return (recordDate.getMonth() + 1).toString().padStart(2, "0") === filterMonth
+      })
+    }
 
-          const dayRecords = completedRecords.filter((record) => {
-            const recordDate = new Date(record.timestamp)
-            return recordDate >= dayStart && recordDate < dayEnd
-          })
+    // Filter by car number
+    if (filterCarNumber) {
+      filtered = filtered.filter((record) => record.carNumber.toLowerCase().includes(filterCarNumber.toLowerCase()))
+    }
 
-          const dayRevenue = dayRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
+    // Filter only completed/exit records for history tab
+    filtered = filtered.filter(
+      (record) =>
+        record.type === "completed" || record.type === "exit" || (record.exitTime && record.exitTime.trim() !== ""),
+    )
 
-          dailyStatsData.push({
-            day: date.toLocaleDateString("mn-MN", { weekday: "short" }),
-            date: date.toLocaleDateString("mn-MN", { month: "numeric", day: "numeric" }),
-            customers: dayRecords.length,
-            revenue: dayRevenue,
-          })
-        }
+    // If user is employee, filter by employee name
+    if (profile.role === "employee" && profile.name) {
+      filtered = filtered.filter((record) => {
+        // Check if the record's driverName contains the employee's name
+        return record.driverName && record.driverName.includes(profile.name)
+      })
+    }
 
-        setDailyStats(dailyStatsData)
+    setFilteredRecords(filtered)
+  }, [allRecords, filterYear, filterMonth, filterCarNumber, profile.role, profile.name])
 
-        // Get recent activity (last 10 records from filtered data)
-        const sortedRecords = records
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, 10)
-
-        setRecentActivity(sortedRecords)
-      }
-      setDashboardLoading(false)
-    })
-  }
-
-  // Apply custom date range
-  const applyCustomDateRange = () => {
-    if (!customDateRange.startDate || !customDateRange.endDate) {
-      alert("Эхлэх болон дуусах огноог оруулна уу")
+  // Update the loadRecentRecords function to ensure proper data fetching
+  const loadRecentRecords = () => {
+    if (!user?.uid) {
+      console.log("No authenticated user, skipping recent records load")
       return
     }
 
-    const startDate = new Date(customDateRange.startDate)
-    const endDate = new Date(customDateRange.endDate)
+    console.log("Loading recent records for user:", user.uid)
 
-    if (startDate > endDate) {
-      alert("Эхлэх огноо дуусах огнооноос өмнө байх ёстой")
-      return
-    }
+    const recordsRef = ref(database, "parking_records")
+    onValue(
+      recordsRef,
+      (snapshot) => {
+        const data = snapshot.val()
+        if (data) {
+          const records: ParkingRecord[] = Object.keys(data)
+            .map((key) => ({ id: key, ...data[key] }))
+            .filter((record) => {
+              // Filter by current user's records (using user ID or driver name)
+              if (profile.role === "employee" && profile.name) {
+                // For employees, show records where their name is in driverName
+                return record.driverName && record.driverName.includes(profile.name)
+              }
+              return (
+                record.driverName === profile.name ||
+                (user?.email && record.driverName === user.email.split("@")[0]) ||
+                record.driverName === "Систем Админ" // Allow test records
+              )
+            })
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .slice(0, 3) // Last 3 records
 
-    setCustomDateRange({ ...customDateRange, useCustomRange: true })
-    loadDashboardData(customDateRange.startDate, customDateRange.endDate)
-    setShowDateRangePicker(false)
+          setRecentRecords(records)
+          console.log("Recent records loaded:", records.length, "records")
+        } else {
+          setRecentRecords([])
+          console.log("No records found in database")
+        }
+      },
+      (error) => {
+        console.error("Error loading recent records:", error)
+        // Don't show alert for permission errors during initial load
+        if (error.code !== "PERMISSION_DENIED") {
+          console.error("Database error:", error.message)
+        }
+        setRecentRecords([])
+      },
+    )
   }
 
-  // Reset to default (last 6 months)
-  const resetToDefaultRange = () => {
-    setCustomDateRange({
-      startDate: "",
-      endDate: "",
-      useCustomRange: false,
-    })
-    loadDashboardData()
-    setShowDateRangePicker(false)
+  // loadActiveParkingRecords функцийг бүрэн засварлах
+  const loadActiveParkingRecords = () => {
+    console.log("Loading active parking records...")
+
+    const recordsRef = ref(database, "parking_records")
+    onValue(
+      recordsRef,
+      (snapshot) => {
+        const data = snapshot.val()
+        console.log("Raw parking records data:", data)
+
+        if (data) {
+          const allRecords = Object.keys(data).map((key) => ({ id: key, ...data[key] }))
+          console.log("All records:", allRecords)
+
+          // Илүү энгийн filtering logic ашиглах
+          const activeRecords: ParkingRecord[] = allRecords
+            .filter((record) => {
+              // Зөвхөн entry type бөгөөд exitTime байхгүй бүртгэлүүдийг авах
+              const isActive = record.type === "entry" && !record.exitTime && record.type !== "completed"
+
+              // If user is employee, filter by employee name
+              if (profile.role === "employee" && profile.name) {
+                const isEmployeeRecord = record.driverName && record.driverName.includes(profile.name)
+                return isActive && isEmployeeRecord
+              }
+
+              console.log(`Record ${record.id}: type=${record.type}, exitTime=${record.exitTime}, isActive=${isActive}`)
+              return isActive
+            })
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+          console.log("Filtered active records:", activeRecords)
+          setActiveParkingRecords(activeRecords)
+          setFilteredActiveParkingRecords(activeRecords)
+        } else {
+          console.log("No parking records data found")
+          setActiveParkingRecords([])
+          setFilteredActiveParkingRecords([])
+        }
+      },
+      (error) => {
+        console.error("Error loading active parking records:", error)
+        setActiveParkingRecords([])
+        setFilteredActiveParkingRecords([])
+      },
+    )
   }
 
-  // Load employees from users table where role is 'employee'
+  // loadAllRecords функцийг засварлах - бүх бүртгэлүүдийг ачаалах
+  const loadAllRecords = () => {
+    console.log("Loading all records...")
+
+    const recordsRef = ref(database, "parking_records")
+    onValue(
+      recordsRef,
+      (snapshot) => {
+        const data = snapshot.val()
+        console.log("All records raw data:", data)
+
+        if (data) {
+          const records: ParkingRecord[] = Object.keys(data)
+            .map((key) => ({ id: key, ...data[key] }))
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+          console.log("All records processed:", records)
+          setAllRecords(records)
+        } else {
+          console.log("No records found in database")
+          setAllRecords([])
+        }
+      },
+      (error) => {
+        console.error("Error loading all records:", error)
+        setAllRecords([])
+      },
+    )
+  }
+
+  // Load employees from database
   const loadEmployees = () => {
-    const usersRef = ref(database, "users")
-    onValue(usersRef, (snapshot) => {
+    const employeesRef = ref(database, "employees")
+    onValue(employeesRef, (snapshot) => {
       const data = snapshot.val()
       if (data) {
-        const employeesList: UserProfile[] = Object.keys(data)
+        const employeesList = Object.keys(data)
           .map((key) => ({ id: key, ...data[key] }))
-          .filter((user) => user.role === "employee")
           .sort((a, b) => a.name.localeCompare(b.name))
         setEmployees(employeesList)
       } else {
@@ -477,644 +334,333 @@ export default function ManagerPage() {
     })
   }
 
-  // Load managers from database
-  const loadManagers = () => {
-    const usersRef = ref(database, "users")
-    onValue(usersRef, (snapshot) => {
+  // Load employee profile from employees database
+  const loadEmployeeProfile = (employeeName: string) => {
+    const employeesRef = ref(database, "employees")
+    onValue(employeesRef, (snapshot) => {
       const data = snapshot.val()
       if (data) {
-        const managersList: UserProfile[] = Object.keys(data)
-          .map((key) => ({ id: key, ...data[key] }))
-          .filter((user) => user.role === "manager")
-          .sort((a, b) => a.name.localeCompare(b.name))
-        setManagers(managersList)
-      } else {
-        setManagers([])
+        const employee = Object.values(data).find((emp: any) => emp.name === employeeName)
+        if (employee) {
+          setEmployeeProfile(employee)
+        }
       }
     })
   }
 
-  // Handle employee image upload
-  const handleEmployeeImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      // Check file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        alert("Зургийн хэмжээ 5MB-аас бага байх ёстой")
-        return
-      }
-
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const base64String = event.target?.result as string
-        setNewEmployee({ ...newEmployee, profileImage: base64String })
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  // Add employee
-  const handleAddEmployee = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!newEmployee.name.trim()) {
-      alert("Ажилчны нэрийг оруулна уу")
+  // Update the loadProfile function to call record loading functions
+  const loadProfile = () => {
+    const userId = auth.currentUser?.uid
+    if (!userId) {
+      console.log("No authenticated user for profile load")
+      setLoading(false)
       return
     }
 
-    setEmployeeLoading(true)
-    try {
-      const employeeData = {
-        name: newEmployee.name.trim(),
-        position: newEmployee.position.trim(),
-        phone: newEmployee.phone.trim(),
-        startDate: newEmployee.startDate,
-        profileImage: newEmployee.profileImage || "",
-        createdAt: new Date().toISOString(),
-        createdBy: userProfile?.name || "Manager",
-      }
+    console.log("Loading profile for user:", userId)
 
-      await push(ref(database, "employees"), employeeData)
-      alert("Ажилчин амжилттай нэмэгдлээ")
+    const profileRef = ref(database, `users/${userId}`)
+    onValue(
+      profileRef,
+      (snapshot) => {
+        const data = snapshot.val()
+        if (data) {
+          const userProfile = {
+            name: data.name || "",
+            phone: data.phone || "",
+            email: auth.currentUser?.email || "",
+            role: data.role || "driver",
+            profileImage: data.profileImage || "",
+            active: data.active !== false, // Default to true if not set
+          }
 
-      // Reset form
-      setNewEmployee({
-        name: "",
-        position: "",
-        phone: "",
-        startDate: "",
-        profileImage: "",
-      })
-    } catch (error) {
-      alert("Ажилчин нэмэхэд алдаа гарлаа")
-    }
-    setEmployeeLoading(false)
+          setProfile(userProfile)
+
+          // Check if user is active
+          if (userProfile.active === false) {
+            alert("Таны эрх хаагдсан байна. Менежертэй холбогдоно уу.")
+            signOut(auth)
+            return
+          }
+
+          // Redirect manager to manager page immediately
+          if (userProfile.role === "manager") {
+            console.log("Manager detected, redirecting to manager page...")
+            setIsManager(true)
+            // Use window.location.replace instead of href to avoid showing main interface
+            window.location.replace("/manager")
+            return
+          }
+
+          // Load employee profile if user is employee
+          if (userProfile.role === "employee" && userProfile.name) {
+            loadEmployeeProfile(userProfile.name)
+          }
+
+          console.log("Profile loaded, now loading records...")
+
+          // Load pricing configuration
+          const pricingRef = ref(database, "pricingConfig")
+          onValue(pricingRef, (snapshot) => {
+            const data = snapshot.val()
+            if (data) {
+              setPricingConfig({
+                pricePerMinute: data.pricePerMinute || 0,
+              })
+            }
+          })
+
+          // Load site configuration
+          const siteRef = ref(database, "siteConfig")
+          onValue(siteRef, (snapshot) => {
+            const data = snapshot.val()
+            if (data) {
+              setSiteConfig({
+                siteName: data.siteName || "",
+                siteLogo: data.siteLogo || "",
+                siteBackground: data.siteBackground || "",
+              })
+            }
+          })
+
+          // Load records after profile is loaded and we have user context
+          setTimeout(() => {
+            console.log("Loading all data after profile load...")
+            loadRecentRecords()
+            loadAllRecords()
+            loadActiveParkingRecords() // Load active parking records
+            loadEmployees() // Load employees for dropdown
+          }, 500)
+
+          setLoading(false)
+        } else {
+          // Create default profile for new users
+          const defaultProfile = {
+            name: "",
+            phone: "",
+            email: auth.currentUser?.email || "",
+            role: "driver",
+            profileImage: "",
+            active: true,
+          }
+          setProfile(defaultProfile)
+
+          // Still try to load records even if profile is empty
+          setTimeout(() => {
+            console.log("Loading data with empty profile...")
+            loadRecentRecords()
+            loadAllRecords()
+            loadActiveParkingRecords() // Load active parking records
+            loadEmployees() // Load employees for dropdown
+          }, 500)
+
+          setLoading(false)
+        }
+      },
+      (error) => {
+        console.error("Error loading profile:", error)
+        // Set default profile on error
+        setProfile({
+          name: "",
+          phone: "",
+          email: auth.currentUser?.email || "",
+          role: "driver",
+          profileImage: "",
+          active: true,
+        })
+        setLoading(false)
+      },
+    )
   }
 
-  // Edit employee
-  const handleEditEmployee = (employee: UserProfile) => {
-    setEditingEmployee(employee)
-    setEditDriverData({
-      name: employee.name,
-      phone: employee.phone,
-      email: employee.email,
-      newPassword: "",
-    })
-    setShowEditDialog(true)
-  }
-
-  // Save employee edit
-  const handleSaveEmployeeEdit = async () => {
-    if (!editingEmployee || !editDriverData.name.trim() || !editDriverData.email.trim()) {
-      alert("Нэр болон и-мэйл хаягийг бөглөнө үү")
-      return
-    }
-
-    setEditLoading(true)
-    try {
-      const updateData: any = {
-        name: editDriverData.name.trim(),
-        phone: editDriverData.phone.trim(),
-        email: editDriverData.email.trim(),
-        updatedAt: new Date().toISOString(),
-      }
-
-      await update(ref(database, `users/${editingEmployee.id}`), updateData)
-      alert("Ажилчны мэдээлэл амжилттай шинэчлэгдлээ")
-      setShowEditDialog(false)
-      setEditingEmployee(null)
-    } catch (error) {
-      alert("Ажилчны мэдээлэл шинэчлэхэд алдаа гарлаа")
-    }
-    setEditLoading(false)
-  }
-
-  // Delete employee
-  const handleDeleteEmployee = async (employeeId: string, employeeName: string) => {
-    if (!confirm(`${employeeName} ажилчныг устгахдаа итгэлтэй байна уу?`)) {
-      return
-    }
-
-    try {
-      await remove(ref(database, `users/${employeeId}`))
-      alert("Ажилчин амжилттай устгагдлаа")
-    } catch (error) {
-      alert("Ажилчин устгахад алдаа гарлаа")
-    }
-  }
-
-  // Toggle employee status
-  const handleToggleEmployeeStatus = async (employeeId: string, currentStatus: boolean, employeeName: string) => {
-    const newStatus = !currentStatus
-    const statusText = newStatus ? "идэвхжүүлэх" : "идэвхгүй болгох"
-
-    if (!confirm(`${employeeName} ажилчныг ${statusText}даа итгэлтэй байна уу?`)) {
-      return
-    }
-
-    try {
-      await update(ref(database, `users/${employeeId}`), {
-        active: newStatus,
-        updatedAt: new Date().toISOString(),
-      })
-      alert(`Ажилчин амжилттай ${newStatus ? "идэвхжлээ" : "идэвхгүй боллоо"}`)
-    } catch (error) {
-      alert("Ажилчны төлөв өөрчлөхөд алдаа гарлаа")
-    }
-  }
-
-  // Handle manager operations
-  const handleDeleteManager = async (managerId: string, managerName: string) => {
-    if (!confirm(`${managerName} менежерийг устгахдаа итгэлтэй байна уу?`)) {
-      return
-    }
-
-    try {
-      await remove(ref(database, `users/${managerId}`))
-      alert("Менежер амжилттай устгагдлаа")
-    } catch (error) {
-      alert("Менежер устгахад алдаа гарлаа")
-    }
-  }
-
-  const handleEditManager = (manager: UserProfile) => {
-    setEditingDriver(manager)
-    setEditDriverData({
-      name: manager.name,
-      phone: manager.phone,
-      email: manager.email,
-      newPassword: "",
-    })
-    setShowEditDialog(true)
-  }
-
-  const handleToggleManagerStatus = async (managerId: string, currentStatus: boolean, managerName: string) => {
-    const newStatus = !currentStatus
-    const statusText = newStatus ? "идэвхжүүлэх" : "идэвхгүй болгох"
-
-    if (!confirm(`${managerName} менежерийг ${statusText}даа итгэлтэй байна уу?`)) {
-      return
-    }
-
-    try {
-      await update(ref(database, `users/${managerId}`), {
-        active: newStatus,
-        updatedAt: new Date().toISOString(),
-      })
-      alert(`Менежер амжилттай ${newStatus ? "идэвхжлээ" : "идэвхгүй боллоо"}`)
-    } catch (error) {
-      alert("Менежерийн төлөв өөрчлөхөд алдаа гарлаа")
-    }
-  }
-
-  const loadReportRecords = () => {
-    setReportLoading(true)
-    const recordsRef = ref(database, "parking_records")
-    onValue(recordsRef, (snapshot) => {
-      const data = snapshot.val()
-      if (data) {
-        const records = Object.keys(data)
-          .map((key) => ({ id: key, ...data[key] }))
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
-        setReportRecords(records)
-        setFilteredReportRecords(records)
-      } else {
-        setReportRecords([])
-        setFilteredReportRecords([])
-      }
-      setReportLoading(false)
-    })
-  }
-
-  const calculateParkingFee = (entryTime: string, exitTime: string): number => {
-    if (!entryTime || !exitTime || pricingConfig.pricePerMinute === 0) {
+  // Real-time parking fee calculation функцийг засварлах
+  const calculateCurrentParkingFee = (entryTime: string): number => {
+    if (!entryTime || pricingConfig.pricePerMinute === 0) {
       return 0
     }
 
     try {
-      // Parse the Mongolian formatted dates
-      const parseMongoDate = (dateStr: string) => {
-        // Format: "2024.01.15, 14:30" or similar
-        const cleanStr = dateStr.replace(/[^\d\s:.,]/g, "")
-        const parts = cleanStr.split(/[,\s]+/)
+      const entryDate = parseFlexibleDate(entryTime)
+      const currentTime = new Date()
 
-        if (parts.length >= 2) {
-          const datePart = parts[0] // "2024.01.15"
-          const timePart = parts[1] // "14:30"
-
-          const [year, month, day] = datePart.split(".").map(Number)
-          const [hour, minute] = timePart.split(":").map(Number)
-
-          return new Date(year, month - 1, day, hour, minute)
-        }
-
-        // Fallback to direct parsing
-        return new Date(dateStr)
-      }
-
-      const entryDate = parseMongoDate(entryTime)
-      const exitDate = parseMongoDate(exitTime)
-
-      if (isNaN(entryDate.getTime()) || isNaN(exitDate.getTime())) {
+      if (isNaN(entryDate.getTime())) {
+        console.error("Invalid entry time after parsing:", entryTime)
         return 0
       }
 
-      const diffInMs = exitDate.getTime() - entryDate.getTime()
-      const diffInMinutes = Math.ceil(diffInMs / (1000 * 60)) // Round up to next minute
+      const diffInMs = currentTime.getTime() - entryDate.getTime()
+      const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60)) // Calculate in hours and round up
 
-      return Math.max(0, diffInMinutes * pricingConfig.pricePerMinute)
+      // Хэрэв 1 цагаас бага бол 1 цаг гэж тооцох
+      const hoursToCharge = Math.max(1, diffInHours)
+
+      return hoursToCharge * (pricingConfig.pricePerMinute || 100) // pricePerMinute is now price per hour
     } catch (error) {
-      console.error("Error calculating parking fee:", error)
+      console.error("Error calculating current parking fee:", error)
       return 0
     }
   }
 
-  const calculateParkingFeeForReport = (record: any): number => {
-    if (record.type === "exit" && record.entryTime) {
-      return calculateParkingFee(record.entryTime, record.exitTime || "")
+  // Calculate parking duration функцийг засварлах
+  const calculateParkingDuration = (entryTime: string, exitTime?: string): number => {
+    try {
+      const entryDate = parseFlexibleDate(entryTime)
+      const endDate = exitTime ? parseFlexibleDate(exitTime) : new Date()
+
+      if (isNaN(entryDate.getTime()) || isNaN(endDate.getTime())) {
+        return 0
+      }
+
+      const diffInMs = endDate.getTime() - entryDate.getTime()
+      const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60)) // Calculate in hours and round up
+
+      // Хэрэв 1 цагаас бага бол 1 цаг гэж тооцох
+      return Math.max(1, diffInHours)
+    } catch (error) {
+      console.error("Error calculating parking duration:", error)
+      return 0
     }
-    return record.amount || 0
   }
 
-  // Filter records by date range
-  const getDateRangeFilteredRecords = () => {
-    if (!dateRangeStart || !dateRangeEnd) {
-      return filteredReportRecords
+  // Unified date parsing function
+  const parseFlexibleDate = (dateStr: string): Date => {
+    if (!dateStr) return new Date()
+
+    const cleanStr = dateStr.trim()
+
+    // Format 1: "07/01/2025, 08:42 AM" (US format with AM/PM)
+    if (cleanStr.includes("AM") || cleanStr.includes("PM")) {
+      return new Date(cleanStr)
     }
 
-    const startDate = new Date(dateRangeStart)
-    const endDate = new Date(dateRangeEnd)
-    endDate.setHours(23, 59, 59, 999) // Include the entire end date
+    // Format 2: "2025.01.07, 14:30" (Mongolian format)
+    if (cleanStr.includes(".")) {
+      const parts = cleanStr.replace(/[^\d\s:.,]/g, "").split(/[,\s]+/)
+      if (parts.length >= 2) {
+        const datePart = parts[0] // "2025.01.07"
+        const timePart = parts[1] // "14:30"
+        const [year, month, day] = datePart.split(".").map(Number)
+        const [hour, minute] = timePart.split(":").map(Number)
+        return new Date(year, month - 1, day, hour, minute)
+      }
+    }
 
-    return filteredReportRecords.filter((record) => {
-      const recordDate = new Date(record.timestamp)
-      return recordDate >= startDate && recordDate <= endDate
-    })
+    // Format 3: ISO string or other standard formats
+    const standardDate = new Date(cleanStr)
+    if (!isNaN(standardDate.getTime())) {
+      return new Date(cleanStr)
+    }
+
+    // Format 4: Try to parse as locale string
+    try {
+      return new Date(Date.parse(cleanStr))
+    } catch {
+      console.error("Unable to parse date:", cleanStr)
+      return new Date()
+    }
   }
 
-  // Image viewer functions
-  const openImageViewer = (images: string[], startIndex = 0) => {
-    setCurrentImages(images)
-    setCurrentImageIndex(startIndex)
-    setShowImageViewer(true)
+  // Format detailed time display
+  const formatDetailedTime = (timeString: string): string => {
+    try {
+      const date = parseFlexibleDate(timeString)
+      if (isNaN(date.getTime())) {
+        return timeString // Return original if parsing fails
+      }
+
+      const year = date.getFullYear()
+      const month = date.getMonth() + 1
+      const day = date.getDate()
+      const hour = date.getHours()
+      const minute = date.getMinutes()
+
+      return `${year}/${month.toString().padStart(2, "0")}/${day.toString().padStart(2, "0")}, ${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
+    } catch (error) {
+      console.error("Error formatting time:", error)
+      return timeString // Return original string on error
+    }
   }
 
-  const closeImageViewer = () => {
-    setShowImageViewer(false)
-    setCurrentImages([])
-    setCurrentImageIndex(0)
-  }
+  // Updated camera functionality functions
+  const startCamera = async (facingMode: "user" | "environment" = cameraFacing) => {
+    try {
+      // Stop existing stream if any
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+      }
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % currentImages.length)
-  }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      })
 
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length)
-  }
+      streamRef.current = stream
+      setCameraFacing(facingMode)
+      setShowCamera(true)
 
-  // Handle keyboard navigation for image viewer
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (showImageViewer) {
-        switch (event.key) {
-          case "Escape":
-            closeImageViewer()
-            break
-          case "ArrowLeft":
-            prevImage()
-            break
-          case "ArrowRight":
-            nextImage()
-            break
+      // Wait for the modal to render before setting video source
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
         }
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [showImageViewer, currentImages.length])
-
-  const exportToExcel = () => {
-    try {
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new()
-
-      // Prepare data for Excel
-      const excelData = filteredReportRecords.map((record, index) => ({
-        "№": index + 1,
-        "Машины дугаар": record.carNumber,
-        Засварчин: record.mechanicName || record.driverName || "-",
-        "Машины марк": record.carBrand || record.parkingArea || "-",
-        "Орсон цаг": record.entryTime || "-",
-        "Гарсан цаг": record.exitTime || "-",
-        "Зогссон хугацаа": record.parkingDuration || "-",
-        "Төлбөр (₮)": calculateParkingFeeForReport(record),
-        Зураг: record.images && record.images.length > 0 ? "Байна" : "Байхгүй",
-      }))
-
-      // Create worksheet
-      const ws = XLSX.utils.json_to_sheet(excelData)
-
-      // Set column widths
-      const colWidths = [
-        { wch: 5 }, // №
-        { wch: 15 }, // Машины дугаар
-        { wch: 20 }, // Засварчин
-        { wch: 15 }, // Машины марк
-        { wch: 20 }, // Орсон цаг
-        { wch: 20 }, // Гарсан цаг
-        { wch: 15 }, // Зогссон хугацаа
-        { wch: 12 }, // Төлбөр
-        { wch: 10 }, // Зураг
-      ]
-      ws["!cols"] = colWidths
-
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Зогсоолын тайлан")
-
-      // Generate filename with current date
-      const currentDate = new Date().toISOString().split("T")[0]
-      const filename = `Зогсоолын_тайлан_${currentDate}.xlsx`
-
-      // Create blob and download file (browser-compatible way)
-      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
-      const blob = new Blob([wbout], { type: "application/octet-stream" })
-
-      // Create download link
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-
-      alert("Excel файл амжилттай татагдлаа!")
+      }, 100)
     } catch (error) {
-      console.error("Excel export error:", error)
-      alert("Excel файл татахад алдаа гарлаа")
+      console.error("Camera access error:", error)
+      alert("Камер ашиглахад алдаа гарлаа. Камерын эрхийг олгоно уу.")
     }
   }
 
-  // Export with date range and optional deletion
-  const handleDateRangeExport = async () => {
-    if (!dateRangeStart || !dateRangeEnd) {
-      alert("Эхлэх болон дуусах огноог оруулна уу")
-      return
-    }
-
-    const startDate = new Date(dateRangeStart)
-    const endDate = new Date(dateRangeEnd)
-
-    if (startDate > endDate) {
-      alert("Эхлэх огноо дуусах огнооноос өмнө байх ёстой")
-      return
-    }
-
-    setExportLoading(true)
-
-    try {
-      const recordsToExport = getDateRangeFilteredRecords()
-
-      if (recordsToExport.length === 0) {
-        alert("Тухайн хугацаанд бүртгэл олдсонгүй")
-        setExportLoading(false)
-        return
-      }
-
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new()
-
-      // Prepare data for Excel
-      const excelData = recordsToExport.map((record, index) => ({
-        "№": index + 1,
-        "Машины дугаар": record.carNumber,
-        Засварчин: record.mechanicName || record.driverName || "-",
-        "Машины марк": record.carBrand || record.parkingArea || "-",
-        "Орсон цаг": record.entryTime || "-",
-        "Гарсан цаг": record.exitTime || "-",
-        "Зогссон хугацаа": record.parkingDuration || "-",
-        "Төлбөр (₮)": calculateParkingFeeForReport(record),
-        Зураг: record.images && record.images.length > 0 ? "Байна" : "Байхгүй",
-      }))
-
-      // Create worksheet
-      const ws = XLSX.utils.json_to_sheet(excelData)
-
-      // Set column widths
-      const colWidths = [
-        { wch: 5 }, // №
-        { wch: 15 }, // Машины дугаар
-        { wch: 20 }, // Засварчин
-        { wch: 15 }, // Машины марк
-        { wch: 20 }, // Орсон цаг
-        { wch: 20 }, // Гарсан цаг
-        { wch: 15 }, // Зогссон хугацаа
-        { wch: 12 }, // Төлбөр
-        { wch: 10 }, // Зураг
-      ]
-      ws["!cols"] = colWidths
-
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Зогсоолын тайлан")
-
-      // Generate filename with date range
-      const startDateStr = dateRangeStart.replace(/-/g, ".")
-      const endDateStr = dateRangeEnd.replace(/-/g, ".")
-      const filename = `Зогсоолын_тайлан_${startDateStr}_${endDateStr}.xlsx`
-
-      // Create blob and download file (browser-compatible way)
-      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
-      const blob = new Blob([wbout], { type: "application/octet-stream" })
-
-      // Create download link
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-
-      // Delete records if option is selected
-      if (deleteAfterExport) {
-        const deletePromises = recordsToExport.map((record) => remove(ref(database, `parking_records/${record.id}`)))
-
-        await Promise.all(deletePromises)
-        alert(`Excel файл амжилттай татагдлаа! ${recordsToExport.length} бүртгэл өгөгдлийн сангаас устгагдлаа.`)
-      } else {
-        alert(`Excel файл амжилттай татагдлаа! ${recordsToExport.length} бүртгэл татагдлаа.`)
-      }
-
-      // Reset form
-      setDateRangeStart("")
-      setDateRangeEnd("")
-      setDeleteAfterExport(false)
-      setShowDateRangeDialog(false)
-    } catch (error) {
-      console.error("Date range export error:", error)
-      alert("Excel файл татахад алдаа гарлаа")
-    }
-
-    setExportLoading(false)
+  const switchCamera = async () => {
+    const newFacing = cameraFacing === "environment" ? "user" : "environment"
+    await startCamera(newFacing)
   }
 
-  // Get unique mechanic names for filter
-  const getAvailableMechanicNames = () => {
-    const names = reportRecords.map((record) => record.mechanicName || record.driverName)
-    return [...new Set(names)].filter((name) => name).sort()
+  const captureImage = () => {
+    if (!videoRef.current || !canvasRef.current) return
+
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext("2d")
+
+    if (!ctx) return
+
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+
+    // Draw the current video frame to canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    // Convert canvas to base64 image
+    const imageData = canvas.toDataURL("image/jpeg", 0.8)
+
+    // Add image if less than 2 images
+    if (capturedImages.length < 2) {
+      setCapturedImages((prev) => [...prev, imageData])
+    }
+
+    // Close camera after capture
+    stopCamera()
   }
 
-  // Get unique years for report filter
-  const getReportAvailableYears = () => {
-    const years = reportRecords.map((record) => new Date(record.timestamp).getFullYear())
-    return [...new Set(years)].sort((a, b) => b - a)
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    setShowCamera(false)
   }
 
-  // Filter report records
-  useEffect(() => {
-    let filtered = [...reportRecords]
-
-    if (reportFilterYear) {
-      filtered = filtered.filter((record) => {
-        const recordDate = new Date(record.timestamp)
-        return recordDate.getFullYear().toString() === reportFilterYear
-      })
-    }
-
-    if (reportFilterMonth) {
-      filtered = filtered.filter((record) => {
-        const recordDate = new Date(record.timestamp)
-        return (recordDate.getMonth() + 1).toString().padStart(2, "0") === reportFilterMonth
-      })
-    }
-
-    if (reportFilterCarNumber) {
-      filtered = filtered.filter((record) =>
-        record.carNumber.toLowerCase().includes(reportFilterCarNumber.toLowerCase()),
-      )
-    }
-
-    if (reportFilterMechanic) {
-      filtered = filtered.filter((record) => {
-        const mechanicName = record.mechanicName || record.driverName || ""
-        return mechanicName.toLowerCase().includes(reportFilterMechanic.toLowerCase())
-      })
-    }
-
-    setFilteredReportRecords(filtered)
-  }, [reportRecords, reportFilterYear, reportFilterMonth, reportFilterCarNumber, reportFilterMechanic])
-
-  const handleRegisterDriver = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!newDriver.email || !newDriver.password || !newDriver.name) {
-      alert("Бүх талбарыг бөглөнө үү")
-      return
-    }
-
-    if (newDriver.password.length < 6) {
-      alert("Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой")
-      return
-    }
-
-    setRegistrationLoading(true)
-
-    try {
-      // Firebase Auth дээр хэрэглэгч үүсгэх
-      const userCredential = await createUserWithEmailAndPassword(auth, newDriver.email, newDriver.password)
-      const newUserId = userCredential.user.uid
-
-      // Database дээр хэрэглэгчийн мэдээлэл хадгалах
-      const userData: UserProfile = {
-        name: newDriver.name.trim(),
-        phone: newDriver.phone.trim(),
-        email: newDriver.email,
-        role: selectedRole === "employee" ? "employee" : selectedRole, // employee role нэмэх
-        active: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-
-      await set(ref(database, `users/${newUserId}`), userData)
-
-      alert(
-        `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Жолооч" : "Ажилчин"} амжилттай бүртгэгдлээ`,
-      )
-
-      // Form цэвэрлэх
-      setNewDriver({
-        email: "",
-        password: "",
-        name: "",
-        phone: "",
-        role: "driver",
-        createdAt: "",
-        createdBy: "",
-        active: true,
-      })
-    } catch (error: any) {
-      console.error("Driver registration error:", error)
-      if (error.code === "auth/email-already-in-use") {
-        alert("Энэ и-мэйл хаяг аль хэдийн ашиглагдаж байна")
-      } else if (error.code === "auth/invalid-email") {
-        alert("И-мэйл хаяг буруу байна")
-      } else {
-        alert("Жолооч бүртгэхэд алдаа гарлаа")
-      }
-    }
-
-    setRegistrationLoading(false)
+  const removeImage = (index: number) => {
+    setCapturedImages((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleSaveDriverEdit = async () => {
-    if (!editingDriver || !editDriverData.name.trim() || !editDriverData.email.trim()) {
-      alert("Нэр болон и-мэйл хаягийг бөглөнө үү")
-      return
-    }
-
-    setEditLoading(true)
-
-    try {
-      // Update user data in database
-      const updateData: any = {
-        name: editDriverData.name.trim(),
-        phone: editDriverData.phone.trim(),
-        email: editDriverData.email.trim(),
-        updatedAt: new Date().toISOString(),
-      }
-
-      await update(ref(database, `users/${editingDriver.id}`), updateData)
-
-      // If password is provided, update it
-      if (editDriverData.newPassword && editDriverData.newPassword.length >= 6) {
-        // Note: In a real app, you'd need to handle password updates differently
-        // This is a simplified approach
-        alert("Нууц үг шинэчлэх функц нэмэгдэх ёстой")
-      }
-
-      const userType =
-        editingDriver.role === "manager" ? "Менежерийн" : editingDriver.role === "driver" ? "Жолоочийн" : "Ажилчны"
-      alert(`${userType} мэдээлэл амжилттай шинэчлэгдлээ`)
-      setShowEditDialog(false)
-      setEditingDriver(null)
-    } catch (error) {
-      console.error("Error updating user:", error)
-      const userType =
-        editingDriver?.role === "manager" ? "менежерийн" : editingDriver?.role === "driver" ? "жолоочийн" : "ажилчны"
-      alert(`${userType} мэдээлэл шинэчлэхэд алдаа гарлаа`)
-    }
-
-    setEditLoading(false)
-  }
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "profile" | "logo" | "background") => {
+  const handleImageUploadFromFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
+    if (file && capturedImages.length < 2) {
       // Check file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
         alert("Зургийн хэмжээ 5MB-аас бага байх ёстой")
@@ -1124,27 +670,166 @@ export default function ManagerPage() {
       const reader = new FileReader()
       reader.onload = (event) => {
         const base64String = event.target?.result as string
-
-        if (type === "profile") {
-          setProfileData({ ...profileData, profileImage: base64String })
-        } else if (type === "logo") {
-          setSiteConfig({ ...siteConfig, siteLogo: base64String })
-        } else if (type === "background") {
-          setSiteConfig({ ...siteConfig, siteBackground: base64String })
-        }
+        setCapturedImages((prev) => [...prev, base64String])
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const handleSaveProfile = async () => {
-    if (!profileData.name.trim()) {
-      alert("Нэрээ оруулна уу")
+  // Update handleEntry function to include images
+  const handleEntry = async () => {
+    if (!carNumber.trim()) {
+      alert("Машины дугаарыг оруулна уу")
       return
     }
 
-    if (!profileData.email.trim()) {
-      alert("И-мэйл хаягаа оруулна уу")
+    if (!parkingArea.trim()) {
+      alert("Машины маркийг оруулна уу")
+      return
+    }
+
+    if (selectedEmployees.length === 0) {
+      alert("Ажилчин сонгоно уу")
+      return
+    }
+
+    setActionLoading(true)
+
+    const currentTime = new Date()
+    const record: Omit<ParkingRecord, "id"> = {
+      carNumber: carNumber.trim().toUpperCase(),
+      driverName: selectedEmployees.join(", "),
+      parkingArea: parkingArea.trim().toUpperCase(),
+      entryTime: currentTime.toLocaleString("mn-MN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      amount: 0,
+      type: "entry",
+      timestamp: currentTime.toISOString(),
+      images: capturedImages, // Add images to the record
+    }
+
+    try {
+      await push(ref(database, "parking_records"), record)
+      alert("Орсон бүртгэл амжилттай хийгдлээ")
+
+      // Refresh records after adding new entry
+      setTimeout(() => {
+        loadRecentRecords()
+        loadAllRecords()
+        loadActiveParkingRecords()
+      }, 500)
+
+      // Clear form after successful entry
+      setCarNumber("")
+      setParkingArea("")
+      setSelectedEmployees([])
+      setCapturedImages([]) // Clear captured images
+    } catch (error) {
+      console.error("Entry record error:", error)
+      alert("Бүртгэл хийхэд алдаа гарлаа")
+    }
+    setActionLoading(false)
+  }
+
+  // Function to calculate parking fee
+  const calculateParkingFee = (entryTime: string, exitTime: string): number => {
+    const duration = calculateParkingDuration(entryTime, exitTime)
+    return duration * (pricingConfig.pricePerMinute || 100) // pricePerMinute is now price per hour
+  }
+
+  // Handle exit from records tab - show custom confirmation
+  const handleExitFromRecord = (recordId: string, record: ParkingRecord) => {
+    const currentTime = new Date()
+    const exitTimeFormatted = currentTime.toLocaleString("mn-MN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+
+    // Calculate parking duration and fee
+    const calculatedFee = calculateParkingFee(record.entryTime || "", exitTimeFormatted)
+    const parkingDuration = calculateParkingDuration(record.entryTime || "", exitTimeFormatted)
+
+    // Set exit details and show modal
+    setExitingRecord({ ...record, id: recordId })
+    setExitDetails({
+      exitTime: exitTimeFormatted,
+      duration: parkingDuration,
+      fee: calculatedFee,
+    })
+    setShowExitModal(true)
+  }
+
+  // Confirm exit action
+  const confirmExit = async () => {
+    if (!exitingRecord) return
+
+    try {
+      const currentTime = new Date()
+
+      // Update existing entry record with exit information, duration, and fee
+      await update(ref(database, `parking_records/${exitingRecord.id}`), {
+        exitTime: exitDetails.exitTime,
+        amount: exitDetails.fee,
+        parkingDuration: exitDetails.duration,
+        type: "completed",
+        updatedAt: currentTime.toISOString(),
+      })
+
+      // Close modal and reset states
+      setShowExitModal(false)
+      setExitingRecord(null)
+      setExitDetails({ exitTime: "", duration: 0, fee: 0 })
+
+      // Refresh records after updating
+      setTimeout(() => {
+        loadRecentRecords()
+        loadAllRecords()
+        loadActiveParkingRecords()
+      }, 500)
+    } catch (error) {
+      console.error("Exit record error:", error)
+      alert("Гарсан бүртгэл хийхэд алдаа гарлаа")
+    }
+  }
+
+  // Cancel exit action
+  const cancelExit = () => {
+    setShowExitModal(false)
+    setExitingRecord(null)
+    setExitDetails({ exitTime: "", duration: 0, fee: 0 })
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Зургийн хэмжээ шалгах (5MB хүртэл)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Зургийн хэмжээ 5MB-аас бага байх ёстой")
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const base64String = event.target?.result as string
+        setProfile({ ...profile, profileImage: base64String })
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // Save profile function for employees
+  const saveEmployeeProfile = async () => {
+    const userId = auth.currentUser?.uid
+    if (!userId || !profile.name.trim()) {
+      alert("Нэрээ оруулна уу")
       return
     }
 
@@ -1162,86 +847,231 @@ export default function ManagerPage() {
 
     setProfileLoading(true)
     try {
-      const userId = auth.currentUser?.uid
-      if (userId) {
-        await update(ref(database, `users/${userId}`), {
-          name: profileData.name.trim(),
-          phone: profileData.phone.trim(),
-          email: profileData.email.trim(),
-          profileImage: profileData.profileImage,
+      // Update user profile in users database
+      await update(ref(database, `users/${userId}`), {
+        name: profile.name.trim(),
+        phone: profile.phone.trim(),
+        email: profile.email.trim(),
+        profileImage: profile.profileImage || "",
+        updatedAt: new Date().toISOString(),
+      })
+
+      // Update employee profile in employees database if exists
+      if (employeeProfile && employeeProfile.id) {
+        await update(ref(database, `employees/${employeeProfile.id}`), {
+          name: profile.name.trim(),
+          phone: profile.phone.trim(),
           updatedAt: new Date().toISOString(),
         })
-
-        // Handle password update (simplified - in real app would need proper authentication)
-        if (passwordData.newPassword) {
-          // Note: Password update would require re-authentication in production
-          alert("Профайл шинэчлэгдлээ. Нууц үг өөрчлөх функц нэмэгдэх ёстой.")
-        } else {
-          alert("Профайл амжилттай шинэчлэгдлээ")
-        }
-
-        setShowProfileDialog(false)
-        // Reset password fields
-        setPasswordData({
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        })
       }
+
+      // Update password if provided
+      if (passwordData.newPassword && auth.currentUser) {
+        try {
+          await updatePassword(auth.currentUser, passwordData.newPassword)
+          alert("Профайл болон нууц үг амжилттай шинэчлэгдлээ")
+        } catch (error: any) {
+          if (error.code === "auth/requires-recent-login") {
+            alert("Профайл шинэчлэгдлээ. Нууц үг солихын тулд дахин нэвтэрнэ үү.")
+          } else {
+            alert("Профайл шинэчлэгдлээ. Нууц үг солихад алдаа гарлаа.")
+          }
+        }
+      } else {
+        alert("Профайл амжилттай шинэчлэгдлээ")
+      }
+
+      setEditing(false)
+      // Reset password fields
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      })
+    } catch (error) {
+      console.error("Error updating employee profile:", error)
+      alert("Профайл шинэчлэхэд алдаа гарлаа")
+    }
+    setProfileLoading(false)
+  }
+
+  const saveProfile = async () => {
+    if (profile.role === "employee") {
+      await saveEmployeeProfile()
+      return
+    }
+
+    const userId = auth.currentUser?.uid
+    if (!userId || !profile.name.trim()) {
+      alert("Нэрээ оруулна уу")
+      return
+    }
+
+    setProfileLoading(true)
+    try {
+      await set(ref(database, `users/${userId}`), {
+        name: profile.name.trim(),
+        phone: profile.phone.trim(),
+        email: auth.currentUser?.email,
+        role: profile.role || "driver",
+        profileImage: profile.profileImage || "",
+        active: profile.active !== false,
+        updatedAt: new Date().toISOString(),
+      })
+      setEditing(false)
+      alert("Профайл шинэчлэгдлээ")
     } catch (error) {
       alert("Профайл шинэчлэхэд алдаа гарлаа")
     }
     setProfileLoading(false)
   }
 
-  const handleSaveSiteConfig = async () => {
-    if (!siteConfig.siteName.trim()) {
-      alert("Сайтын нэрийг оруулна уу")
-      return
-    }
-
-    setSiteLoading(true)
-    try {
-      await set(ref(database, "siteConfig"), {
-        siteName: siteConfig.siteName.trim(),
-        siteLogo: siteConfig.siteLogo,
-        siteBackground: siteConfig.siteBackground,
-        updatedAt: new Date().toISOString(),
-        updatedBy: userProfile?.name || "Manager",
-      })
-      alert("Сайтын тохиргоо амжилттай хадгалагдлаа")
-      setShowSiteDialog(false)
-    } catch (error) {
-      alert("Сайтын тохиргоо хадгалахад алдаа гарлаа")
-    }
-    setSiteLoading(false)
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true)
   }
 
-  const handleSavePricingConfig = async () => {
-    if (pricingConfig.pricePerMinute < 0) {
-      alert("Үнэ сөрөг тоо байж болохгүй")
-      return
-    }
-
-    setPricingLoading(true)
-    try {
-      await set(ref(database, "pricingConfig"), {
-        pricePerMinute: Number(pricingConfig.pricePerMinute),
-        updatedAt: new Date().toISOString(),
-        updatedBy: userProfile?.name || "Manager",
-      })
-      alert("Үнийн тохиргоо амжилттай хадгалагдлаа")
-      setShowPricingDialog(false)
-    } catch (error) {
-      alert("Үнийн тохиргоо хадгалахад алдаа гарлаа")
-    }
-    setPricingLoading(false)
+  const confirmLogout = async () => {
+    setShowLogoutModal(false)
+    await signOut(auth)
   }
 
-  const handleLogout = async () => {
-    if (confirm("Та гарахдаа итгэлтэй байна уу?")) {
-      await signOut(auth)
+  const cancelLogout = () => {
+    setShowLogoutModal(false)
+  }
+
+  // Get unique years from records for dropdown
+  const getAvailableYears = () => {
+    const years = allRecords.map((record) => new Date(record.timestamp).getFullYear())
+    return [...new Set(years)].sort((a, b) => b - a)
+  }
+
+  // Add useEffect to load records when user changes
+  useEffect(() => {
+    if (user && !showSplash && user.uid && profile.name && !isManager) {
+      console.log("User authenticated, loading data...")
+      // Add a delay to ensure Firebase auth is fully initialized
+      const timeoutId = setTimeout(() => {
+        console.log("Loading data from useEffect...")
+        loadRecentRecords()
+        loadAllRecords()
+        loadActiveParkingRecords()
+      }, 1000)
+
+      return () => clearTimeout(timeoutId)
+    } else {
+      console.log("User not ready:", { user: !!user, showSplash, uid: user?.uid, profileName: profile.name, isManager })
     }
+  }, [user, profile.name, showSplash, isManager])
+
+  // Close employee dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest(".employee-dropdown-container")) {
+        setShowEmployeeDropdown(false)
+      }
+    }
+
+    if (showEmployeeDropdown) {
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [showEmployeeDropdown])
+
+  // Filter active parking records based on search
+  useEffect(() => {
+    let filtered = [...activeParkingRecords]
+
+    if (activeRecordsSearch) {
+      filtered = filtered.filter((record) => record.carNumber.toLowerCase().includes(activeRecordsSearch.toLowerCase()))
+    }
+
+    setFilteredActiveParkingRecords(filtered)
+  }, [activeParkingRecords, activeRecordsSearch])
+
+  // Cleanup camera stream when component unmounts
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+      }
+    }
+  }, [])
+
+  // Splash Screen
+  if (showSplash) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex flex-col items-center justify-center relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-blue-400 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-32 right-16 w-24 h-24 bg-cyan-400 rounded-full blur-2xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-emerald-400 rounded-full blur-xl animate-pulse delay-500"></div>
+        </div>
+
+        {/* Main Content */}
+        <div className="relative z-10 flex flex-col items-center space-y-8">
+          {/* Logo */}
+          <div className="relative">
+            <div className="w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 flex items-center justify-center transform hover:scale-105 transition-transform duration-300">
+              <img src="/images/logo.png" alt="Logo" className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24" />
+            </div>
+            {/* Glow effect */}
+            <div className="absolute inset-0 w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 bg-blue-400 rounded-2xl md:rounded-3xl blur-xl opacity-30 animate-pulse"></div>
+          </div>
+
+          {/* App Name */}
+          <div className="text-center space-y-2 md:space-y-4">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold">
+              <span className="text-cyan-400">PARKY</span>
+              <span className="text-white">SPOT</span>
+            </h1>
+          </div>
+
+          {/* Loading Progress */}
+          <div className="w-64 md:w-80 lg:w-96 space-y-4">
+            {/* Progress Bar */}
+            <div className="relative">
+              <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
+                <div
+                  className="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-100 ease-out relative"
+                  style={{ width: `${loadingProgress}%` }}
+                >
+                  {/* Shimmer effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                </div>
+              </div>
+              {/* Glow effect for progress bar */}
+              <div
+                className="absolute top-0 h-2 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full blur-sm opacity-50 transition-all duration-100"
+                style={{ width: `${loadingProgress}%` }}
+              ></div>
+            </div>
+
+            {/* Progress Text */}
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-blue-200">Ачааллаж байна...</span>
+              <span className="text-white font-mono font-bold">{loadingProgress}%</span>
+            </div>
+          </div>
+
+          {/* Loading Dots */}
+          <div className="flex space-x-2">
+            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-100"></div>
+            <div className="w-2 h-2 bg-white rounded-full animate-bounce delay-200"></div>
+          </div>
+        </div>
+
+        {/* Bottom decoration */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+          <div className="flex items-center space-x-2 text-blue-300 text-xs">
+            <div className="w-1 h-1 bg-blue-300 rounded-full animate-ping"></div>
+            <span>Түр хүлээн үү...</span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -1255,1485 +1085,1443 @@ export default function ManagerPage() {
     )
   }
 
-  if (!user || !userProfile || userProfile.role !== "manager") {
+  // Don't render main interface if user is manager (they will be redirected)
+  if (isManager) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/50">
-        <Card className="w-full max-w-md mx-4">
-          <CardHeader className="text-center">
-            <Shield className="w-12 h-12 mx-auto text-destructive mb-4" />
-            <CardTitle className="text-2xl">Хандах эрхгүй</CardTitle>
-            <CardDescription>Та энэ хуудсанд хандах эрхгүй байна. Зөвхөн менежер хандах боломжтой.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => (window.location.href = "/")} className="w-full">
-              Буцах
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Менежерийн хуудас руу шилжиж байна...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If no user, the useEffect will redirect to login page
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Нэвтрэх хуудас руу шилжиж байна...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            {/* Site Logo from Database */}
-            {siteConfig.siteLogo ? (
-              <img src={siteConfig.siteLogo || "/placeholder.svg"} alt="Site Logo" className="w-8 h-8 object-contain" />
-            ) : (
-              <Shield className="w-8 h-8 text-primary" />
-            )}
-            <div>
-              {/* Site Name from Database */}
-              <h1 className="text-2xl font-bold">{siteConfig.siteName || "Менежерийн систем"}</h1>
+    <div className="min-h-screen relative">
+      {/* Background Image */}
+      <div
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('/images/background.webp')",
+        }}
+      >
+        <div className="absolute inset-0 bg-black/70"></div>
+      </div>
+
+      {/* Header - Fixed at top, doesn't move when scrolling */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 backdrop-blur-sm bg-white/5">
+        <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3 md:space-x-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-xl flex items-center justify-center">
+              {siteConfig.siteLogo ? (
+                <img
+                  src={siteConfig.siteLogo || "/placeholder.svg"}
+                  alt="Logo"
+                  className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 object-contain"
+                />
+              ) : (
+                <img src="/images/logo.png" alt="Logo" className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10" />
+              )}
             </div>
           </div>
 
-          {/* Right side header content remains the same */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 md:space-x-6">
+            {/* Manager холбоос - зөвхөн manager-д харагдах */}
+            {profile.role === "manager" && (
+              <button
+                onClick={() => (window.location.href = "/manager")}
+                className="px-4 py-2 md:px-6 md:py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white text-sm md:text-base hover:bg-white/20 transition-colors"
+              >
+                Менежер
+              </button>
+            )}
+
             {/* Greeting text */}
-            <span className="text-muted-foreground text-sm">Сайн байна уу!</span>
+            <span className="text-white/70 text-sm md:text-base">Сайн байна уу!</span>
 
             {/* User name */}
-            <span className="text-foreground font-medium">{userProfile.name}</span>
+            <span className="text-white text-sm md:text-base font-medium">
+              {profile.name || user.email?.split("@")[0]}
+            </span>
 
             {/* Profile image */}
-            <Avatar className="w-8 h-8">
-              {userProfile.profileImage ? (
-                <AvatarImage src={userProfile.profileImage || "/placeholder.svg"} alt="Profile" />
+            <div className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center overflow-hidden">
+              {profile.profileImage ? (
+                <img
+                  src={profile.profileImage || "/placeholder.svg"}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <AvatarFallback>{userProfile.name?.charAt(0).toUpperCase() || "M"}</AvatarFallback>
+                <span className="text-white text-sm md:text-base font-medium">
+                  {user.email?.charAt(0).toUpperCase()}
+                </span>
               )}
-            </Avatar>
-
-            {/* Settings dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="p-2">
-                  <Settings className="w-5 h-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
-                  <UserIcon className="w-4 h-4 mr-2" />
-                  Профайл
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowSiteDialog(true)}>
-                  <Globe className="w-4 h-4 mr-2" />
-                  Сайт бүртгэл
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowPricingDialog(true)}>
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                    />
-                  </svg>
-                  Үнэ
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Гарах
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="dashboard">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Хяналтын самбар
-            </TabsTrigger>
-            <TabsTrigger value="employees">
-              <Users className="w-4 h-4 mr-2" />
-              Ажилчид
-            </TabsTrigger>
-            <TabsTrigger value="register">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Бүртгэх
-            </TabsTrigger>
-            <TabsTrigger value="report">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              Тайлан
-            </TabsTrigger>
-          </TabsList>
+      {/* Main Content Area with Sidebar Layout */}
+      <div className="lg:flex pt-16 md:pt-20 lg:pt-24">
+        {/* Left Sidebar - Desktop Only */}
+        <div className="hidden lg:block fixed left-0 top-16 md:top-20 lg:top-24 w-20 xl:w-24 h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] lg:h-[calc(100vh-6rem)] z-40">
+          <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-r-3xl shadow-lg h-full flex flex-col justify-center">
+            <div className="flex flex-col justify-center space-y-8 items-center py-8">
+              <button
+                onClick={() => setActiveTab("home")}
+                className={`flex flex-col items-center p-4 rounded-2xl transition-colors ${
+                  activeTab === "home" ? "bg-emerald-400" : ""
+                }`}
+              >
+                <Home className={`w-8 h-8 ${activeTab === "home" ? "text-black" : "text-white/70"}`} />
+                <span className={`text-xs xl:text-sm mt-2 ${activeTab === "home" ? "text-black" : "text-white/70"}`}>
+                  Нүүр
+                </span>
+              </button>
+              {/* Hide records tab for employees */}
+              {profile.role !== "employee" && (
+                <button
+                  onClick={() => setActiveTab("records")}
+                  className={`flex flex-col items-center p-4 rounded-2xl transition-colors ${
+                    activeTab === "records" ? "bg-emerald-400" : ""
+                  }`}
+                >
+                  <Car className={`w-8 h-8 ${activeTab === "records" ? "text-black" : "text-white/70"}`} />
+                  <span
+                    className={`text-xs xl:text-sm mt-2 ${activeTab === "records" ? "text-black" : "text-white/70"}`}
+                  >
+                    Бүртгэл
+                  </span>
+                </button>
+              )}
+              <button
+                onClick={() => setActiveTab("history")}
+                className={`flex flex-col items-center p-4 rounded-2xl transition-colors ${
+                  activeTab === "history" ? "bg-emerald-400" : ""
+                }`}
+              >
+                <History className={`w-8 h-8 ${activeTab === "history" ? "text-black" : "text-white/70"}`} />
+                <span className={`text-xs xl:text-sm mt-2 ${activeTab === "history" ? "text-black" : "text-white/70"}`}>
+                  Түүх
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab("profile")}
+                className={`flex flex-col items-center p-4 rounded-2xl transition-colors ${
+                  activeTab === "profile" ? "bg-emerald-400" : ""
+                }`}
+              >
+                <User className={`w-8 h-8 ${activeTab === "profile" ? "text-black" : "text-white/70"}`} />
+                <span className={`text-xs xl:text-sm mt-2 ${activeTab === "profile" ? "text-black" : "text-white/70"}`}>
+                  Профайл
+                </span>
+              </button>
+              <button
+                onClick={handleLogoutClick}
+                className="flex flex-col items-center p-4 rounded-2xl transition-colors hover:bg-red-500/20"
+              >
+                <LogOut className="w-8 h-8 text-white/70 hover:text-red-400" />
+                <span className="text-xs xl:text-sm mt-2 text-white/70">Гарах</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
-          <TabsContent value="dashboard" className="space-y-8">
-            <div className="grid gap-8">
-              {/* Advanced Header Section */}
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 p-8">
-                <div className="absolute inset-0 opacity-20">
-                  <div
-                    className="w-full h-full"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%239C92AC' fillOpacity='0.05'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                    }}
-                  />
-                </div>
-                <div className="relative z-10 flex items-center justify-between">
-                  <div>
-                    <h1 className="text-4xl font-bold text-white mb-2">Хяналтын самбар</h1>
-                    <p className="text-purple-200 text-lg">
-                      {customDateRange.useCustomRange
-                        ? `${customDateRange.startDate} - ${customDateRange.endDate} хугацааны дүн`
-                        : "Бизнесийн ерөнхий үзүүлэлтүүд"}
-                    </p>
+        {/* Main Content */}
+        <main className="relative z-10 container mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8 lg:py-10 pb-20 md:pb-24 lg:pb-10 lg:ml-20 xl:ml-24">
+          {activeTab === "home" && (
+            <div className="space-y-6 md:space-y-8 lg:space-y-10 max-w-4xl mx-auto">
+              {/* Show entry form only for non-employee users */}
+              {profile.role !== "employee" && (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-10">
+                  <div className="mb-6 md:mb-8">
+                    <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-2">Машины бүртгэл</h2>
+                    <p className="text-white/70 text-sm md:text-base">Машины орсон бүртгэл хийх</p>
                   </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="p-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20">
-                      <div className="flex items-center space-x-2 text-white">
-                        <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                        <span className="text-sm font-medium">Шинэчлэгдсэн</span>
+                  <div className="space-y-4 md:space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm md:text-base">Машины дугаар</label>
+                        <input
+                          value={carNumber}
+                          onChange={(e) => setCarNumber(e.target.value.toUpperCase())}
+                          placeholder="1234 УНМ"
+                          className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm md:text-base"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm md:text-base">Машины марк</label>
+                        <input
+                          value={parkingArea}
+                          onChange={(e) => setParkingArea(e.target.value.toUpperCase())}
+                          placeholder="Жишээ: Приус, Камри, Соната"
+                          className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm md:text-base"
+                        />
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowDateRangePicker(!showDateRangePicker)}
-                      className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm px-6 py-3"
-                    >
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Хугацаа сонгох
-                    </Button>
-                  </div>
-                </div>
 
-                {/* Enhanced Date Range Picker */}
-                {showDateRangePicker && (
-                  <div className="mt-8 p-6 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl">
-                    <h3 className="text-white font-semibold mb-4">Тайлангийн хугацаа</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="employee-dropdown-container">
                       <div className="space-y-2">
-                        <Label className="text-white/80">Эхлэх огноо</Label>
-                        <Input
-                          type="date"
-                          value={customDateRange.startDate}
-                          onChange={(e) => setCustomDateRange({ ...customDateRange, startDate: e.target.value })}
-                          className="bg-white/10 border-white/20 text-white focus:border-purple-400"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-white/80">Дуусах огноо</Label>
-                        <Input
-                          type="date"
-                          value={customDateRange.endDate}
-                          onChange={(e) => setCustomDateRange({ ...customDateRange, endDate: e.target.value })}
-                          className="bg-white/10 border-white/20 text-white focus:border-purple-400"
-                        />
-                      </div>
-                      <div className="flex items-end space-x-2">
-                        <Button
-                          onClick={applyCustomDateRange}
-                          className="bg-purple-600 hover:bg-purple-700 text-white flex-1"
-                        >
-                          Хайх
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowDateRangePicker(false)}
-                          className="border-white/20 text-white hover:bg-white/10"
-                        >
-                          Хаах
-                        </Button>
-                        {customDateRange.useCustomRange && (
-                          <Button
-                            variant="outline"
-                            onClick={resetToDefaultRange}
-                            className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                        <label className="text-white/70 text-sm md:text-base">Ажилчин</label>
+                        <div className="relative">
+                          <div
+                            onClick={() => setShowEmployeeDropdown(!showEmployeeDropdown)}
+                            className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white cursor-pointer flex items-center justify-between text-sm md:text-base min-h-[48px] md:min-h-[56px]"
                           >
-                            Анхдагш
-                          </Button>
+                            <span className={selectedEmployees.length > 0 ? "text-white" : "text-white/50"}>
+                              {selectedEmployees.length > 0 ? selectedEmployees.join(", ") : "Ажилчин сонгоно уу"}
+                            </span>
+                            <svg
+                              className={`w-5 h-5 transition-transform ${showEmployeeDropdown ? "rotate-0" : "rotate-180"}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+
+                          {showEmployeeDropdown && (
+                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl max-h-48 overflow-y-auto z-50">
+                              {employees.length === 0 ? (
+                                <div className="p-4 text-white/50 text-center text-sm">Ажилчин бүртгэлгүй байна</div>
+                              ) : (
+                                <div className="p-2 max-h-44 overflow-y-auto">
+                                  {employees.map((employee) => (
+                                    <div
+                                      key={employee.id}
+                                      onClick={() => {
+                                        const isSelected = selectedEmployees.includes(employee.name)
+                                        if (isSelected) {
+                                          setSelectedEmployees(
+                                            selectedEmployees.filter((name) => name !== employee.name),
+                                          )
+                                        } else {
+                                          setSelectedEmployees([...selectedEmployees, employee.name])
+                                        }
+                                      }}
+                                      className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                                        selectedEmployees.includes(employee.name)
+                                          ? "bg-emerald-400/20 text-emerald-400"
+                                          : "hover:bg-white/10 text-white"
+                                      }`}
+                                    >
+                                      <div
+                                        className={`w-4 h-4 border-2 rounded flex items-center justify-center ${
+                                          selectedEmployees.includes(employee.name)
+                                            ? "border-emerald-400 bg-emerald-400"
+                                            : "border-white/30"
+                                        }`}
+                                      >
+                                        {selectedEmployees.includes(employee.name) && (
+                                          <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20">
+                                            <path
+                                              fillRule="evenodd"
+                                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                              clipRule="evenodd"
+                                            />
+                                          </svg>
+                                        )}
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="font-medium">{employee.name}</p>
+                                        <div className="flex items-center space-x-2 text-xs opacity-70">
+                                          {employee.position && <span>{employee.position}</span>}
+                                          {employee.phone && (
+                                            <>
+                                              {employee.position && <span>•</span>}
+                                              <span>{employee.phone}</span>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {selectedEmployees.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {selectedEmployees.map((employeeName) => {
+                              const employee = employees.find((emp) => emp.name === employeeName)
+                              return (
+                                <span
+                                  key={employeeName}
+                                  className="inline-flex items-center px-3 py-1 bg-emerald-400/20 text-emerald-400 border border-emerald-400/30 rounded-lg text-sm"
+                                >
+                                  <div className="flex flex-col">
+                                    <span>{employeeName}</span>
+                                    {employee?.phone && <span className="text-xs opacity-70">{employee.phone}</span>}
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setSelectedEmployees(selectedEmployees.filter((name) => name !== employeeName))
+                                    }}
+                                    className="ml-2 hover:text-emerald-300"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                      />
+                                    </svg>
+                                  </button>
+                                </span>
+                              )
+                            })}
+                          </div>
                         )}
                       </div>
                     </div>
+
+                    <div className="space-y-4 md:space-y-6">
+                      {/* Image Capture Section */}
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm md:text-base">Зураг</label>
+
+                        {/* Image Controls */}
+                        <div className="flex flex-wrap gap-3">
+                          {capturedImages.length < 2 && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={startCamera}
+                                className="flex items-center px-4 py-2 bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
+                              >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                                  />
+                                </svg>
+                                Камер
+                              </button>
+
+                              <label className="flex items-center px-4 py-2 bg-emerald-400/20 border border-emerald-400/30 text-emerald-400 rounded-lg hover:bg-emerald-400/30 transition-colors text-sm cursor-pointer">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                Файл сонгох
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleImageUploadFromFile}
+                                  className="hidden"
+                                />
+                              </label>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Image Preview */}
+                        {capturedImages.length > 0 && (
+                          <div className="grid grid-cols-2 gap-3 mt-4">
+                            {capturedImages.map((image, index) => (
+                              <div key={index} className="relative group">
+                                <img
+                                  src={image || "/placeholder.svg"}
+                                  alt={`Зураг ${index + 1}`}
+                                  className="w-full h-32 object-cover rounded-lg border border-white/20"
+                                />
+                                <button
+                                  onClick={() => removeImage(index)}
+                                  className="absolute top-2 right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M6 18L18 6M6 6l12 12"
+                                    />
+                                  </svg>
+                                </button>
+                                <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs rounded">
+                                  {index + 1}/2
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {capturedImages.length >= 2 && (
+                          <p className="text-yellow-400 text-xs">Хамгийн ихдээ 2 зураг оруулах боломжтой</p>
+                        )}
+                      </div>
+
+                      {/* Submit Button */}
+                      <div className="flex flex-col pt-4">
+                        <button
+                          onClick={handleEntry}
+                          disabled={actionLoading}
+                          className="w-full py-3 md:py-4 font-semibold rounded-xl md:rounded-2xl transition-colors disabled:opacity-50 text-sm md:text-base bg-emerald-400 hover:bg-emerald-500 text-black"
+                        >
+                          {actionLoading ? "Бүртгэж байна..." : "Орсон"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Active Records Section for Employees */}
+              {profile.role === "employee" && (
+                <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
+                  <div className="mb-4">
+                    <h2 className="text-xl font-semibold text-white">Миний зогсож байгаа машинууд</h2>
+                    <p className="text-white/70 text-sm">Таны нэр дээр бүртгэгдсэн зогсож байгаа машинууд</p>
+                  </div>
+
+                  <div className="mb-4 text-white/70 text-sm">
+                    Нийт {filteredActiveParkingRecords.length} машин зогсож байна
+                  </div>
+
+                  {filteredActiveParkingRecords.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
+                        <Car className="w-8 h-8 text-white/50" />
+                      </div>
+                      <p className="text-white/50 text-lg mb-2">Зогсож байгаа машин байхгүй</p>
+                      <p className="text-white/30 text-sm">Таны нэр дээр зогсож байгаа машин байхгүй байна</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredActiveParkingRecords.map((record) => {
+                        const currentFee = calculateCurrentParkingFee(record.entryTime || "")
+                        const duration = calculateParkingDuration(record.entryTime || "")
+
+                        return (
+                          <div
+                            key={record.id}
+                            className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-2 flex-1">
+                                <div className="flex items-center space-x-2">
+                                  <span className="px-2 py-1 rounded-lg text-xs font-medium bg-emerald-400/20 text-emerald-400 border border-emerald-400/30">
+                                    Зогсож байна
+                                  </span>
+                                  <span className="text-white/50 text-xs">
+                                    {formatDetailedTime(record.entryTime || "")}
+                                  </span>
+                                </div>
+                                <p className="text-white text-sm">
+                                  <span className="text-white/70">Машин:</span> {record.carNumber}
+                                </p>
+                                <p className="text-white text-sm">
+                                  <span className="text-white/70">Машины марк:</span> {record.parkingArea}
+                                </p>
+                                <p className="text-white/50 text-xs">
+                                  Зогссон хугацаа: {duration === 0 ? "1 цагаас бага" : `${duration} цаг`}
+                                </p>
+
+                                {/* Images Section */}
+                                {record.images && record.images.length > 0 && (
+                                  <div className="mt-3">
+                                    <p className="text-white/70 text-xs mb-2">Зургууд:</p>
+                                    <div className="flex space-x-2">
+                                      {record.images.map((image, index) => (
+                                        <div key={index} className="relative group">
+                                          <img
+                                            src={image || "/placeholder.svg"}
+                                            alt={`Зураг ${index + 1}`}
+                                            className="w-16 h-16 object-cover rounded-lg border border-white/20 cursor-pointer hover:border-emerald-400/50 transition-colors"
+                                            onClick={() => {
+                                              // Create modal for enlarged image
+                                              const modal = document.createElement("div")
+                                              modal.className =
+                                                "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                                              modal.innerHTML = `
+                                                <div class="relative max-w-4xl max-h-[90vh] bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl overflow-hidden">
+                                                  <img src="${image}" alt="Зураг ${index + 1}" class="w-full h-full object-contain" />
+                                                  <button class="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                  </button>
+                                                </div>
+                                              `
+                                              document.body.appendChild(modal)
+
+                                              // Close modal on click
+                                              modal.addEventListener("click", (e) => {
+                                                if (e.target === modal || e.target.closest("button")) {
+                                                  document.body.removeChild(modal)
+                                                }
+                                              })
+                                            }}
+                                          />
+                                          <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/50 text-white text-xs rounded">
+                                            {index + 1}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-right ml-4 space-y-2">
+                                <p className="font-semibold text-emerald-400 text-lg">
+                                  {currentFee === 0 ? "Үнэгүй" : `${currentFee} ₮`}
+                                </p>
+                                <p className="text-xs text-white/50">{pricingConfig.pricePerMinute}₮/цаг</p>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {/* records tab-ийн UI хэсгийг засварлах - илүү дэлгэрэнгүй мэдээлэл харуулах */}
+          {activeTab === "records" && profile.role !== "employee" && (
+            <div className="space-y-6">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
+                <div className="mb-4">
+                  <h2 className="text-xl font-semibold text-white">Идэвхтэй бүртгэлүүд</h2>
+                </div>
+
+                {/* Search Section */}
+                <div className="mb-6">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={activeRecordsSearch}
+                      onChange={(e) => setActiveRecordsSearch(e.target.value)}
+                      placeholder="Машины дугаараар хайх..."
+                      className="w-full px-4 py-3 pl-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all duration-200"
+                    />
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                      <Search className="w-5 h-5 text-white/50" />
+                    </div>
+                    {activeRecordsSearch && (
+                      <button
+                        onClick={() => setActiveRecordsSearch("")}
+                        className="absolute inset-y-0 right-0 flex items-center pr-4 text-white/50 hover:text-white transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mb-4 text-white/70 text-sm">
+                  {activeRecordsSearch
+                    ? `${filteredActiveParkingRecords.length} бүртгэл олдлоо (нийт ${activeParkingRecords.length})`
+                    : `Нийт ${activeParkingRecords.length} идэвхтэй бүртгэл`}
+                </div>
+
+                {filteredActiveParkingRecords.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
+                      <Car className="w-8 h-8 text-white/50" />
+                    </div>
+                    {activeRecordsSearch ? (
+                      <>
+                        <p className="text-white/50 text-lg mb-2">Хайлтын үр дүн олдсонгүй</p>
+                        <p className="text-white/30 text-sm">"{activeRecordsSearch}" дугаартай машин олдсонгүй</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-white/50 text-lg mb-2">Идэвхтэй бүртгэл байхгүй байна</p>
+                        <p className="text-white/30 text-sm">Машин орсон бүртгэл хийснээр энд харагдана</p>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredActiveParkingRecords.map((record) => {
+                      const currentFee = calculateCurrentParkingFee(record.entryTime || "")
+                      const duration = calculateParkingDuration(record.entryTime || "")
+
+                      return (
+                        <div
+                          key={record.id}
+                          className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2 flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="px-2 py-1 rounded-lg text-xs font-medium bg-emerald-400/20 text-emerald-400 border border-emerald-400/30">
+                                  Зогсож байна
+                                </span>
+                                <span className="text-white/50 text-xs">
+                                  {formatDetailedTime(record.entryTime || "")}
+                                </span>
+                              </div>
+                              <p className="text-white text-sm">
+                                <span className="text-white/70">Машин:</span> {record.carNumber}
+                              </p>
+                              <p className="text-white text-sm">
+                                <span className="text-white/70">Ажилчин:</span> {record.driverName}
+                              </p>
+                              <p className="text-white text-sm">
+                                <span className="text-white/70">Машины марк:</span> {record.parkingArea}
+                              </p>
+                              <p className="text-white/50 text-xs">
+                                Зогссон хугацаа: {duration === 0 ? "1 цагаас бага" : `${duration} цаг`}
+                              </p>
+
+                              {/* Images Section */}
+                              {record.images && record.images.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-white/70 text-xs mb-2">Зургууд:</p>
+                                  <div className="flex space-x-2">
+                                    {record.images.map((image, index) => (
+                                      <div key={index} className="relative group">
+                                        <img
+                                          src={image || "/placeholder.svg"}
+                                          alt={`Зураг ${index + 1}`}
+                                          className="w-16 h-16 object-cover rounded-lg border border-white/20 cursor-pointer hover:border-emerald-400/50 transition-colors"
+                                          onClick={() => {
+                                            // Create modal for enlarged image
+                                            const modal = document.createElement("div")
+                                            modal.className =
+                                              "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                                            modal.innerHTML = `
+                                              <div class="relative max-w-4xl max-h-[90vh] bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl overflow-hidden">
+                                                <img src="${image}" alt="Зураг ${index + 1}" class="w-full h-full object-contain" />
+                                                <button class="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors">
+                                                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                  </svg>
+                                                </button>
+                                              </div>
+                                            `
+                                            document.body.appendChild(modal)
+
+                                            // Close modal on click
+                                            modal.addEventListener("click", (e) => {
+                                              if (e.target === modal || e.target.closest("button")) {
+                                                document.body.removeChild(modal)
+                                              }
+                                            })
+                                          }}
+                                        />
+                                        <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/50 text-white text-xs rounded">
+                                          {index + 1}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right ml-4 space-y-2">
+                              <p className="font-semibold text-emerald-400 text-lg">
+                                {currentFee === 0 ? "Үнэгүй" : `${currentFee} ₮`}
+                              </p>
+                              <p className="text-xs text-white/50">{pricingConfig.pricePerMinute}₮/цаг</p>
+                              <button
+                                onClick={() => handleExitFromRecord(record.id, record)}
+                                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
+                              >
+                                Гарсан
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
-
-              {/* Advanced KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Total Customers Card */}
-                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-                  <div className="absolute top-0 right-0 w-32 h-32 transform translate-x-8 -translate-y-8">
-                    <div className="w-full h-full bg-blue-200/30 rounded-full"></div>
-                  </div>
-                  <CardContent className="p-6 relative z-10">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-blue-600 dark:text-blue-400 text-sm font-medium mb-1">Нийт үйлчлүүлэгч</p>
-                        <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
-                          {dashboardStats.totalCustomers.toLocaleString()}
-                        </p>
-                        <div className="flex items-center mt-2">
-                          <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-                          <span className="text-sm text-green-600 font-medium">
-                            Өнөөдөр: {dashboardStats.todayCustomers}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3 bg-blue-500 rounded-2xl">
-                        <Users className="w-8 h-8 text-white" />
-                      </div>
+            </div>
+          )}
+          {/* History хэсгийн records харуулах логикийг засварлах */}
+          {activeTab === "history" && (
+            <div className="space-y-6">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
+                {/* Filter Section */}
+                <div className="mb-6 space-y-4">
+                  {/* Header with Filter Toggle */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold text-white mb-2">
+                        {profile.role === "employee" ? "Миний түүх" : "Түүх харах"}
+                      </h2>
+                      <p className="text-white/70 text-sm">
+                        {profile.role === "employee"
+                          ? "Таны нэр дээр бүртгэгдсэн гарсан машинуудын түүх"
+                          : "Бүх орсон/гарсан бүртгэлийн түүх"}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-
-                {/* Total Revenue Card */}
-                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-                  <div className="absolute top-0 right-0 w-32 h-32 transform translate-x-8 -translate-y-8">
-                    <div className="w-full h-full bg-green-200/30 rounded-full"></div>
+                    <button
+                      onClick={() => setFilterCollapsed(!filterCollapsed)}
+                      className="p-2 text-white/70 hover:text-white transition-all duration-200"
+                    >
+                      <svg
+                        className={`w-6 h-6 transition-transform duration-300 ${filterCollapsed ? "" : "rotate-180"}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
                   </div>
-                  <CardContent className="p-6 relative z-10">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-green-600 dark:text-green-400 text-sm font-medium mb-1">Нийт орлого</p>
-                        <p className="text-3xl font-bold text-green-900 dark:text-green-100">
-                          ₮{dashboardStats.totalRevenue.toLocaleString()}
-                        </p>
-                        <div className="flex items-center mt-2">
-                          <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-                          <span className="text-sm text-green-600 font-medium">
-                            Өнөөдөр: ₮{dashboardStats.todayRevenue.toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3 bg-green-500 rounded-2xl">
-                        <DollarSign className="w-8 h-8 text-white" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
-                {/* Active Records Card */}
-                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900">
-                  <div className="absolute top-0 right-0 w-32 h-32 transform translate-x-8 -translate-y-8">
-                    <div className="w-full h-full bg-orange-200/30 rounded-full"></div>
-                  </div>
-                  <CardContent className="p-6 relative z-10">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-orange-600 dark:text-orange-400 text-sm font-medium mb-1">
-                          Одоо зогсож байгаа
-                        </p>
-                        <p className="text-3xl font-bold text-orange-900 dark:text-orange-100">
-                          {dashboardStats.activeRecords}
-                        </p>
-                        <div className="flex items-center mt-2">
-                          <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse mr-2"></div>
-                          <span className="text-sm text-orange-600 font-medium">Идэвхтэй</span>
-                        </div>
-                      </div>
-                      <div className="p-3 bg-orange-500 rounded-2xl">
-                        <Car className="w-8 h-8 text-white" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Average Revenue Card */}
-                <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
-                  <div className="absolute top-0 right-0 w-32 h-32 transform translate-x-8 -translate-y-8">
-                    <div className="w-full h-full bg-purple-200/30 rounded-full"></div>
-                  </div>
-                  <CardContent className="p-6 relative z-10">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-purple-600 dark:text-purple-400 text-sm font-medium mb-1">Дундаж орлого</p>
-                        <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">
-                          ₮{Math.round(dashboardStats.averageRevenue).toLocaleString()}
-                        </p>
-                        <div className="flex items-center mt-2">
-                          <span className="text-sm text-purple-600 font-medium">
-                            Дундаж хугацаа: {dashboardStats.averageSessionTime.toFixed(1)} цаг
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3 bg-purple-500 rounded-2xl">
-                        <BarChart3 className="w-8 h-8 text-white" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Interactive Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Monthly Revenue Chart */}
-                <Card className="border-0 shadow-lg">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-xl font-bold flex items-center">
-                      <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
-                      {customDateRange.useCustomRange ? "Хугацааны орлого" : "Сарын орлого"}
-                    </CardTitle>
-                    <CardDescription>
-                      {customDateRange.useCustomRange
-                        ? `${customDateRange.startDate} - ${customDateRange.endDate}`
-                        : "Сүүлийн 6 сарын орлогын график"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80 w-full">
-                      <svg viewBox="0 0 800 300" className="w-full h-full">
-                        {/* Grid lines */}
-                        <defs>
-                          <pattern id="grid" width="40" height="30" patternUnits="userSpaceOnUse">
-                            <path d="M 40 0 L 0 0 0 30" fill="none" stroke="#e5e7eb" strokeWidth="1" />
-                          </pattern>
-                        </defs>
-                        <rect width="800" height="300" fill="url(#grid)" />
-
-                        {/* Chart bars */}
-                        {monthlyStats.map((stat, index) => {
-                          const maxRevenue = Math.max(...monthlyStats.map((s) => s.revenue))
-                          const barHeight = maxRevenue > 0 ? (stat.revenue / maxRevenue) * 200 : 0
-                          const x = 80 + index * 110
-                          const y = 250 - barHeight
-
-                          return (
-                            <g key={index}>
-                              {/* Bar */}
-                              <rect
-                                x={x}
-                                y={y}
-                                width="60"
-                                height={barHeight}
-                                fill="url(#barGradient)"
-                                rx="4"
-                                className="hover:opacity-80 transition-opacity cursor-pointer"
+                  {/* Collapsible Filter Content */}
+                  {!filterCollapsed && (
+                    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 animate-in slide-in-from-top duration-300 ease-out">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Year Filter */}
+                        <div className="space-y-3">
+                          <label className="text-white/80 text-sm font-medium flex items-center">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                               />
-                              {/* Value label */}
-                              <text
-                                x={x + 30}
-                                y={y - 10}
-                                textAnchor="middle"
-                                className="text-xs font-medium fill-gray-600"
+                            </svg>
+                            Он сонгох
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={filterYear}
+                              onChange={(e) => setFilterYear(e.target.value)}
+                              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all duration-200 appearance-none cursor-pointer"
+                            >
+                              <option value="" className="bg-gray-900 text-white">
+                                Бүх он
+                              </option>
+                              {getAvailableYears().map((year) => (
+                                <option key={year} value={year.toString()} className="bg-gray-900 text-white">
+                                  {year}
+                                </option>
+                              ))}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                              <svg
+                                className="w-5 h-5 text-white/50"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
                               >
-                                ₮{(stat.revenue / 1000).toFixed(0)}k
-                              </text>
-                              {/* Month label */}
-                              <text x={x + 30} y={280} textAnchor="middle" className="text-xs fill-gray-500">
-                                {stat.period}
-                              </text>
-                            </g>
-                          )
-                        })}
-
-                        {/* Gradient definition */}
-                        <defs>
-                          <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#3b82f6" />
-                            <stop offset="100%" stopColor="#1d4ed8" />
-                          </linearGradient>
-                        </defs>
-                      </svg>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Daily Activity Chart */}
-                <Card className="border-0 shadow-lg">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-xl font-bold flex items-center">
-                      <TrendingUp className="w-5 h-5 mr-2 text-green-600" />7 хоногийн үйл ажиллагаа
-                    </CardTitle>
-                    <CardDescription>Сүүлийн долоо хоногийн үйлчлүүлэгчийн тоо</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80 w-full">
-                      <svg viewBox="0 0 800 300" className="w-full h-full">
-                        {/* Grid */}
-                        <rect width="800" height="300" fill="url(#grid)" />
-
-                        {/* Line chart */}
-                        {dailyStats.length > 1 && (
-                          <g>
-                            {/* Line path */}
-                            <path
-                              d={`M ${dailyStats
-                                .map((stat, index) => {
-                                  const maxCustomers = Math.max(...dailyStats.map((s) => s.customers))
-                                  const x = 80 + index * 100
-                                  const y = 250 - (maxCustomers > 0 ? (stat.customers / maxCustomers) * 200 : 0)
-                                  return `${index === 0 ? "M" : "L"} ${x} ${y}`
-                                })
-                                .join(" ")}`}
-                              fill="none"
-                              stroke="url(#lineGradient)"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                            />
-
-                            {/* Data points */}
-                            {dailyStats.map((stat, index) => {
-                              const maxCustomers = Math.max(...dailyStats.map((s) => s.customers))
-                              const x = 80 + index * 100
-                              const y = 250 - (maxCustomers > 0 ? (stat.customers / maxCustomers) * 200 : 0)
-
-                              return (
-                                <g key={index}>
-                                  <circle
-                                    cx={x}
-                                    cy={y}
-                                    r="6"
-                                    fill="#10b981"
-                                    stroke="white"
-                                    strokeWidth="2"
-                                    className="hover:r-8 transition-all cursor-pointer"
-                                  />
-                                  <text
-                                    x={x}
-                                    y={y - 15}
-                                    textAnchor="middle"
-                                    className="text-xs font-medium fill-gray-600"
-                                  >
-                                    {stat.customers}
-                                  </text>
-                                  <text x={x} y={280} textAnchor="middle" className="text-xs fill-gray-500">
-                                    {stat.day}
-                                  </text>
-                                </g>
-                              )
-                            })}
-                          </g>
-                        )}
-
-                        {/* Gradient definitions */}
-                        <defs>
-                          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#10b981" />
-                            <stop offset="100%" stopColor="#059669" />
-                          </linearGradient>
-                        </defs>
-                      </svg>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Enhanced Recent Activity */}
-              <Card className="border-0 shadow-lg">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-xl font-bold flex items-center">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-3"></div>
-                    Сүүлийн үйл ажиллагаа
-                  </CardTitle>
-                  <CardDescription>Хамгийн сүүлийн 10 бүртгэл</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {recentActivity.length > 0 ? (
-                      recentActivity.map((activity, index) => (
-                        <div
-                          key={activity.id}
-                          className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                activity.type === "entry"
-                                  ? "bg-blue-500 animate-pulse"
-                                  : activity.type === "exit"
-                                    ? "bg-green-500"
-                                    : "bg-gray-400"
-                              }`}
-                            ></div>
-                            <div>
-                              <p className="font-medium text-gray-900 dark:text-gray-100">
-                                {activity.carNumber} - {activity.mechanicName || activity.driverName || "Тодорхойгүй"}
-                              </p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {new Date(activity.timestamp).toLocaleString("mn-MN")}
-                              </p>
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <Badge
-                              variant={
-                                activity.type === "entry"
-                                  ? "default"
-                                  : activity.type === "exit"
-                                    ? "secondary"
-                                    : "outline"
-                              }
-                              className="mb-1"
+                        </div>
+
+                        {/* Month Filter */}
+                        <div className="space-y-3">
+                          <label className="text-white/80 text-sm font-medium flex items-center">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
+                            </svg>
+                            Сар сонгох
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={filterMonth}
+                              onChange={(e) => setFilterMonth(e.target.value)}
+                              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all duration-200 appearance-none cursor-pointer"
                             >
-                              {activity.type === "entry" ? "Орсон" : activity.type === "exit" ? "Гарсан" : "Дууссан"}
-                            </Badge>
-                            {activity.amount && (
-                              <p className="text-sm font-medium text-green-600">₮{activity.amount.toLocaleString()}</p>
+                              <option value="" className="bg-gray-900 text-white">
+                                Бүх сар
+                              </option>
+                              <option value="01" className="bg-gray-900 text-white">
+                                1-р сар
+                              </option>
+                              <option value="02" className="bg-gray-900 text-white">
+                                2-р сар
+                              </option>
+                              <option value="03" className="bg-gray-900 text-white">
+                                3-р сар
+                              </option>
+                              <option value="04" className="bg-gray-900 text-white">
+                                4-р сар
+                              </option>
+                              <option value="05" className="bg-gray-900 text-white">
+                                5-р сар
+                              </option>
+                              <option value="06" className="bg-gray-900 text-white">
+                                6-р сар
+                              </option>
+                              <option value="07" className="bg-gray-900 text-white">
+                                7-р сар
+                              </option>
+                              <option value="08" className="bg-gray-900 text-white">
+                                8-р сар
+                              </option>
+                              <option value="09" className="bg-gray-900 text-white">
+                                9-р сар
+                              </option>
+                              <option value="10" className="bg-gray-900 text-white">
+                                10-р сар
+                              </option>
+                              <option value="11" className="bg-gray-900 text-white">
+                                11-р сар
+                              </option>
+                              <option value="12" className="bg-gray-900 text-white">
+                                12-р сар
+                              </option>
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                              <svg
+                                className="w-5 h-5 text-white/50"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Car Number Filter */}
+                        <div className="space-y-3">
+                          <label className="text-white/80 text-sm font-medium flex items-center">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0
+01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                            Машины дугаар
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={filterCarNumber}
+                              onChange={(e) => setFilterCarNumber(e.target.value)}
+                              placeholder="1234 УНМ"
+                              className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all duration-200"
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                              <Search className="w-5 h-5 text-white/50" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Active Filters Display */}
+                      {(filterYear || filterMonth || filterCarNumber) && (
+                        <div className="mt-6 pt-4 border-t border-white/10">
+                          <div className="flex flex-wrap gap-2">
+                            <span className="text-white/70 text-sm">Идэвхтэй шүүлтүүр:</span>
+                            {filterYear && (
+                              <span className="inline-flex items-center px-3 py-1 bg-emerald-400/20 text-emerald-400 border border-emerald-400/30 rounded-lg text-sm">
+                                Он: {filterYear}
+                                <button onClick={() => setFilterYear("")} className="ml-2 hover:text-emerald-300">
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            )}
+                            {filterMonth && (
+                              <span className="inline-flex items-center px-3 py-1 bg-emerald-400/20 text-emerald-400 border border-emerald-400/30 rounded-lg text-sm">
+                                Сар: {filterMonth}
+                                <button onClick={() => setFilterMonth("")} className="ml-2 hover:text-emerald-300">
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
+                            )}
+                            {filterCarNumber && (
+                              <span className="inline-flex items-center px-3 py-1 bg-emerald-400/20 text-emerald-400 border border-emerald-400/30 rounded-lg text-sm">
+                                Машин: {filterCarNumber}
+                                <button onClick={() => setFilterCarNumber("")} className="ml-2 hover:text-emerald-300">
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </span>
                             )}
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <Car className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                        <p>Одоогоор үйл ажиллагаа байхгүй байна</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+                      )}
+                    </div>
+                  )}
 
-          <TabsContent value="employees" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-3xl font-bold tracking-tight">Ажилчдын удирдлага</h2>
-                <p className="text-muted-foreground">Ажилчдын мэдээлэл харах, засах, устгах</p>
-              </div>
-            </div>
-
-            <Tabs defaultValue="employees" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="employees">Ажилчид ({employees.length})</TabsTrigger>
-                <TabsTrigger value="managers">Менежерүүд ({managers.length})</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="employees" className="space-y-4">
-                {employees.length > 0 ? (
-                  <div className="grid gap-4">
-                    {employees.map((employee) => (
-                      <Card key={employee.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              <Avatar className="w-12 h-12">
-                                {employee.profileImage ? (
-                                  <AvatarImage src={employee.profileImage || "/placeholder.svg"} alt={employee.name} />
-                                ) : (
-                                  <AvatarFallback>{employee.name?.charAt(0).toUpperCase() || "A"}</AvatarFallback>
-                                )}
-                              </Avatar>
-                              <div>
-                                <h3 className="font-semibold text-lg">{employee.name}</h3>
-                                <p className="text-muted-foreground">{employee.email}</p>
-                                <p className="text-sm text-muted-foreground">{employee.phone}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant={employee.active ? "default" : "secondary"}>
-                                {employee.active ? "Идэвхтэй" : "Идэвхгүй"}
-                              </Badge>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                                    </svg>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Засах
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      handleToggleEmployeeStatus(employee.id!, employee.active, employee.name)
-                                    }
-                                  >
-                                    {employee.active ? (
-                                      <PowerOff className="w-4 h-4 mr-2" />
-                                    ) : (
-                                      <Power className="w-4 h-4 mr-2" />
-                                    )}
-                                    {employee.active ? "Идэвхгүй болгох" : "Идэвхжүүлэх"}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteEmployee(employee.id!, employee.name)}
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Устгах
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <Card>
-                    <CardContent className="p-12 text-center">
-                      <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="text-lg font-semibold mb-2">Ажилчин байхгүй</h3>
-                      <p className="text-muted-foreground mb-4">Одоогоор ажилчин бүртгэгдээгүй байна</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              <TabsContent value="managers" className="space-y-4">
-                {managers.length > 0 ? (
-                  <div className="grid gap-4">
-                    {managers.map((manager) => (
-                      <Card key={manager.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              <Avatar className="w-12 h-12">
-                                {manager.profileImage ? (
-                                  <AvatarImage src={manager.profileImage || "/placeholder.svg"} alt={manager.name} />
-                                ) : (
-                                  <AvatarFallback>{manager.name?.charAt(0).toUpperCase() || "M"}</AvatarFallback>
-                                )}
-                              </Avatar>
-                              <div>
-                                <h3 className="font-semibold text-lg">{manager.name}</h3>
-                                <p className="text-muted-foreground">{manager.email}</p>
-                                <p className="text-sm text-muted-foreground">{manager.phone}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                                Менежер
-                              </Badge>
-                              <Badge variant={manager.active ? "default" : "secondary"}>
-                                {manager.active ? "Идэвхтэй" : "Идэвхгүй"}
-                              </Badge>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                      <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                                    </svg>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEditManager(manager)}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Засах
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleToggleManagerStatus(manager.id!, manager.active, manager.name)}
-                                  >
-                                    {manager.active ? (
-                                      <PowerOff className="w-4 h-4 mr-2" />
-                                    ) : (
-                                      <Power className="w-4 h-4 mr-2" />
-                                    )}
-                                    {manager.active ? "Идэвхгүй болгох" : "Идэвхжүүлэх"}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteManager(manager.id!, manager.name)}
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Устгах
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <Card>
-                    <CardContent className="p-12 text-center">
-                      <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="text-lg font-semibold mb-2">Менежер байхгүй</h3>
-                      <p className="text-muted-foreground mb-4">Одоогоор менежер бүртгэгдээгүй байна</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-            </TabsContent>
-
-          <TabsContent value="register" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-3xl font-bold tracking-tight">Шинэ хэрэглэгч бүртгэх</h2>
-                <p className="text-muted-foreground">Менежер, жолооч, ажилчин бүртгэх</p>
-              </div>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Хэрэглэгчийн мэдээлэл</CardTitle>
-                <CardDescription>Шинэ хэрэглэгчийн мэдээллийг оруулна уу</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleRegisterDriver} className="space-y-6">
-                  {/* Role Selection */}
-                  <div className="space-y-3">
-                    <Label className="text-base font-medium">Хэрэглэгчийн төрөл</Label>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          selectedRole === "manager"
-                            ? "border-primary bg-primary/5"
-                            : "border-muted hover:border-primary/50"
-                        }`}
-                        onClick={() => setSelectedRole("manager")}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`w-4 h-4 rounded-full border-2 ${
-                              selectedRole === "manager" ? "border-primary bg-primary" : "border-muted-foreground"
-                            }`}
-                          />
-                          <div>
-                            <Shield className="w-6 h-6 text-purple-600 mb-2" />
-                            <h3 className="font-semibold">Менежер</h3>
-                            <p className="text-sm text-muted-foreground">Бүх эрхтэй</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          selectedRole === "driver"
-                            ? "border-primary bg-primary/5"
-                            : "border-muted hover:border-primary/50"
-                        }`}
-                        onClick={() => setSelectedRole("driver")}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`w-4 h-4 rounded-full border-2 ${
-                              selectedRole === "driver" ? "border-primary bg-primary" : "border-muted-foreground"
-                            }`}
-                          />
-                          <div>
-                            <Car className="w-6 h-6 text-blue-600 mb-2" />
-                            <h3 className="font-semibold">Жолооч</h3>
-                            <p className="text-sm text-muted-foreground">Зогсоол удирдах</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          selectedRole === "employee"
-                            ? "border-primary bg-primary/5"
-                            : "border-muted hover:border-primary/50"
-                        }`}
-                        onClick={() => setSelectedRole("employee")}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`w-4 h-4 rounded-full border-2 ${
-                              selectedRole === "employee" ? "border-primary bg-primary" : "border-muted-foreground"
-                            }`}
-                          />
-                          <div>
-                            <Users className="w-6 h-6 text-green-600 mb-2" />
-                            <h3 className="font-semibold">Ажилчин</h3>
-                            <p className="text-sm text-muted-foreground">Ерөнхий ажилчин</p>
-                          </div>
-                        </div>
-                      </div>
+                  {/* Results Count */}
+                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-3">
+                    <div className="flex items-center text-white/80">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 00-2-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2-2H9z"
+                        />
+                      </svg>
+                      <span className="font-medium">{filteredRecords.length} бүртгэл олдлоо</span>
+                      <span className="text-white/50 text-sm ml-2">(Нийт: {allRecords.length})</span>
                     </div>
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Нэр *</Label>
-                      <Input
-                        id="name"
-                        type="text"
-                        placeholder="Овог нэр"
-                        value={newDriver.name}
-                        onChange={(e) => setNewDriver({ ...newDriver, name: e.target.value })}
-                        required
-                      />
+                {/* Records List - Бүх бүртгэлүүдийг харуулах */}
+                {filteredRecords.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
+                      <History className="w-8 h-8 text-white/50" />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Утасны дугаар</Label>
-                      <Input
-                        id="phone"
-                        type="tel"
-                        placeholder="99112233"
-                        value={newDriver.phone}
-                        onChange={(e) => setNewDriver({ ...newDriver, phone: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">И-мэйл хаяг *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="example@email.com"
-                        value={newDriver.email}
-                        onChange={(e) => setNewDriver({ ...newDriver, email: e.target.value })}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Нууц үг *</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="Хамгийн багадаа 6 тэмдэгт"
-                        value={newDriver.password}
-                        onChange={(e) => setNewDriver({ ...newDriver, password: e.target.value })}
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={registrationLoading}>
-                    {registrationLoading ? (
+                    {filterYear || filterMonth || filterCarNumber ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Бүртгэж байна...
+                        <p className="text-white/50 text-lg mb-2">Хайлтын үр дүн олдсонгүй</p>
+                        <p className="text-white/30 text-sm">Шүүлтүүрийг өөрчилж дахин оролдоно уу</p>
                       </>
                     ) : (
                       <>
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        {selectedRole === "manager"
-                          ? "Менежер бүртгэх"
-                          : selectedRole === "driver"
-                            ? "Жолооч бүртгэх"
-                            : "Ажилчин бүртгэх"}
+                        <p className="text-white/50 text-lg mb-2">Түүх байхгүй байна</p>
+                        <p className="text-white/30 text-sm">
+                          {profile.role === "employee"
+                            ? "Таны нэр дээр гарсан машины бүртгэл байхгүй байна"
+                            : "Машин орсон/гарсан бүртгэл хийснээр энд харагдана"}
+                        </p>
                       </>
                     )}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredRecords.map((record) => (
+                      <div key={record.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <span
+                            className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                              record.type === "completed" || record.exitTime
+                                ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                : record.type === "entry"
+                                  ? "bg-emerald-400/20 text-emerald-400 border border-emerald-400/30"
+                                  : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                            }`}
+                          >
+                            {record.type === "completed" || record.exitTime
+                              ? "Гарсан"
+                              : record.type === "entry"
+                                ? "Орсон"
+                                : record.type === "exit"
+                                  ? "Гарсан"
+                                  : "Бүртгэл"}
+                          </span>
+                          <div className="text-right">
+                            <div className="text-white/50 text-xs">
+                              {new Date(record.timestamp).toLocaleString("mn-MN")}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-white">
+                            <span className="text-white/70">Машин:</span> {record.carNumber}
+                          </p>
+                          <p className="text-white">
+                            <span className="text-white/70">Ажилчин:</span> {record.driverName}
+                          </p>
+                          <p className="text-white">
+                            <span className="text-white/70">Машины марк:</span> {record.parkingArea}
+                          </p>
+                          {record.entryTime && (
+                            <p className="text-white/50 text-sm">
+                              <span className="text-white/70">Орсон:</span> {record.entryTime}
+                            </p>
+                          )}
+                          {record.exitTime && (
+                            <p className="text-white/50 text-sm">
+                              <span className="text-white/70">Гарсан:</span> {record.exitTime}
+                            </p>
+                          )}
 
-          <TabsContent value="report" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-3xl font-bold tracking-tight">Зогсоолын тайлан</h2>
-                <p className="text-muted-foreground">Зогсоолын бүртгэлийн дэлгэрэнгүй тайлан</p>
-              </div>
-              <div className="flex space-x-2">
-                <Button onClick={() => setShowDateRangeDialog(true)} variant="outline">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Хугацаагаар татах
-                </Button>
-                <Button onClick={exportToExcel}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Excel татах
-                </Button>
+                          {/* Images Section */}
+                          {record.images && record.images.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-white/70 text-sm mb-2">Зургууд:</p>
+                              <div className="flex space-x-2">
+                                {record.images.map((image, index) => (
+                                  <div key={index} className="relative group">
+                                    <img
+                                      src={image || "/placeholder.svg"}
+                                      alt={`Зураг ${index + 1}`}
+                                      className="w-20 h-20 object-cover rounded-lg border border-white/20 cursor-pointer hover:border-emerald-400/50 transition-colors"
+                                      onClick={() => {
+                                        // Create modal for enlarged image
+                                        const modal = document.createElement("div")
+                                        modal.className =
+                                          "fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+                                        modal.innerHTML = `
+                                          <div class="relative max-w-4xl max-h-[90vh] bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl overflow-hidden">
+                                            <img src="${image}" alt="Зураг ${index + 1}" class="w-full h-full object-contain" />
+                                            <button class="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors">
+                                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                              </svg>
+                                            </button>
+                                          </div>
+                                        `
+                                        document.body.appendChild(modal)
+
+                                        // Close modal on click
+                                        modal.addEventListener("click", (e) => {
+                                          if (e.target === modal || e.target.closest("button")) {
+                                            document.body.removeChild(modal)
+                                          }
+                                        })
+                                      }}
+                                    />
+                                    <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/50 text-white text-xs rounded">
+                                      {index + 1}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center">
+                            <p className="text-emerald-400 text-lg font-semibold">
+                              <span className="text-white/70 text-base font-normal">Төлбөр:</span> {record.amount || 0}{" "}
+                              ₮
+                            </p>
+                            {record.parkingDuration && (
+                              <p className="text-white/50 text-sm">Зогссон: {record.parkingDuration} цаг</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+          )}
+          {activeTab === "profile" && (
+            <div className="space-y-6">
+              <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-white mb-2">Профайл</h2>
+                  <p className="text-white/70 text-sm">
+                    {profile.role === "employee" ? "Ажилчны мэдээлэл" : "Хувийн мэдээлэл засах"}
+                  </p>
+                </div>
 
-            {/* Filters */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Шүүлтүүр</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label>Он</Label>
-                    <select
-                      className="w-full p-2 border rounded-md"
-                      value={reportFilterYear}
-                      onChange={(e) => setReportFilterYear(e.target.value)}
-                    >
-                      <option value="">Бүх он</option>
-                      {getReportAvailableYears().map((year) => (
-                        <option key={year} value={year}>
-                          {year}
-                        </option>
-                      ))}
-                    </select>
+                <div className="flex justify-center mb-8">
+                  <div className="relative">
+                    <div className="w-24 h-24 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl flex items-center justify-center overflow-hidden">
+                      {profile.profileImage ? (
+                        <img
+                          src={profile.profileImage || "/placeholder.svg"}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white text-3xl font-bold">
+                          {profile.name ? profile.name.charAt(0).toUpperCase() : "👤"}
+                        </span>
+                      )}
+                    </div>
+                    {editing && (
+                      <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-400 rounded-full flex items-center justify-center cursor-pointer hover:bg-emerald-500 transition-colors">
+                        <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                          />
+                        </svg>
+                        <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                      </label>
+                    )}
                   </div>
+                </div>
 
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Сар</Label>
-                    <select
-                      className="w-full p-2 border rounded-md"
-                      value={reportFilterMonth}
-                      onChange={(e) => setReportFilterMonth(e.target.value)}
-                    >
-                      <option value="">Бүх сар</option>
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                        <option key={month} value={month.toString().padStart(2, "0")}>
-                          {month}-р сар
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Машины дугаар</Label>
-                    <Input
-                      placeholder="Машины дугаар хайх"
-                      value={reportFilterCarNumber}
-                      onChange={(e) => setReportFilterCarNumber(e.target.value)}
+                    <label className="text-white/70 text-sm">Нэр</label>
+                    <input
+                      value={profile.name}
+                      onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                      placeholder="Нэрээ оруулна уу"
+                      disabled={!editing}
+                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 disabled:opacity-50"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Засварчин</Label>
-                    <select
-                      className="w-full p-2 border rounded-md"
-                      value={reportFilterMechanic}
-                      onChange={(e) => setReportFilterMechanic(e.target.value)}
-                    >
-                      <option value="">Бүх засварчин</option>
-                      {getAvailableMechanicNames().map((name) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
+                    <label className="text-white/70 text-sm">Утасны дугаар</label>
+                    <input
+                      value={profile.phone}
+                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                      placeholder="Утасны дугаараа оруулна уу"
+                      disabled={!editing}
+                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 disabled:opacity-50"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-white/70 text-sm">И-мэйл</label>
+                    <input
+                      value={profile.email}
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      placeholder="И-мэйл хаяг"
+                      disabled={!editing}
+                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 disabled:opacity-50"
+                    />
+                  </div>
+
+                  {/* Show start date only for employees and only when not editing */}
+                  {profile.role === "employee" && employeeProfile && employeeProfile.startDate && !editing && (
+                    <div className="space-y-2">
+                      <label className="text-white/70 text-sm">Ажилд орсон огноо</label>
+                      <input
+                        value={new Date(employeeProfile.startDate).toLocaleDateString("mn-MN")}
+                        disabled
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white/50"
+                      />
+                    </div>
+                  )}
+
+                  {/* Password change section for employees when editing */}
+                  {profile.role === "employee" && editing && (
+                    <div className="space-y-4 border-t border-white/10 pt-6">
+                      <h4 className="text-white font-medium">Нууц үг солих</h4>
+
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm">Шинэ нууц үг</label>
+                        <div className="relative">
+                          <input
+                            type={showNewPassword ? "text" : "password"}
+                            value={passwordData.newPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                            placeholder="Шинэ нууц үг (хамгийн багадаа 6 тэмдэгт)"
+                            className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                          >
+                            {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-white/70 text-sm">Нууц үг баталгаажуулах</label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={passwordData.confirmPassword}
+                            onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                            placeholder="Нууц үг дахин оруулах"
+                            className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+                          >
+                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="border-t border-white/10 pt-6">
+                    <div className="flex space-x-4">
+                      {editing ? (
+                        <>
+                          <button
+                            onClick={saveProfile}
+                            disabled={profileLoading}
+                            className="flex-1 py-3 bg-emerald-400 hover:bg-emerald-500 text-black font-semibold rounded-xl transition-colors disabled:opacity-50"
+                          >
+                            {profileLoading ? "Хадгалж байна..." : "Хадгалах"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditing(false)
+                              // Reset password fields
+                              setPasswordData({
+                                currentPassword: "",
+                                newPassword: "",
+                                confirmPassword: "",
+                              })
+                              loadProfile()
+                            }}
+                            disabled={profileLoading}
+                            className="flex-1 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 transition-colors"
+                          >
+                            Цуцлах
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setEditing(true)}
+                          className="flex-1 py-3 bg-emerald-400 hover:bg-emerald-500 text-black font-semibold rounded-xl transition-colors"
+                        >
+                          Засах
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Report Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle>
-                  Тайлангийн жагсаалт ({filteredReportRecords.length} бүртгэл)
-                  {reportLoading && <span className="ml-2 text-sm text-muted-foreground">Ачааллаж байна...</span>}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {filteredReportRecords.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2 font-semibold">№</th>
-                          <th className="text-left p-2 font-semibold">Машины дугаар</th>
-                          <th className="text-left p-2 font-semibold">Засварчин</th>
-                          <th className="text-left p-2 font-semibold">Машины марк</th>
-                          <th className="text-left p-2 font-semibold">Орсон цаг</th>
-                          <th className="text-left p-2 font-semibold">Гарсан цаг</th>
-                          <th className="text-left p-2 font-semibold">Зогссон хугацаа</th>
-                          <th className="text-left p-2 font-semibold">Төлбөр</th>
-                          <th className="text-left p-2 font-semibold">Зураг</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredReportRecords.map((record, index) => (
-                          <tr key={record.id} className="border-b hover:bg-muted/50">
-                            <td className="p-2">{index + 1}</td>
-                            <td className="p-2 font-medium">{record.carNumber}</td>
-                            <td className="p-2">{record.mechanicName || record.driverName || "-"}</td>
-                            <td className="p-2">{record.carBrand || record.parkingArea || "-"}</td>
-                            <td className="p-2 text-sm">{record.entryTime || "-"}</td>
-                            <td className="p-2 text-sm">{record.exitTime || "-"}</td>
-                            <td className="p-2">{record.parkingDuration || "-"}</td>
-                            <td className="p-2 font-medium text-green-600">
-                              ₮{calculateParkingFeeForReport(record).toLocaleString()}
-                            </td>
-                            <td className="p-2">
-                              {record.images && record.images.length > 0 ? (
-                                <Button variant="outline" size="sm" onClick={() => openImageViewer(record.images, 0)}>
-                                  <Eye className="w-4 h-4 mr-1" />
-                                  {record.images.length}
-                                </Button>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">Байхгүй</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 border-primary bg-muted/30">
-                          <td colSpan={7} className="p-3 font-bold text-lg">
-                            НИЙТ:
-                          </td>
-                          <td className="p-3 font-bold text-lg text-green-600">
-                            ₮{filteredReportRecords
-                              .reduce((sum, record) => sum + calculateParkingFeeForReport(record), 0)
-                              .toLocaleString()}
-                          </td>
-                          <td className="p-3 font-bold text-lg text-center">
-                            {filteredReportRecords.length} үйлчлүүлэгч
-                          </td>
-                        </tr>
-                        <tr className="bg-slate-50">
-                          <td colSpan={9} className="p-2 text-sm text-muted-foreground text-center">
-                            Дундаж төлбөр: ₮{filteredReportRecords.length > 0
-                              ? Math.round(filteredReportRecords.reduce((sum, record) => sum + calculateParkingFeeForReport(record), 0) / filteredReportRecords.length).toLocaleString()
-                              : 0} •
-                            Хамгийн өндөр төлбөр: ₮{filteredReportRecords.length > 0
-                              ? Math.max(...filteredReportRecords.map(record => calculateParkingFeeForReport(record))).toLocaleString()
-                              : 0}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <p>Тайлан олдсонгүй</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </main>
-
-      {/* Date Range Export Dialog */}
-      <Dialog open={showDateRangeDialog} onOpenChange={setShowDateRangeDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Хугацаагаар Excel татах</DialogTitle>
-            <DialogDescription>Тодорхой хугацааны бүртгэлийг Excel файлаар татах</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Эхлэх огноо</Label>
-                <Input
-                  type="date"
-                  value={dateRangeStart}
-                  onChange={(e) => setDateRangeStart(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Дуусах огноо</Label>
-                <Input type="date" value={dateRangeEnd} onChange={(e) => setDateRangeEnd(e.target.value)} required />
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="deleteAfterExport"
-                checked={deleteAfterExport}
-                onCheckedChange={(checked) => setDeleteAfterExport(checked as boolean)}
-              />
-              <Label htmlFor="deleteAfterExport" className="text-sm">
-                Татсаны дараа өгөгдлийн сангаас устгах
-              </Label>
-            </div>
-            {deleteAfterExport && (
-              <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                <p className="text-sm text-destructive font-medium">⚠️ Анхаар: Энэ үйлдэл буцаах боломжгүй!</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDateRangeDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={handleDateRangeExport} disabled={exportLoading}>
-              {exportLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Татаж байна...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4 mr-2" />
-                  Excel татах
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          )}
+        </main>
+      </div>
 
-      {/* Image Viewer Dialog */}
-      {showImageViewer && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
-          <div className="relative max-w-4xl max-h-full p-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute top-4 right-4 z-10 bg-black/50 text-white hover:bg-black/70"
-              onClick={closeImageViewer}
+      {/* Bottom Navigation - Mobile/Tablet Only */}
+      <div className="lg:hidden fixed bottom-3 md:bottom-6 left-4 right-4 md:left-12 md:right-12 z-50">
+        <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl shadow-lg">
+          <div className="flex justify-around items-center py-3 md:py-4 px-2 md:px-4">
+            <button
+              onClick={() => setActiveTab("home")}
+              className="flex items-center justify-center p-3 md:p-4 rounded-lg transition-colors"
             >
-              <X className="w-4 h-4" />
-            </Button>
-
-            {currentImages.length > 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/50 text-white hover:bg-black/70"
-                  onClick={prevImage}
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 bg-black/50 text-white hover:bg-black/70"
-                  onClick={nextImage}
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </Button>
-              </>
+              <Home
+                className={`w-6 h-6 md:w-7 md:h-7 ${activeTab === "home" ? "text-emerald-400" : "text-white/70"}`}
+              />
+            </button>
+            {/* Hide records tab for employees */}
+            {profile.role !== "employee" && (
+              <button
+                onClick={() => setActiveTab("records")}
+                className="flex items-center justify-center p-3 md:p-4 rounded-lg transition-colors"
+              >
+                <Car
+                  className={`w-6 h-6 md:w-7 md:h-7 ${activeTab === "records" ? "text-emerald-400" : "text-white/70"}`}
+                />
+              </button>
             )}
+            <button
+              onClick={() => setActiveTab("history")}
+              className="flex items-center justify-center p-3 md:p-4 rounded-lg transition-colors"
+            >
+              <History
+                className={`w-6 h-6 md:w-7 md:h-7 ${activeTab === "history" ? "text-emerald-400" : "text-white/70"}`}
+              />
+            </button>
+            <button
+              onClick={() => setActiveTab("profile")}
+              className="flex items-center justify-center p-3 md:p-4 rounded-lg transition-colors"
+            >
+              <User
+                className={`w-6 h-6 md:w-7 md:h-7 ${activeTab === "profile" ? "text-emerald-400" : "text-white/70"}`}
+              />
+            </button>
+            <button
+              onClick={handleLogoutClick}
+              className="flex items-center justify-center p-3 md:p-4 rounded-lg transition-colors hover:bg-red-500/10"
+            >
+              <LogOut className="w-6 h-6 md:w-7 md:h-7 text-white/70 hover:text-red-400" />
+            </button>
+          </div>
+        </div>
+      </div>
 
-            <img
-              src={currentImages[currentImageIndex] || "/placeholder.svg"}
-              alt={`Зураг ${currentImageIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
-            />
+      {/* Custom Exit Confirmation Modal */}
+      {showExitModal && exitingRecord && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelExit}></div>
 
-            {currentImages.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                {currentImageIndex + 1} / {currentImages.length}
+          {/* Modal - responsive sizing */}
+          <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 md:p-6 mx-4 w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
+            <div className="text-center">
+              {/* Icon */}
+              <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
+                <Car className="w-6 h-6 md:w-8 md:h-8 text-red-400" />
               </div>
-            )}
+
+              {/* Title */}
+              <h3 className="text-lg md:text-xl font-semibold text-white mb-2">Гарсан бүртгэл</h3>
+              <p className="text-white/70 text-sm md:text-base mb-6">Машин гарсан бүртгэлийг баталгаажуулна уу</p>
+
+              {/* Car Details */}
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6 text-left">
+                <div className="space-y-2 text-sm md:text-base">
+                  <p className="text-white">
+                    <span className="text-white/70">Машин:</span> {exitingRecord.carNumber}
+                  </p>
+                  <p className="text-white">
+                    <span className="text-white/70">Ажилчин:</span> {exitingRecord.driverName}
+                  </p>
+                  <p className="text-white">
+                    <span className="text-white/70">Машины марк:</span> {exitingRecord.parkingArea}
+                  </p>
+                  <p className="text-white/50 text-xs md:text-sm">
+                    <span className="text-white/70">Орсон:</span> {exitingRecord.entryTime}
+                  </p>
+                  <p className="text-white/50 text-xs md:text-sm">
+                    <span className="text-white/70">Гарсан:</span> {exitDetails.exitTime}
+                  </p>
+                </div>
+              </div>
+
+              {/* Fee Calculation */}
+              <div className="bg-emerald-400/10 border border-emerald-400/20 rounded-xl p-4 mb-6">
+                <div className="text-center">
+                  <p className="text-white/70 text-sm mb-1">Зогссон хугацаа</p>
+                  <p className="text-white text-lg md:text-xl font-semibold mb-3">
+                    {exitDetails.duration === 0 ? "1 цагаас бага" : `${exitDetails.duration} цаг`}
+                  </p>
+                  <p className="text-white/70 text-sm mb-1">Төлөх дүн</p>
+                  <p className="text-emerald-400 text-xl md:text-2xl font-bold">
+                    {exitDetails.fee === 0 ? "Үнэгүй" : `${exitDetails.fee} ₮`}
+                  </p>
+                  <p className="text-white/50 text-xs mt-1">{pricingConfig.pricePerMinute}₮/цаг</p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={cancelExit}
+                  className="flex-1 py-3 px-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-medium rounded-xl hover:bg-white/20 transition-colors text-sm md:text-base"
+                >
+                  Цуцлах
+                </button>
+                <button
+                  onClick={confirmExit}
+                  className="flex-1 py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-colors text-sm md:text-base"
+                >
+                  Гарсан бүртгэл хийх
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editingDriver?.role === "manager"
-                ? "Менежерийн мэдээлэл засах"
-                : editingDriver?.role === "driver"
-                  ? "Жолоочийн мэдээлэл засах"
-                  : "Ажилчны мэдээлэл засах"}
-            </DialogTitle>
-            <DialogDescription>Хэрэглэгчийн мэдээллийг шинэчлэх</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Нэр</Label>
-              <Input
-                value={editDriverData.name}
-                onChange={(e) => setEditDriverData({ ...editDriverData, name: e.target.value })}
-                placeholder="Овог нэр"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Утасны дугаар</Label>
-              <Input
-                value={editDriverData.phone}
-                onChange={(e) => setEditDriverData({ ...editDriverData, phone: e.target.value })}
-                placeholder="99112233"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>И-мэйл хаяг</Label>
-              <Input
-                type="email"
-                value={editDriverData.email}
-                onChange={(e) => setEditDriverData({ ...editDriverData, email: e.target.value })}
-                placeholder="example@email.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Шинэ нууц үг (хоосон үлдээвэл өөрчлөхгүй)</Label>
-              <Input
-                type="password"
-                value={editDriverData.newPassword}
-                onChange={(e) => setEditDriverData({ ...editDriverData, newPassword: e.target.value })}
-                placeholder="Хамгийн багадаа 6 тэмдэгт"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={editingEmployee ? handleSaveEmployeeEdit : handleSaveDriverEdit} disabled={editLoading}>
-              {editLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Camera Modal */}
+      {showCamera && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={stopCamera}></div>
 
-      {/* Profile Dialog */}
-      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Профайл засах</DialogTitle>
-            <DialogDescription>Өөрийн мэдээллийг шинэчлэх</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Профайл зураг</Label>
-              <div className="flex items-center space-x-4">
-                <Avatar className="w-16 h-16">
-                  {profileData.profileImage ? (
-                    <AvatarImage src={profileData.profileImage || "/placeholder.svg"} alt="Profile" />
-                  ) : (
-                    <AvatarFallback>{profileData.name?.charAt(0).toUpperCase() || "M"}</AvatarFallback>
-                  )}
-                </Avatar>
-                <div>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e, "profile")}
-                    className="hidden"
-                    id="profile-upload"
-                  />
-                  <Label htmlFor="profile-upload" className="cursor-pointer">
-                    <Button variant="outline" size="sm" asChild>
-                      <span>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Зураг сонгох
-                      </span>
-                    </Button>
-                  </Label>
-                </div>
+          {/* Modal */}
+          <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mx-4 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="text-center">
+              <h3 className="text-xl font-semibold text-white mb-4">Зураг авах</h3>
+
+              {/* Camera View */}
+              <div className="relative mb-4">
+                <video ref={videoRef} autoPlay playsInline className="w-full h-64 object-cover rounded-xl bg-black" />
+                <canvas ref={canvasRef} className="hidden" />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label>Нэр</Label>
-              <Input
-                value={profileData.name}
-                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                placeholder="Овог нэр"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Утасны дугаар</Label>
-              <Input
-                value={profileData.phone}
-                onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                placeholder="99112233"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>И-мэйл хаяг</Label>
-              <Input
-                type="email"
-                value={profileData.email}
-                onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                placeholder="example@email.com"
-              />
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="font-medium mb-3">Нууц үг өөрчлөх</h4>
-
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label>Одоогийн нууц үг</Label>
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                    placeholder="Одоогийн нууц үг"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Шинэ нууц үг</Label>
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                    placeholder="Шинэ нууц үг"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Шинэ нууц үг давтах</Label>
-                  <Input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                    placeholder="Шинэ нууц үг давтах"
-                  />
-                </div>
+              {/* Camera Controls */}
+              <div className="flex justify-center space-x-4 mb-4">
+                <button
+                  onClick={switchCamera}
+                  className="p-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={captureImage}
+                  className="px-6 py-3 bg-emerald-400 hover:bg-emerald-500 text-black font-semibold rounded-xl transition-colors"
+                >
+                  Зураг авах
+                </button>
+                <button
+                  onClick={stopCamera}
+                  className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowProfileDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={handleSaveProfile} disabled={profileLoading}>
-              {profileLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Site Configuration Dialog */}
-      <Dialog open={showSiteDialog} onOpenChange={setShowSiteDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Сайтын тохиргоо</DialogTitle>
-            <DialogDescription>Сайтын нэр, лого, арын зургийг тохируулах</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Сайтын нэр</Label>
-              <Input
-                value={siteConfig.siteName}
-                onChange={(e) => setSiteConfig({ ...siteConfig, siteName: e.target.value })}
-                placeholder="Сайтын нэр"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Сайтын лого</Label>
-              <div className="flex items-center space-x-4">
-                {siteConfig.siteLogo && (
-                  <img
-                    src={siteConfig.siteLogo || "/placeholder.svg"}
-                    alt="Site Logo"
-                    className="w-12 h-12 object-contain"
-                  />
-                )}
-                <div>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e, "logo")}
-                    className="hidden"
-                    id="logo-upload"
-                  />
-                  <Label htmlFor="logo-upload" className="cursor-pointer">
-                    <Button variant="outline" size="sm" asChild>
-                      <span>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Лого сонгох
-                      </span>
-                    </Button>
-                  </Label>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Арын зураг</Label>
-              <div className="flex items-center space-x-4">
-                {siteConfig.siteBackground && (
-                  <img
-                    src={siteConfig.siteBackground || "/placeholder.svg"}
-                    alt="Background"
-                    className="w-12 h-12 object-cover rounded"
-                  />
-                )}
-                <div>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e, "background")}
-                    className="hidden"
-                    id="background-upload"
-                  />
-                  <Label htmlFor="background-upload" className="cursor-pointer">
-                    <Button variant="outline" size="sm" asChild>
-                      <span>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Арын зураг сонгох
-                      </span>
-                    </Button>
-                  </Label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSiteDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={handleSaveSiteConfig} disabled={siteLoading}>
-              {siteLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Pricing Configuration Dialog */}
-      <Dialog open={showPricingDialog} onOpenChange={setShowPricingDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Үнийн тохиргоо</DialogTitle>
-            <DialogDescription>Зогсоолын минут тутамын үнийг тохируулах</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Минут тутамын үнэ (₮)</Label>
-              <Input
-                type="number"
-                min="0"
-                step="1"
-                value={pricingConfig.pricePerMinute}
-                onChange={(e) => setPricingConfig({ ...pricingConfig, pricePerMinute: Number(e.target.value) })}
-                placeholder="0"
-              />
-              <p className="text-sm text-muted-foreground">
-                Одоогийн үнэ: {pricingConfig.pricePerMinute}₮/минут
-                {pricingConfig.pricePerMinute > 0 && (
-                  <span className="block">1 цагийн үнэ: {pricingConfig.pricePerMinute * 60}₮</span>
-                )}
+              <p className="text-white/70 text-sm">
+                {capturedImages.length}/2 зураг авсан
+                {capturedImages.length >= 2 && " (Хамгийн ихдээ 2 зураг)"}
               </p>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPricingDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={handleSavePricingConfig} disabled={pricingLoading}>
-              {pricingLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelLogout}></div>
+
+          {/* Modal */}
+          <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mx-4 w-full max-w-sm animate-in fade-in zoom-in duration-200">
+            <div className="text-center">
+              {/* Icon */}
+              <div className="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
+                <LogOut className="w-8 h-8 text-red-400" />
+              </div>
+
+              {/* Title */}
+              <h3 className="text-xl font-semibold text-white mb-2">Системээс гарах</h3>
+              <p className="text-white/70 text-sm mb-6">Та системээс гарахдаа итгэлтэй байна уу?</p>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={cancelLogout}
+                  className="flex-1 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-medium rounded-xl hover:bg-white/20 transition-colors"
+                >
+                  Цуцлах
+                </button>
+                <button
+                  onClick={confirmLogout}
+                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-colors"
+                >
+                  Гарах
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
