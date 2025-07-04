@@ -1,16 +1,20 @@
 {
   "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
     "users": {
-      ".read": "auth != null",
-      ".write": "auth != null",
       "$uid": {
         ".read": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'manager')",
         ".write": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() == 'manager')"
       }
     },
-    "parking_records": {
+    "parkingRecords": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "siteConfig": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() == 'manager'"
     }
   }
 }
