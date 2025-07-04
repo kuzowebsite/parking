@@ -1,10 +1,9 @@
-// Excel export-ийн тулд xlsx library суулгах
-// npm install xlsx эсвэл yarn add xlsx
+const { execSync } = require("child_process")
 
-console.log("Excel export функц ашиглахын тулд xlsx library суулгах хэрэгтэй:")
-console.log("npm install xlsx")
-console.log("эсвэл")
-console.log("yarn add xlsx")
-console.log("")
-console.log("Дараа нь импорт хийх:")
-console.log('import * as XLSX from "xlsx"')
+try {
+  console.log("Installing xlsx package...")
+  execSync("npm install xlsx", { stdio: "inherit" })
+  console.log("xlsx package installed successfully!")
+} catch (error) {
+  console.error("Error installing xlsx package:", error)
+}
