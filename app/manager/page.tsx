@@ -1446,7 +1446,7 @@ export default function ManagerPage() {
           {/* Right side header content remains the same */}
           <div className="flex items-center space-x-4">
             {/* Greeting text */}
-            <span className="text-muted-foreground text-sm">Сай�� байна уу!</span>
+            <span className="text-muted-foreground text-sm">Сайн байна уу!</span>
 
             {/* User name */}
             <span className="text-foreground font-medium">{userProfile.name}</span>
@@ -1991,7 +1991,7 @@ export default function ManagerPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="max-w-2xl mx-auto">
                 {/* Registration Form */}
                 <Card>
                   <CardHeader>
@@ -2102,52 +2102,6 @@ export default function ManagerPage() {
                         )}
                       </Button>
                     </form>
-                  </CardContent>
-                </Card>
-
-                {/* Registration Info */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Бүртгэлийн мэдээлэл</CardTitle>
-                    <CardDescription>Хэрэглэгчийн төрлийн тайлбар</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-3">
-                      <div className="flex items-start space-x-3 p-3 border rounded-lg">
-                        <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-blue-900">Менежер</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Бүх системийн удирдлага, тохиргоо, тайлан харах эрх
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start space-x-3 p-3 border rounded-lg">
-                        <Users className="w-5 h-5 text-green-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-green-900">Ажилчин</h4>
-                          <p className="text-sm text-muted-foreground">Зогсоолын бүртгэл хийх, өөрийн түүх харах эрх</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start space-x-3 p-3 border rounded-lg">
-                        <Car className="w-5 h-5 text-orange-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-orange-900">Жолооч</h4>
-                          <p className="text-sm text-muted-foreground">Зогсоолын бүртгэл хийх, бүх түүх харах эрх</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                      <h4 className="font-medium text-blue-900 mb-2">Анхааруулга</h4>
-                      <ul className="text-sm text-blue-800 space-y-1">
-                        <li>• И-мэйл хаяг давхардах боломжгүй</li>
-                        <li>• Нууц үг хамгийн багадаа 6 тэмдэгт</li>
-                        <li>• Ажилчин сонгосон тохиолдолд системд нэвтрэх эрх олгогдоно</li>
-                      </ul>
-                    </div>
                   </CardContent>
                 </Card>
               </div>
