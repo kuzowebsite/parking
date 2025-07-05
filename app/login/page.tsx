@@ -3,120 +3,159 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { signInWithEmailAndPassword, onAuthStateChanged, type User } from "firebase/auth"
-import { ref, get } from "firebase/database"
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth"
+import { ref, get, onValue } from "firebase/database"
 import { auth, database } from "@/lib/firebase"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Shield, Loader2 } from "lucide-react"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
-
-interface SiteConfig {
-  siteName: string
-  siteLogo: string
-  siteBackground: string
-}
+import { Badge } from "@/components/ui/badge"
+import { Eye, EyeOff, Shield, AlertCircle, Database, Globe } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [user, setUser] = useState<User | null>(null)
-  const [checkingAuth, setCheckingAuth] = useState(true)
+  const [showPassword, setShowPassword] = useState(false)
+  const [pageLoading, setPageLoading] = useState(true)
+  const [imagesPreloaded, setImagesPreloaded] = useState(false)
+  const [preloadProgress, setPreloadProgress] = useState(0)
 
   // Site configuration states
-  const [siteConfig, setSiteConfig] = useState<SiteConfig>({
+  const [siteConfig, setSiteConfig] = useState({
     siteName: "Зогсоолын систем",
     siteLogo: "",
     siteBackground: "",
   })
   const [configSource, setConfigSource] = useState<"database" | "default" | "error">("default")
-  const [configLoading, setConfigLoading] = useState(true)
+  const [configError, setConfigError] = useState("")
 
   const router = useRouter()
 
-  // Load site configuration
+  // Load site configuration from database
   const loadSiteConfig = async () => {
-    setConfigLoading(true)
     try {
       console.log("🔄 Loading site config from database...")
-
       const siteRef = ref(database, "siteConfig")
+
+      // Try to get data once first
       const snapshot = await get(siteRef)
 
       if (snapshot.exists()) {
         const data = snapshot.val()
         console.log("✅ Site config loaded from database:", data)
-
         setSiteConfig({
           siteName: data.siteName || "Зогсоолын систем",
           siteLogo: data.siteLogo || "",
           siteBackground: data.siteBackground || "",
         })
         setConfigSource("database")
+
+        // Also listen for real-time updates
+        onValue(siteRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val()
+            setSiteConfig({
+              siteName: data.siteName || "Зогсоолын систем",
+              siteLogo: data.siteLogo || "",
+              siteBackground: data.siteBackground || "",
+            })
+          }
+        })
       } else {
         console.log("⚠️ No site config found in database, using defaults")
         setConfigSource("default")
       }
-    } catch (error) {
-      console.error("❌ Error loading site config from database:", error)
+    } catch (error: any) {
+      console.error("❌ Error loading site config from database:", error.message)
+      setConfigError(error.message)
       setConfigSource("error")
-
-      // Use default config on error
-      setSiteConfig({
-        siteName: "Зогсоолын систем",
-        siteLogo: "",
-        siteBackground: "",
-      })
+      // Keep default config on error
     }
-    setConfigLoading(false)
   }
 
-  // Check authentication state
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user)
-      if (user) {
-        // Check user role and redirect accordingly
-        try {
-          const userRef = ref(database, `users/${user.uid}`)
-          const snapshot = await get(userRef)
-          const userData = snapshot.val()
+  // Preload images function
+  const preloadImages = async () => {
+    const imagesToPreload = [
+      "/images/background.webp",
+      "/images/logo.png",
+      siteConfig.siteBackground,
+      siteConfig.siteLogo,
+    ].filter(Boolean)
 
-          if (userData) {
-            if (userData.role === "manager") {
-              router.push("/manager")
-            } else if (userData.role === "driver") {
-              router.push("/driver")
-            } else if (userData.role === "employee") {
-              router.push("/employee")
-            } else {
-              router.push("/")
-            }
-          } else {
-            router.push("/")
-          }
-        } catch (error) {
-          console.error("Error checking user role:", error)
-          router.push("/")
+    let loadedCount = 0
+    const totalImages = imagesToPreload.length
+
+    if (totalImages === 0) {
+      setImagesPreloaded(true)
+      setPreloadProgress(100)
+      return
+    }
+
+    const loadPromises = imagesToPreload.map((src) => {
+      return new Promise<void>((resolve) => {
+        const img = new Image()
+        img.crossOrigin = "anonymous"
+        img.onload = () => {
+          loadedCount++
+          setPreloadProgress((loadedCount / totalImages) * 100)
+          resolve()
         }
-      }
-      setCheckingAuth(false)
+        img.onerror = () => {
+          loadedCount++
+          setPreloadProgress((loadedCount / totalImages) * 100)
+          resolve()
+        }
+        img.src = src
+      })
     })
 
-    return unsubscribe
+    await Promise.all(loadPromises)
+    setImagesPreloaded(true)
+  }
+
+  useEffect(() => {
+    const initializePage = async () => {
+      // Load site config first
+      await loadSiteConfig()
+
+      // Check if user is already logged in
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          // Check user role
+          try {
+            const userRef = ref(database, `users/${user.uid}`)
+            const snapshot = await get(userRef)
+            if (snapshot.exists()) {
+              const userData = snapshot.val()
+              if (userData.role === "manager") {
+                router.push("/manager")
+                return
+              }
+            }
+          } catch (error) {
+            console.error("Error checking user role:", error)
+          }
+        }
+        setPageLoading(false)
+      })
+
+      return unsubscribe
+    }
+
+    initializePage()
   }, [router])
 
-  // Load site config on component mount
+  // Preload images after site config is loaded
   useEffect(() => {
-    loadSiteConfig()
-  }, [])
+    if (configSource !== "default") {
+      preloadImages()
+    }
+  }, [siteConfig, configSource])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -127,29 +166,25 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      // Get user profile to check role
+      // Check user role
       const userRef = ref(database, `users/${user.uid}`)
       const snapshot = await get(userRef)
-      const userData = snapshot.val()
 
-      if (userData) {
-        // Redirect based on role
+      if (snapshot.exists()) {
+        const userData = snapshot.val()
         if (userData.role === "manager") {
           router.push("/manager")
-        } else if (userData.role === "driver") {
-          router.push("/driver")
-        } else if (userData.role === "employee") {
-          router.push("/employee")
         } else {
-          router.push("/")
+          setError("Та менежерийн эрхгүй байна")
+          await auth.signOut()
         }
       } else {
         setError("Хэрэглэгчийн мэдээлэл олдсонгүй")
+        await auth.signOut()
       }
     } catch (error: any) {
-      console.error("Login error:", error)
       if (error.code === "auth/user-not-found") {
-        setError("Хэрэглэгч олдсонгүй")
+        setError("И-мэйл хаяг олдсонгүй")
       } else if (error.code === "auth/wrong-password") {
         setError("Нууц үг буруу байна")
       } else if (error.code === "auth/invalid-email") {
@@ -160,91 +195,97 @@ export default function LoginPage() {
         setError("Нэвтрэхэд алдаа гарлаа")
       }
     }
+
     setLoading(false)
   }
 
-  if (checkingAuth) {
+  if (pageLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Шалгаж байна...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Ачааллаж байна...</p>
         </div>
       </div>
     )
   }
 
+  // Show loading screen while images are preloading
+  if (!imagesPreloaded && configSource !== "error") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <div className="space-y-2">
+            <p className="text-muted-foreground">Зураг ачааллаж байна...</p>
+            <div className="w-64 bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-primary h-2 rounded-full transition-all duration-300"
+                style={{ width: `${preloadProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-sm text-muted-foreground">{Math.round(preloadProgress)}%</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const backgroundImage = siteConfig.siteBackground || "/images/background.webp"
+  const logoImage = siteConfig.siteLogo || "/images/logo.png"
+
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        {siteConfig.siteBackground ? (
-          <Image
-            src={siteConfig.siteBackground || "/placeholder.svg"}
-            alt="Background"
-            fill
-            className="object-cover"
-            priority
-            onError={(e) => {
-              console.log("Background image failed to load, using fallback")
-              e.currentTarget.style.display = "none"
-            }}
-          />
-        ) : (
-          <Image src="/images/background.webp" alt="Background" fill className="object-cover" priority />
-        )}
-        <div className="absolute inset-0 bg-black/40" />
+    <div
+      className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat relative"
+      style={{
+        backgroundImage: `url("${backgroundImage}")`,
+      }}
+    >
+      {/* Background overlay */}
+      <div className="absolute inset-0 bg-black/40"></div>
+
+      {/* Config status indicator */}
+      <div className="absolute top-4 right-4 z-10">
+        <Badge
+          variant={configSource === "database" ? "default" : configSource === "error" ? "destructive" : "secondary"}
+          className="flex items-center space-x-1"
+        >
+          {configSource === "database" && <Database className="w-3 h-3" />}
+          {configSource === "default" && <Globe className="w-3 h-3" />}
+          {configSource === "error" && <AlertCircle className="w-3 h-3" />}
+          <span>
+            {configSource === "database" && "Database"}
+            {configSource === "default" && "Default"}
+            {configSource === "error" && "Error"}
+          </span>
+        </Badge>
       </div>
 
-      {/* Login Form */}
+      {/* Login form */}
       <div className="relative z-10 w-full max-w-md mx-4">
         <Card className="backdrop-blur-sm bg-white/95 shadow-2xl border-0">
-          <CardHeader className="text-center pb-6">
-            <div className="flex justify-center mb-4">
-              {siteConfig.siteLogo ? (
-                <Image
-                  src={siteConfig.siteLogo || "/placeholder.svg"}
-                  alt="Logo"
-                  width={80}
-                  height={80}
-                  className="object-contain"
-                  onError={(e) => {
-                    console.log("Logo failed to load, using fallback")
-                    e.currentTarget.style.display = "none"
-                  }}
-                />
-              ) : (
-                <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center">
-                  <Shield className="w-10 h-10 text-primary-foreground" />
-                </div>
-              )}
-            </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">{siteConfig.siteName}</CardTitle>
-            <CardDescription className="text-gray-600">Системд нэвтрэх</CardDescription>
-
-            {/* Config Status Indicator */}
-            {!configLoading && (
-              <div className="mt-2">
-                {configSource === "database" && (
-                  <div className="text-xs text-green-600 flex items-center justify-center">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
-                    Өгөгдлийн сангаас ачаалсан
-                  </div>
-                )}
-                {configSource === "default" && (
-                  <div className="text-xs text-yellow-600 flex items-center justify-center">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></div>
-                    Анхдагш тохиргоо
-                  </div>
-                )}
-                {configSource === "error" && (
-                  <div className="text-xs text-red-600 flex items-center justify-center">
-                    <div className="w-2 h-2 bg-red-500 rounded-full mr-1"></div>
-                    Алдаа гарсан, анхдагш тохиргоо
-                  </div>
-                )}
+          <CardHeader className="text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                {logoImage ? (
+                  <img
+                    src={logoImage || "/placeholder.svg"}
+                    alt="Logo"
+                    className="w-12 h-12 object-contain"
+                    onError={(e) => {
+                      console.error("Logo failed to load, using fallback")
+                      e.currentTarget.style.display = "none"
+                      e.currentTarget.nextElementSibling?.classList.remove("hidden")
+                    }}
+                  />
+                ) : null}
+                <Shield className={`w-12 h-12 text-primary ${logoImage ? "hidden" : ""}`} />
               </div>
-            )}
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-bold text-gray-900">{siteConfig.siteName}</CardTitle>
+              <CardDescription className="text-gray-600 mt-2">Менежерийн системд нэвтрэх</CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -255,7 +296,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@email.com"
+                  placeholder="your@email.com"
                   required
                   className="h-11"
                 />
@@ -280,9 +321,9 @@ export default function LoginPage() {
                     className="absolute right-0 top-0 h-11 px-3 hover:bg-transparent"
                   >
                     {showPassword ? (
-                      <EyeOff className="w-4 h-4 text-gray-500" />
+                      <EyeOff className="h-4 w-4 text-gray-500" />
                     ) : (
-                      <Eye className="w-4 h-4 text-gray-500" />
+                      <Eye className="h-4 w-4 text-gray-500" />
                     )}
                   </Button>
                 </div>
@@ -290,16 +331,24 @@ export default function LoginPage() {
 
               {error && (
                 <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
-              <Button type="submit" disabled={loading} className="w-full h-11">
+              {configError && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>Config алдаа: {configError}. Default тохиргоо ашиглаж байна.</AlertDescription>
+                </Alert>
+              )}
+
+              <Button type="submit" className="w-full h-11 text-base font-medium" disabled={loading}>
                 {loading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Нэвтэрч байна...
-                  </>
+                  <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Нэвтэрч байна...</span>
+                  </div>
                 ) : (
                   "Нэвтрэх"
                 )}
@@ -307,6 +356,15 @@ export default function LoginPage() {
             </form>
           </CardContent>
         </Card>
+
+        {/* Debug info */}
+        <div className="mt-4 text-center">
+          <div className="text-xs text-white/80 space-y-1">
+            <p>Config: {configSource}</p>
+            <p>Images: {imagesPreloaded ? "✅ Loaded" : "⏳ Loading"}</p>
+            {configSource === "database" && <p className="text-green-300">✅ Database тохиргоо ачаалагдлаа</p>}
+          </div>
+        </div>
       </div>
     </div>
   )
