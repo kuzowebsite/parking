@@ -135,6 +135,10 @@ export default function LoginPage() {
               if (userData.role === "manager") {
                 router.push("/manager")
                 return
+              } else {
+                // If user is not manager, redirect to main app
+                router.push("/")
+                return
               }
             }
           } catch (error) {
@@ -172,10 +176,12 @@ export default function LoginPage() {
 
       if (snapshot.exists()) {
         const userData = snapshot.val()
+
+        // Only allow managers to login through this page
         if (userData.role === "manager") {
           router.push("/manager")
         } else {
-          setError("Та менежерийн эрхгүй байна")
+          setError("Зөвхөн менежер энэ хуудсаар нэвтэрч болно")
           await auth.signOut()
         }
       } else {
