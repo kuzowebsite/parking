@@ -43,7 +43,6 @@ import {
   ChevronRight,
   TrendingUp,
   Users,
-  DollarSign,
   Car,
   BarChart3,
   EyeOff,
@@ -1463,39 +1462,39 @@ export default function ManagerPage() {
               )}
             </Avatar>
 
-             {/* Settings dropdown */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="p-2">
-                              <Settings className="w-5 h-5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
-                              <UserIcon className="w-4 h-4 mr-2" />
-                              Профайл
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setShowSiteDialog(true)}>
-                              <Globe className="w-4 h-4 mr-2" />
-                              Сайт бүртгэл
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setShowPricingDialog(true)}>
-                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                                />
-                              </svg>
-                              Үнэ
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                              <LogOut className="w-4 h-4 mr-2" />
-                              Гарах
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+            {/* Settings dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="p-2">
+                  <Settings className="w-5 h-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
+                  <UserIcon className="w-4 h-4 mr-2" />
+                  Профайл
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowSiteDialog(true)}>
+                  <Globe className="w-4 h-4 mr-2" />
+                  Сайт бүртгэл
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowPricingDialog(true)}>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    />
+                  </svg>
+                  Үнэ
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Гарах
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -1528,290 +1527,159 @@ export default function ManagerPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-8">
-            <div className="grid gap-8">
-              {/* Advanced Header Section */}
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 p-8">
-                <div className="absolute inset-0 opacity-20">
-                  <div
-                    className="w-full h-full"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%239C92AC' fillOpacity='0.05'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                    }}
-                  />
-                </div>
-                <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between">
-                  <div className="space-y-4">
-                    <h1 className="text-4xl font-bold text-white">Хяналтын самбар</h1>
-                    <p className="text-xl text-purple-200">
-                      {customDateRange.useCustomRange
-                        ? `${customDateRange.startDate} - ${customDateRange.endDate}`
-                        : "Сүүлийн 6 сарын статистик"}
-                    </p>
-                    <div className="flex flex-wrap gap-4 text-purple-200">
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="w-4 h-4" />
-                        <span>{new Date().toLocaleDateString("mn-MN")}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <TrendingUp className="w-4 h-4" />
-                        <span>Нийт орлого: {dashboardStats.totalRevenue.toLocaleString()}₮</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-6 lg:mt-0 flex flex-col sm:flex-row gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowDateRangePicker(true)}
-                      className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                    >
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Огноо сонгох
-                    </Button>
-                    {customDateRange.useCustomRange && (
-                      <Button
-                        variant="outline"
-                        onClick={resetToDefaultRange}
-                        className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                      >
-                        Анхдагш
-                      </Button>
-                    )}
-                  </div>
-                </div>
+          <TabsContent value="dashboard" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold tracking-tight">Хяналтын самбар</h2>
+                <p className="text-muted-foreground">
+                  {customDateRange.useCustomRange
+                    ? `${customDateRange.startDate} - ${customDateRange.endDate}`
+                    : "Сүүлийн 6 сарын статистик"}
+                </p>
               </div>
-
-              {/* Enhanced KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-blue-100 text-sm font-medium">Нийт үйлчлүүлэгч</p>
-                        <p className="text-3xl font-bold">{dashboardStats.totalCustomers}</p>
-                        <p className="text-blue-100 text-xs mt-1">Өнөөдөр: +{dashboardStats.todayCustomers}</p>
-                      </div>
-                      <div className="p-3 bg-white/20 rounded-full">
-                        <Users className="w-6 h-6" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-emerald-100 text-sm font-medium">Нийт орлого</p>
-                        <p className="text-3xl font-bold">{dashboardStats.totalRevenue.toLocaleString()}₮</p>
-                        <p className="text-emerald-100 text-xs mt-1">
-                          Өнөөдөр: +{dashboardStats.todayRevenue.toLocaleString()}₮
-                        </p>
-                      </div>
-                      <div className="p-3 bg-white/20 rounded-full">
-                        <DollarSign className="w-6 h-6" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-orange-500 to-orange-600 text-white">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-orange-100 text-sm font-medium">Зогсож байгаа</p>
-                        <p className="text-3xl font-bold">{dashboardStats.activeRecords}</p>
-                        <p className="text-orange-100 text-xs mt-1">Одоогийн байдлаар</p>
-                      </div>
-                      <div className="p-3 bg-white/20 rounded-full">
-                        <Car className="w-6 h-6" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-purple-100 text-sm font-medium">Дундаж орлого</p>
-                        <p className="text-3xl font-bold">
-                          {Math.round(dashboardStats.averageRevenue).toLocaleString()}₮
-                        </p>
-                        <p className="text-purple-100 text-xs mt-1">
-                          Дундаж хугацаа: {dashboardStats.averageSessionTime.toFixed(1)}ц
-                        </p>
-                      </div>
-                      <div className="p-3 bg-white/20 rounded-full">
-                        <TrendingUp className="w-6 h-6" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setShowDateRangePicker(true)}>
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Огноо сонгох
+                </Button>
+                {customDateRange.useCustomRange && (
+                  <Button variant="outline" onClick={resetToDefaultRange}>
+                    Анхдагш
+                  </Button>
+                )}
               </div>
+            </div>
 
-              {/* Charts Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Monthly Revenue Chart */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <BarChart3 className="w-5 h-5 mr-2" />
-                      {customDateRange.useCustomRange ? "Х  гацааны орлого" : "Сарын орлого"}
-                    </CardTitle>
-                    <CardDescription>
-                      {customDateRange.useCustomRange
-                        ? `${customDateRange.startDate} - ${customDateRange.endDate}`
-                        : "Сүүлийн 6 сарын орлогын график"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      {monthlyStats.length > 0 ? (
-                        <div className="space-y-4">
-                          {monthlyStats.map((stat, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                              <div>
-                                <p className="font-medium">{stat.period}</p>
-                                <p className="text-sm text-muted-foreground">{stat.customers} үйлчлүүлэгч</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-bold text-lg">{stat.revenue.toLocaleString()}₮</p>
-                                <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-primary rounded-full transition-all duration-500"
-                                    style={{
-                                      width: `${Math.min(100, (stat.revenue / Math.max(...monthlyStats.map((s) => s.revenue))) * 100)}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                          <div className="text-center">
-                            <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                            <p>Мэдээлэл байхгүй</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Daily Activity Chart */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <TrendingUp className="w-5 h-5 mr-2" />7 хоногийн үйл ажиллагаа
-                    </CardTitle>
-                    <CardDescription>Сүүлийн 7 хоногийн өдөр тутмын статистик</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      {dailyStats.length > 0 ? (
-                        <div className="space-y-3">
-                          {dailyStats.map((stat, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                              <div>
-                                <p className="font-medium">{stat.day}</p>
-                                <p className="text-sm text-muted-foreground">{stat.date}</p>
-                              </div>
-                              <div className="flex items-center space-x-4">
-                                <div className="text-center">
-                                  <p className="text-sm font-medium">{stat.customers}</p>
-                                  <p className="text-xs text-muted-foreground">үйлчлүүлэгч</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
-                                  <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                                      style={{
-                                        width: `${Math.min(100, (stat.revenue / Math.max(...dailyStats.map((s) => s.revenue))) * 100)}%`,
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                          <div className="text-center">
-                            <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                            <p>Мэдээлэл байхгүй</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Recent Activity */}
+            {/* Simple Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Monthly Revenue Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Сүүлийн үйл ажиллагаа</CardTitle>
-                  <CardDescription>Сүүлийн 10 бүртгэл</CardDescription>
+                  <CardTitle className="flex items-center">
+                    <BarChart3 className="w-5 h-5 mr-2" />
+                    Сарын орлого
+                  </CardTitle>
+                  <CardDescription>
+                    {customDateRange.useCustomRange
+                      ? `${customDateRange.startDate} - ${customDateRange.endDate}`
+                      : "Сүүлийн 6 сарын орлогын график"}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {recentActivity.length > 0 ? (
-                    <div className="space-y-4">
-                      {recentActivity.map((activity, index) => (
-                        <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-4">
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                activity.type === "entry"
-                                  ? "bg-emerald-500"
-                                  : activity.type === "exit" || activity.exitTime
-                                    ? "bg-red-500"
-                                    : "bg-blue-500"
-                              }`}
-                            />
-                            <div>
-                              <p className="font-medium">{activity.carNumber}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {activity.driverName} • {new Date(activity.timestamp).toLocaleString("mn-MN")}
-                              </p>
-                            </div>
+                  <div className="space-y-3">
+                    {monthlyStats.length > 0 ? (
+                      monthlyStats.map((stat, index) => (
+                        <div key={index} className="flex items-center justify-between py-2">
+                          <div>
+                            <p className="font-medium">{stat.period}</p>
+                            <p className="text-sm text-muted-foreground">{stat.customers} үйлчлүүлэгч</p>
                           </div>
                           <div className="text-right">
-                            <Badge
-                              variant={
-                                activity.type === "entry"
-                                  ? "default"
-                                  : activity.type === "exit" || activity.exitTime
-                                    ? "destructive"
-                                    : "secondary"
-                              }
-                            >
-                              {activity.type === "entry"
-                                ? "Орсон"
-                                : activity.type === "exit" || activity.exitTime
-                                  ? "Гарсан"
-                                  : "Бүртгэл"}
-                            </Badge>
-                            {activity.amount && (
-                              <p className="text-sm font-medium mt-1">{activity.amount.toLocaleString()}₮</p>
-                            )}
+                            <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Car className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Сүүлийн үйл ажиллагаа байхгүй</p>
-                    </div>
-                  )}
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>Мэдээлэл байхгүй</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Daily Activity Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <TrendingUp className="w-5 h-5 mr-2" />7 хоногийн үйл ажиллагаа
+                  </CardTitle>
+                  <CardDescription>Сүүлийн 7 хоногийн өдөр тутмын статистик</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {dailyStats.length > 0 ? (
+                      dailyStats.map((stat, index) => (
+                        <div key={index} className="flex items-center justify-between py-2">
+                          <div>
+                            <p className="font-medium">{stat.day}</p>
+                            <p className="text-sm text-muted-foreground">{stat.date}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm">{stat.customers} үйлчлүүлэгч</p>
+                            <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>Мэдээлэл байхгүй</p>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Сүүлийн үйл ажиллагаа</CardTitle>
+                <CardDescription>Сүүлийн 10 бүртгэл</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {recentActivity.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentActivity.map((activity, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              activity.type === "entry"
+                                ? "bg-emerald-500"
+                                : activity.type === "exit" || activity.exitTime
+                                  ? "bg-red-500"
+                                  : "bg-blue-500"
+                            }`}
+                          />
+                          <div>
+                            <p className="font-medium">{activity.carNumber}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {activity.driverName} • {new Date(activity.timestamp).toLocaleString("mn-MN")}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge
+                            variant={
+                              activity.type === "entry"
+                                ? "default"
+                                : activity.type === "exit" || activity.exitTime
+                                  ? "destructive"
+                                  : "secondary"
+                            }
+                          >
+                            {activity.type === "entry"
+                              ? "Орсон"
+                              : activity.type === "exit" || activity.exitTime
+                                ? "Гарсан"
+                                : "Бүртгэл"}
+                          </Badge>
+                          {activity.amount && (
+                            <p className="text-sm font-medium mt-1">{activity.amount.toLocaleString()}₮</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Car className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Сүүлийн үйл ажиллагаа байхгүй</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="employees" className="space-y-6">
