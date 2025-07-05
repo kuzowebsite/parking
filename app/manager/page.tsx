@@ -167,8 +167,8 @@ export default function ManagerPage() {
   const [siteLoading, setSiteLoading] = useState(false)
 
   // Profile image and password states
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showPassword, setShowConfirmPassword] = useState(false)
+  const [showConfirmPassword, setShowPassword] = useState(false)
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -1632,352 +1632,363 @@ export default function ManagerPage() {
               </div>
 
               {/* Average Revenue Card */}
-              <div className="relative bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white overflow-hidden">
-                <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6" />
-                </div>
-                <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
+              <div className="relative bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white overflow-hidden"></div>
+            </div>
 
-                <div className="relative z-10">
-                  <p className="text-purple-100 text-sm font-medium mb-1">Дундаж орлого</p>
-                  <p className="text-4xl font-bold mb-2">
-                    {Math.round(dashboardStats.averageRevenue).toLocaleString()}₮
-                  </p>
-                  <p className="text-purple-200 text-sm">
-                    Дундаж хугацаа: {dashboardStats.averageSessionTime.toFixed(1)}ц
-                  </p>
-                </div>
+            {/* Average Revenue Card */}
+            <div className="relative bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white overflow-hidden">
+              <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
+
+              <div className="relative z-10">
+                <p className="text-purple-100 text-sm font-medium mb-1">Дундаж орлого</p>
+                <p className="text-4xl font-bold mb-2">{Math.round(dashboardStats.averageRevenue).toLocaleString()}₮</p>
+                <p className="text-purple-200 text-sm">
+                  Дундаж хугацаа: {dashboardStats.averageSessionTime.toFixed(1)}ц
+                </p>
               </div>
             </div>
+          </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Monthly Revenue Chart */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <BarChart3 className="w-5 h-5 mr-2" />
-                    Сарын орлого
-                  </CardTitle>
-                  <CardDescription>
-                    {customDateRange.useCustomRange
-                      ? `${customDateRange.startDate} - ${customDateRange.endDate}`
-                      : "Сүүлийн 6 сарын орлогын график"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {monthlyStats.length > 0 ? (
-                      monthlyStats.map((stat, index) => (
-                        <div key={index} className="flex items-center justify-between py-2">
-                          <div>
-                            <p className="font-medium">{stat.period}</p>
-                            <p className="text-sm text-muted-foreground">{stat.customers} үйлчлүүлэгч</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <p>Мэдээлэл байхгүй</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Daily Activity Chart */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <TrendingUp className="w-5 h-5 mr-2" />7 хоногийн үйл ажиллагаа
-                  </CardTitle>
-                  <CardDescription>Сүүлийн 7 хоногийн өдөр тутмын статистик</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {dailyStats.length > 0 ? (
-                      dailyStats.map((stat, index) => (
-                        <div key={index} className="flex items-center justify-between py-2">
-                          <div>
-                            <p className="font-medium">{stat.day}</p>
-                            <p className="text-sm text-muted-foreground">{stat.date}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm">{stat.customers} үйлчлүүлэгч</p>
-                            <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <p>Мэдээлэл байхгүй</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent Activity */}
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Monthly Revenue Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>Сүүлийн үйл ажиллагаа</CardTitle>
-                <CardDescription>Сүүлийн 10 бүртгэл</CardDescription>
+                <CardTitle className="flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2" />
+                  Сарын орлого
+                </CardTitle>
+                <CardDescription>
+                  {customDateRange.useCustomRange
+                    ? `${customDateRange.startDate} - ${customDateRange.endDate}`
+                    : "Сүүлийн 6 сарын орлогын график"}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                {recentActivity.length > 0 ? (
-                  <div className="space-y-4">
-                    {recentActivity.map((activity, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-4">
-                          <div
-                            className={`w-3 h-3 rounded-full ${
-                              activity.type === "entry"
-                                ? "bg-emerald-500"
-                                : activity.type === "exit" || activity.exitTime
-                                  ? "bg-red-500"
-                                  : "bg-blue-500"
-                            }`}
-                          />
-                          <div>
-                            <p className="font-medium">{activity.carNumber}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {activity.driverName} • {new Date(activity.timestamp).toLocaleString("mn-MN")}
-                            </p>
-                          </div>
+                <div className="space-y-3">
+                  {monthlyStats.length > 0 ? (
+                    monthlyStats.map((stat, index) => (
+                      <div key={index} className="flex items-center justify-between py-2">
+                        <div>
+                          <p className="font-medium">{stat.period}</p>
+                          <p className="text-sm text-muted-foreground">{stat.customers} үйлчлүүлэгч</p>
                         </div>
                         <div className="text-right">
-                          <Badge
-                            variant={
-                              activity.type === "entry"
-                                ? "default"
-                                : activity.type === "exit" || activity.exitTime
-                                  ? "destructive"
-                                  : "secondary"
-                            }
-                          >
-                            {activity.type === "entry"
-                              ? "Орсон"
-                              : activity.type === "exit" || activity.exitTime
-                                ? "Гарсан"
-                                : "Бүртгэл"}
-                          </Badge>
-                          {activity.amount && (
-                            <p className="text-sm font-medium mt-1">{activity.amount.toLocaleString()}₮</p>
-                          )}
+                          <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Car className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Сүүлийн үйл ажиллагаа байхгүй</p>
-                  </div>
-                )}
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Мэдээлэл байхгүй</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          <TabsContent value="employees">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold">Ажилчид</h2>
-                <Button onClick={() => setShowEmployeeDialog(true)}>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Ажилчин нэмэх
-                </Button>
-              </div>
-
-              {/* Employee List */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {employees.map((employee) => (
-                  <Card key={employee.id}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">{employee.name}</CardTitle>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Засах
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteEmployee(employee.id, employee.name)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Устгах
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleToggleEmployeeStatus(employee.id, employee.active, employee.name)}
-                          >
-                            {employee.active ? (
-                              <>
-                                <PowerOff className="w-4 h-4 mr-2" />
-                                Идэвхгүй болгох
-                              </>
-                            ) : (
-                              <>
-                                <Power className="w-4 h-4 mr-2" />
-                                Идэвхжүүлэх
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center space-x-4">
-                        <Avatar className="w-10 h-10">
-                          {employee.profileImage ? (
-                            <AvatarImage src={employee.profileImage || "/placeholder.svg"} alt={employee.name} />
-                          ) : (
-                            <AvatarFallback>{employee.name?.charAt(0).toUpperCase() || "E"}</AvatarFallback>
-                          )}
-                        </Avatar>
+            {/* Daily Activity Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="w-5 h-5 mr-2" />7 хоногийн үйл ажиллагаа
+                </CardTitle>
+                <CardDescription>Сүүлийн 7 хоногийн өдөр тутмын статистик</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {dailyStats.length > 0 ? (
+                    dailyStats.map((stat, index) => (
+                      <div key={index} className="flex items-center justify-between py-2">
                         <div>
-                          <p className="text-sm font-medium">{employee.position || "Ажилчин"}</p>
-                          <p className="text-xs text-muted-foreground">{employee.phone}</p>
+                          <p className="font-medium">{stat.day}</p>
+                          <p className="text-sm text-muted-foreground">{stat.date}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm">{stat.customers} үйлчлүүлэгч</p>
+                          <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Мэдээлэл байхгүй</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              {/* Manager List */}
-              <h3 className="text-xl font-bold mt-6">Менежерүүд</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {managers.map((manager) => (
-                  <Card key={manager.id}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">{manager.name}</CardTitle>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditManager(manager)}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Засах
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteManager(manager.id, manager.name)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Устгах
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleToggleManagerStatus(manager.id, manager.active, manager.name)}
-                          >
-                            {manager.active ? (
-                              <>
-                                <PowerOff className="w-4 h-4 mr-2" />
-                                Идэвхгүй болгох
-                              </>
-                            ) : (
-                              <>
-                                <Power className="w-4 h-4 mr-2" />
-                                Идэвхжүүлэх
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </CardHeader>
-                    <CardContent>
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Сүүлийн үйл ажиллагаа</CardTitle>
+              <CardDescription>Сүүлийн 10 бүртгэл</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {recentActivity.length > 0 ? (
+                <div className="space-y-4">
+                  {recentActivity.map((activity, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center space-x-4">
-                        <Avatar className="w-10 h-10">
-                          {manager.profileImage ? (
-                            <AvatarImage src={manager.profileImage || "/placeholder.svg"} alt={manager.name} />
-                          ) : (
-                            <AvatarFallback>{manager.name?.charAt(0).toUpperCase() || "M"}</AvatarFallback>
-                          )}
-                        </Avatar>
+                        <div
+                          className={`w-3 h-3 rounded-full ${
+                            activity.type === "entry"
+                              ? "bg-emerald-500"
+                              : activity.type === "exit" || activity.exitTime
+                                ? "bg-red-500"
+                                : "bg-blue-500"
+                          }`}
+                        />
                         <div>
-                          <p className="text-sm font-medium">Менежер</p>
-                          <p className="text-xs text-muted-foreground">{manager.phone}</p>
+                          <p className="font-medium">{activity.carNumber}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {activity.driverName} • {new Date(activity.timestamp).toLocaleString("mn-MN")}
+                          </p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Driver List */}
-              <h3 className="text-xl font-bold mt-6">Жолоочид</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {drivers.map((driver) => (
-                  <Card key={driver.id}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">{driver.name}</CardTitle>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditDriver(driver)}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Засах
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteDriver(driver.id, driver.name)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Устгах
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleToggleDriverStatus(driver.id, driver.active, driver.name)}
-                          >
-                            {driver.active ? (
-                              <>
-                                <PowerOff className="w-4 h-4 mr-2" />
-                                Идэвхгүй болгох
-                              </>
-                            ) : (
-                              <>
-                                <Power className="w-4 h-4 mr-2" />
-                                Идэвхжүүлэх
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center space-x-4">
-                        <Avatar className="w-10 h-10">
-                          {driver.profileImage ? (
-                            <AvatarImage src={driver.profileImage || "/placeholder.svg"} alt={driver.name} />
-                          ) : (
-                            <AvatarFallback>{driver.name?.charAt(0).toUpperCase() || "D"}</AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">Жолооч</p>
-                          <p className="text-xs text-muted-foreground">{driver.phone}</p>
-                        </div>
+                      <div className="text-right">
+                        <Badge
+                          variant={
+                            activity.type === "entry"
+                              ? "default"
+                              : activity.type === "exit" || activity.exitTime
+                                ? "destructive"
+                                : "secondary"
+                          }
+                        >
+                          {activity.type === "entry"
+                            ? "Орсон"
+                            : activity.type === "exit" || activity.exitTime
+                              ? "Гарсан"
+                              : "Бүртгэл"}
+                        </Badge>
+                        {activity.amount && (
+                          <p className="text-sm font-medium mt-1">{activity.amount.toLocaleString()}₮</p>
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Car className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Сүүлийн үйл ажиллагаа байхгүй</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="employees">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">Ажилчид</h2>
+              <Button onClick={() => setShowEmployeeDialog(true)}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Ажилчин нэмэх
+              </Button>
+            </div>
+
+            {/* Employee List */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {employees.map((employee) => (
+                <Card key={employee.id}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{employee.name}</CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Засах
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteEmployee(employee.id, employee.name)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Устгах
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleToggleEmployeeStatus(employee.id, employee.active, employee.name)}
+                        >
+                          {employee.active ? (
+                            <>
+                              <PowerOff className="w-4 h-4 mr-2" />
+                              Идэвхгүй болгох
+                            </>
+                          ) : (
+                            <>
+                              <Power className="w-4 h-4 mr-2" />
+                              Идэвхжүүлэх
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center space-x-4">
+                      <Avatar className="w-10 h-10">
+                        {employee.profileImage ? (
+                          <AvatarImage src={employee.profileImage || "/placeholder.svg"} alt={employee.name} />
+                        ) : (
+                          <AvatarFallback>{employee.name?.charAt(0).toUpperCase() || "E"}</AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">{employee.position || "Ажилчин"}</p>
+                        <p className="text-xs text-muted-foreground">{employee.phone}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Manager List */}
+            <h3 className="text-xl font-bold mt-6">Менежерүүд</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {managers.map((manager) => (
+                <Card key={manager.id}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{manager.name}</CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditManager(manager)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Засах
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteManager(manager.id, manager.name)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Устгах
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleToggleManagerStatus(manager.id, manager.active, manager.name)}
+                        >
+                          {manager.active ? (
+                            <>
+                              <PowerOff className="w-4 h-4 mr-2" />
+                              Идэвхгүй болгох
+                            </>
+                          ) : (
+                            <>
+                              <Power className="w-4 h-4 mr-2" />
+                              Идэвхжүүлэх
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center space-x-4">
+                      <Avatar className="w-10 h-10">
+                        {manager.profileImage ? (
+                          <AvatarImage src={manager.profileImage || "/placeholder.svg"} alt={manager.name} />
+                        ) : (
+                          <AvatarFallback>{manager.name?.charAt(0).toUpperCase() || "M"}</AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">Менежер</p>
+                        <p className="text-xs text-muted-foreground">{manager.phone}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Driver List */}
+            <h3 className="text-xl font-bold mt-6">Жолоочид</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {drivers.map((driver) => (
+                <Card key={driver.id}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{driver.name}</CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditDriver(driver)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Засах
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteDriver(driver.id, driver.name)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Устгах
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleToggleDriverStatus(driver.id, driver.active, driver.name)}
+                        >
+                          {driver.active ? (
+                            <>
+                              <PowerOff className="w-4 h-4 mr-2" />
+                              Идэвхгүй болгох
+                            </>
+                          ) : (
+                            <>
+                              <Power className="w-4 h-4 mr-2" />
+                              Идэвхжүүлэх
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center space-x-4">
+                      <Avatar className="w-10 h-10">
+                        {driver.profileImage ? (
+                          <AvatarImage src={driver.profileImage || "/placeholder.svg"} alt={driver.name} />
+                        ) : (
+                          <AvatarFallback>{driver.name?.charAt(0).toUpperCase() || "D"}</AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium">Жолооч</p>
+                        <p className="text-xs text-muted-foreground">{driver.phone}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="register">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold tracking-tight">Хэрэглэгч бүртгэх</h2>
               </div>
             </div>
           </TabsContent>
@@ -1991,158 +2002,257 @@ export default function ManagerPage() {
                 </div>
               </div>
 
-              <div className="max-w-2xl mx-auto">
-                {/* Registration Form */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Шинэ хэрэглэгч бүртгэх</CardTitle>
-                    <CardDescription>Систем ашиглах эрх олгох</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <form onSubmit={handleRegisterDriver} className="space-y-4">
-                      {/* Role Selection */}
-                      <div className="space-y-2">
-                        <Label htmlFor="role">Хэрэглэгчийн төрөл</Label>
-                        <select
-                          id="role"
-                          className="w-full px-3 py-2 border border-input rounded-md bg-background focus:ring-2 focus:ring-primary focus:ring-opacity-50"
-                          value={selectedRole}
-                          onChange={(e) => setSelectedRole(e.target.value as "manager" | "driver" | "employee")}
-                        >
-                          <option value="employee">Ажилчин</option>
-                          <option value="driver">Жолооч</option>
-                          <option value="manager">Менежер</option>
-                        </select>
-                      </div>
-
-                      {/* Employee Selection (Conditional) */}
-                      {selectedRole === "employee" && (
-                        <div className="space-y-2">
-                          <Label htmlFor="employee">Ажилчин сонгох</Label>
+              <div className="max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Registration Form */}
+                  <Card className="h-fit">
+                    <CardHeader className="pb-6">
+                      <CardTitle className="text-xl">Шинэ хэрэглэгч бүртгэх</CardTitle>
+                      <CardDescription>Систем ашиглах эрх олгох</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <form onSubmit={handleRegisterDriver} className="space-y-6">
+                        {/* Role Selection */}
+                        <div className="space-y-3">
+                          <Label htmlFor="role" className="text-base font-medium">
+                            Хэрэглэгчийн төрөл
+                          </Label>
                           <select
-                            id="employee"
-                            className="w-full px-3 py-2 border border-input rounded-md bg-background focus:ring-2 focus:ring-primary focus:ring-opacity-50"
-                            onChange={(e) => handleEmployeeSelection(e.target.value)}
+                            id="role"
+                            className="w-full px-4 py-3 text-base border border-input rounded-lg bg-background focus:ring-2 focus:ring-primary focus:ring-opacity-50 focus:border-primary transition-colors"
+                            value={selectedRole}
+                            onChange={(e) => setSelectedRole(e.target.value as "manager" | "driver" | "employee")}
                           >
-                            <option value="">Ажилчин сонгох...</option>
-                            {availableEmployees.map((employee) => (
-                              <option key={employee.id} value={employee.id}>
-                                {employee.name} {employee.position && `- ${employee.position}`}
-                              </option>
-                            ))}
+                            <option value="employee">Ажилчин</option>
+                            <option value="driver">Жолооч</option>
+                            <option value="manager">Менежер</option>
                           </select>
                         </div>
-                      )}
 
-                      {/* Name Input */}
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Овог нэр *</Label>
-                        <Input
-                          type="text"
-                          id="name"
-                          placeholder="Овог нэрээ оруулна уу"
-                          value={newDriver.name}
-                          onChange={(e) => setNewDriver({ ...newDriver, name: e.target.value })}
-                          required
-                        />
-                      </div>
-
-                      {/* Phone Input */}
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Утасны дугаар</Label>
-                        <Input
-                          type="tel"
-                          id="phone"
-                          placeholder="99112233"
-                          value={newDriver.phone}
-                          onChange={(e) => setNewDriver({ ...newDriver, phone: e.target.value })}
-                        />
-                      </div>
-
-                      {/* Email Input */}
-                      <div className="space-y-2">
-                        <Label htmlFor="email">И-мэйл хаяг *</Label>
-                        <Input
-                          type="email"
-                          id="email"
-                          placeholder="example@email.com"
-                          value={newDriver.email}
-                          onChange={(e) => setNewDriver({ ...newDriver, email: e.target.value })}
-                          required
-                        />
-                      </div>
-
-                      {/* Password Input */}
-                      <div className="space-y-2">
-                        <Label htmlFor="password">Нууц үг *</Label>
-                        <Input
-                          type="password"
-                          id="password"
-                          placeholder="Хамгийн багадаа 6 тэмдэгт"
-                          value={newDriver.password}
-                          onChange={(e) => setNewDriver({ ...newDriver, password: e.target.value })}
-                          required
-                        />
-                        <p className="text-xs text-muted-foreground">Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой</p>
-                      </div>
-
-                      {/* Submit Button */}
-                      <Button type="submit" className="w-full" disabled={registrationLoading}>
-                        {registrationLoading ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Бүртгэж байна...
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            {selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Жолооч" : "Ажилчин"}{" "}
-                            бүртгэх
-                          </>
+                        {/* Employee Selection (Conditional) */}
+                        {selectedRole === "employee" && (
+                          <div className="space-y-3">
+                            <Label htmlFor="employee" className="text-base font-medium">
+                              Ажилчин сонгох
+                            </Label>
+                            <select
+                              id="employee"
+                              className="w-full px-4 py-3 text-base border border-input rounded-lg bg-background focus:ring-2 focus:ring-primary focus:ring-opacity-50 focus:border-primary transition-colors"
+                              onChange={(e) => handleEmployeeSelection(e.target.value)}
+                            >
+                              <option value="">Ажилчин сонгох...</option>
+                              {availableEmployees.map((employee) => (
+                                <option key={employee.id} value={employee.id}>
+                                  {employee.name} {employee.position && `- ${employee.position}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         )}
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
+
+                        {/* Name Input */}
+                        <div className="space-y-3">
+                          <Label htmlFor="name" className="text-base font-medium">
+                            Овог нэр *
+                          </Label>
+                          <Input
+                            type="text"
+                            id="name"
+                            placeholder="Овог нэрээ оруулна уу"
+                            value={newDriver.name}
+                            onChange={(e) => setNewDriver({ ...newDriver, name: e.target.value })}
+                            required
+                            className="h-12 px-4 text-base"
+                          />
+                        </div>
+
+                        {/* Phone Input */}
+                        <div className="space-y-3">
+                          <Label htmlFor="phone" className="text-base font-medium">
+                            Утасны дугаар
+                          </Label>
+                          <Input
+                            type="tel"
+                            id="phone"
+                            placeholder="99112233"
+                            value={newDriver.phone}
+                            onChange={(e) => setNewDriver({ ...newDriver, phone: e.target.value })}
+                            className="h-12 px-4 text-base"
+                          />
+                        </div>
+
+                        {/* Email Input */}
+                        <div className="space-y-3">
+                          <Label htmlFor="email" className="text-base font-medium">
+                            И-мэйл хаяг *
+                          </Label>
+                          <Input
+                            type="email"
+                            id="email"
+                            placeholder="example@email.com"
+                            value={newDriver.email}
+                            onChange={(e) => setNewDriver({ ...newDriver, email: e.target.value })}
+                            required
+                            className="h-12 px-4 text-base"
+                          />
+                        </div>
+
+                        {/* Password Input */}
+                        <div className="space-y-3">
+                          <Label htmlFor="password" className="text-base font-medium">
+                            Нууц үг *
+                          </Label>
+                          <Input
+                            type="password"
+                            id="password"
+                            placeholder="Хамгийн багадаа 6 тэмдэгт"
+                            value={newDriver.password}
+                            onChange={(e) => setNewDriver({ ...newDriver, password: e.target.value })}
+                            required
+                            className="h-12 px-4 text-base"
+                          />
+                          <p className="text-sm text-muted-foreground">Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой</p>
+                        </div>
+
+                        {/* Submit Button */}
+                        <Button type="submit" className="w-full h-12 text-base" disabled={registrationLoading}>
+                          {registrationLoading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                              Бүртгэж байна...
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-5 h-5 mr-2" />
+                              {selectedRole === "manager"
+                                ? "Менежер"
+                                : selectedRole === "driver"
+                                  ? "Жолооч"
+                                  : "Ажилчин"}{" "}
+                              бүртгэх
+                            </>
+                          )}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+
+                  {/* Registration Info */}
+                  <Card className="h-fit">
+                    <CardHeader className="pb-6">
+                      <CardTitle className="text-xl">Бүртгэлийн мэдээлэл</CardTitle>
+                      <CardDescription>Хэрэглэгчийн төрлийн тайлбар</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="space-y-4">
+                        <div className="flex items-start space-x-4 p-4 border rounded-xl bg-blue-50/50">
+                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Shield className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-blue-900 mb-1">Менежер</h4>
+                            <p className="text-sm text-blue-700">Бүх системийн удирдлага, тохиргоо, тайлан харах эрх</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start space-x-4 p-4 border rounded-xl bg-green-50/50">
+                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Users className="w-5 h-5 text-green-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-green-900 mb-1">Ажилчин</h4>
+                            <p className="text-sm text-green-700">Зогсоолын бүртгэл хийх, өөрийн түүх харах эрх</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start space-x-4 p-4 border rounded-xl bg-orange-50/50">
+                          <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Car className="w-5 h-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-orange-900 mb-1">Жолооч</h4>
+                            <p className="text-sm text-orange-700">Зогсоолын бүртгэл хийх, бүх түүх харах эрх</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                        <h4 className="font-semibold text-amber-900 mb-3 flex items-center">
+                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                            />
+                          </svg>
+                          Анхааруулга
+                        </h4>
+                        <ul className="text-sm text-amber-800 space-y-2">
+                          <li className="flex items-start">
+                            <span className="w-1.5 h-1.5 bg-amber-600 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                            И-мэйл хаяг давхардах боломжгүй
+                          </li>
+                          <li className="flex items-start">
+                            <span className="w-1.5 h-1.5 bg-amber-600 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                            Нууц үг хамгийн багадаа 6 тэмдэгт
+                          </li>
+                          <li className="flex items-start">
+                            <span className="w-1.5 h-1.5 bg-amber-600 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                            Ажилчин сонгосон тохиолдолд системд нэвтрэх эрх олгогдоно
+                          </li>
+                        </ul>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
 
               {/* Quick Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <Shield className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium">Менежер</p>
-                        <p className="text-2xl font-bold">{managers.length}</p>
+              <div className="max-w-4xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                          <Shield className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-blue-700">Менежер</p>
+                          <p className="text-3xl font-bold text-blue-900">{managers.length}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <Users className="w-5 h-5 text-green-600" />
-                      <div>
-                        <p className="text-sm font-medium">Ажилчин</p>
-                        <p className="text-2xl font-bold">{employees.length}</p>
+                  <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
+                          <Users className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-green-700">Ажилчин</p>
+                          <p className="text-3xl font-bold text-green-900">{employees.length}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <Car className="w-5 h-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm font-medium">Жолооч</p>
-                        <p className="text-2xl font-bold">{drivers.length}</p>
+                  <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                    <CardContent className="p-6">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
+                          <Car className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-orange-700">Жолооч</p>
+                          <p className="text-3xl font-bold text-orange-900">{drivers.length}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             </div>
           </TabsContent>
