@@ -200,15 +200,18 @@
   pointer-events: none;
 }
 
-/* Dialog improvements for better visibility */
+/* Enhanced Dialog improvements for better visibility */
 .dialog-overlay {
-  background-color: rgba(0, 0, 0, 0.8) !important;
+  background-color: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(2px);
 }
 
 .dialog-content {
   background-color: white !important;
   border: 1px solid #e5e7eb !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
 }
 
 .dialog-content * {
@@ -216,17 +219,30 @@
 }
 
 .dialog-header {
-  background-color: #f9fafb !important;
-  border-bottom: 1px solid #e5e7eb !important;
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
 }
 
 .dialog-title {
-  color: #111827 !important;
+  color: #1e293b !important;
   font-weight: 600 !important;
+  font-size: 1.125rem !important;
 }
 
 .dialog-description {
-  color: #6b7280 !important;
+  color: #64748b !important;
+  font-size: 0.875rem !important;
+}
+
+.dialog-footer {
+  background-color: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 10 !important;
 }
 
 /* Form elements in dialogs */
@@ -236,6 +252,7 @@
   background-color: white !important;
   border: 1px solid #d1d5db !important;
   color: #111827 !important;
+  font-size: 0.875rem !important;
 }
 
 .dialog-content input:focus,
@@ -243,22 +260,31 @@
 .dialog-content textarea:focus {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  outline: none !important;
 }
 
 .dialog-content label {
   color: #374151 !important;
   font-weight: 500 !important;
+  font-size: 0.875rem !important;
 }
 
 /* Radio buttons and checkboxes */
 .dialog-content input[type="radio"],
 .dialog-content input[type="checkbox"] {
   accent-color: #3b82f6 !important;
+  width: 16px !important;
+  height: 16px !important;
 }
 
 /* Buttons in dialogs */
 .dialog-content button {
   font-weight: 500 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.dialog-content button:hover {
+  transform: translateY(-1px) !important;
 }
 
 /* Badge components */
@@ -275,12 +301,6 @@
   color: #dc2626 !important;
 }
 
-/* Dialog footer */
-.dialog-footer {
-  background-color: #f9fafb !important;
-  border-top: 1px solid #e5e7eb !important;
-}
-
 /* Loading states */
 .dialog-content .animate-spin {
   border-color: #e5e7eb !important;
@@ -295,6 +315,7 @@
 .payment-dialog-content .bg-muted {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
+  border: 1px solid #e5e7eb !important;
 }
 
 /* Date range dialog improvements */
@@ -309,4 +330,143 @@
 
 .date-range-dialog-content .text-destructive {
   color: #dc2626 !important;
+}
+
+/* Profile dialog specific styling */
+.profile-dialog-content {
+  max-height: 85vh !important;
+  overflow-y: auto !important;
+}
+
+.profile-dialog-scrollable {
+  max-height: calc(85vh - 120px) !important;
+  overflow-y: auto !important;
+  padding-right: 4px !important;
+}
+
+/* Custom scrollbar for dialog content */
+.dialog-content::-webkit-scrollbar,
+.profile-dialog-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dialog-content::-webkit-scrollbar-track,
+.profile-dialog-scrollable::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.dialog-content::-webkit-scrollbar-thumb,
+.profile-dialog-scrollable::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.dialog-content::-webkit-scrollbar-thumb:hover,
+.profile-dialog-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Dropdown menu improvements */
+.dropdown-menu-content {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.dropdown-menu-item {
+  color: #374151 !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.dropdown-menu-item:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.dropdown-menu-item.text-destructive {
+  color: #dc2626 !important;
+}
+
+.dropdown-menu-item.text-destructive:hover {
+  background-color: #fef2f2 !important;
+  color: #dc2626 !important;
+}
+
+/* Avatar improvements */
+.avatar-fallback {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+  font-weight: 600 !important;
+}
+
+/* Card improvements */
+.card-content {
+  background-color: white !important;
+}
+
+/* Tab improvements */
+.tabs-trigger {
+  color: #6b7280 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.tabs-trigger[data-state="active"] {
+  color: #111827 !important;
+  background-color: white !important;
+  border-bottom: 2px solid #3b82f6 !important;
+}
+
+/* Badge improvements */
+.badge-default {
+  background-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.badge-secondary {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.badge-destructive {
+  background-color: #dc2626 !important;
+  color: white !important;
+}
+
+/* Employee section improvements */
+.employee-add-button {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.employee-add-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 15px -3px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .dialog-content {
+    margin: 1rem !important;
+    max-height: 95vh !important;
+  }
+
+  .profile-dialog-scrollable {
+    max-height: calc(95vh - 140px) !important;
+  }
+}
+
+/* Focus improvements */
+.dialog-content *:focus {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px !important;
+}
+
+/* Text selection improvements */
+.dialog-content ::selection {
+  background-color: rgba(59, 130, 246, 0.2) !important;
 }
