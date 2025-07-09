@@ -54,103 +54,179 @@ export function usePWAInstall() {
       return
     }
 
-    // For iOS devices, we can't use beforeinstallprompt
-    if (iosDevice) {
-      setCanInstall(true)
-      console.log("iOS device detected - manual install instructions available")
-      return
-    }
+    // For all devices, show install option
+    setCanInstall(true)
 
-    const handleBeforeInstallPrompt = (e: Event) => {
-      console.log("beforeinstallprompt event fired")
-      e.preventDefault()
-      const promptEvent = e as BeforeInstallPromptEvent
-      setDeferredPrompt(promptEvent)
-      setCanInstall(true)
-    }
-
-    const handleAppInstalled = () => {
-      console.log("App installed successfully")
-      setIsInstalled(true)
-      setCanInstall(false)
-      setDeferredPrompt(null)
-    }
-
-    // Add event listeners
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-    window.addEventListener("appinstalled", handleAppInstalled)
-
-    // Check if prompt is available after a short delay
-    setTimeout(() => {
-      if (!deferredPrompt && !iosDevice && !standaloneMode) {
-        console.log("beforeinstallprompt not available - checking browser support")
-        // Some browsers might not support PWA installation
-        // but we can still show manual instructions
-        setCanInstall(true)
+    // For non-iOS devices, listen for beforeinstallprompt
+    if (!iosDevice) {
+      const handleBeforeInstallPrompt = (e: Event) => {
+        console.log("beforeinstallprompt event fired")
+        e.preventDefault()
+        const promptEvent = e as BeforeInstallPromptEvent
+        setDeferredPrompt(promptEvent)
       }
-    }, 2000)
 
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-      window.removeEventListener("appinstalled", handleAppInstalled)
+      const handleAppInstalled = () => {
+        console.log("App installed successfully")
+        setIsInstalled(true)
+        setCanInstall(false)
+        setDeferredPrompt(null)
+      }
+
+      window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+      window.addEventListener("appinstalled", handleAppInstalled)
+
+      return () => {
+        window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+        window.removeEventListener("appinstalled", handleAppInstalled)
+      }
     }
   }, [])
 
   const installApp = async (): Promise<boolean> => {
     console.log("Install app called", { deferredPrompt, isIOS, canInstall })
 
-    // Handle iOS installation
+    // Handle iOS installation - trigger native share menu
     if (isIOS) {
-      // Show iOS installation instructions
-      alert(
-        "iOS дээр суулгахын тулд:\n\n" +
-          "1. Safari browser ашиглана уу\n" +
-          "2. Доод хэсгийн 'Хуваалцах' товчийг дарна уу\n" +
-          "3. 'Нүүр дэлгэцэнд нэмэх' сонголтыг дарна уу\n" +
-          "4. 'Нэмэх' товчийг дарна уу",
-      )
-      return false
+      try {
+        // Try to use Web Share API to trigger native share menu
+        if (navigator.share) {
+          await navigator.share({
+            title: document.title,
+            text: "Энэ апп-г суулгаж ашиглаарай",
+            url: window.location.href,
+          })
+          return true
+        } else {
+          // Fallback: Try to trigger iOS add to home screen
+          // This creates a custom event that might trigger the add to home screen banner
+          const event = new CustomEvent("beforeinstallprompt")
+          window.dispatchEvent(event)
+
+          // Show a brief instruction overlay
+          const overlay = document.createElement("div")
+          overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            text-align: center;
+            padding: 20px;
+          `
+
+          overlay.innerHTML = `
+            <div style="max-width: 300px;">
+              <div style="font-size: 24px; margin-bottom: 20px;">📱</div>
+              <div style="font-size: 18px; margin-bottom: 10px;">Апп суулгах</div>
+              <div style="font-size: 14px; opacity: 0.8; margin-bottom: 20px;">
+                Доод хэсгийн "Хуваалцах" товчийг дараад "Нүүр дэлгэцэнд нэмэх" сонгоно уу
+              </div>
+              <button onclick="this.parentElement.parentElement.remove()" 
+                      style="background: #007AFF; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px;">
+                Ойлголоо
+              </button>
+            </div>
+          `
+
+          document.body.appendChild(overlay)
+
+          // Auto remove after 5 seconds
+          setTimeout(() => {
+            if (overlay.parentElement) {
+              overlay.remove()
+            }
+          }, 5000)
+
+          return false
+        }
+      } catch (error) {
+        console.error("iOS install error:", error)
+        return false
+      }
     }
 
     // Handle Android/Desktop installation
-    if (!deferredPrompt) {
-      console.log("No deferred prompt available")
-      // Show manual installation instructions
-      alert(
-        "Суулгахын тулд:\n\n" +
-          "1. Browser-ын цэсээс 'Апп суулгах' эсвэл 'Install' сонголтыг хайна уу\n" +
-          "2. Эсвэл хаягийн мөрөн дэх суулгах товчийг дарна уу\n" +
-          "3. Chrome: Цэс → Апп суулгах\n" +
-          "4. Edge: Цэс → Апп → Энэ сайтыг апп болгон суулгах",
-      )
-      return false
-    }
+    if (deferredPrompt) {
+      try {
+        console.log("Showing install prompt")
+        await deferredPrompt.prompt()
+        const choiceResult = await deferredPrompt.userChoice
 
-    try {
-      console.log("Showing install prompt")
-      await deferredPrompt.prompt()
-      const choiceResult = await deferredPrompt.userChoice
+        console.log("User choice:", choiceResult.outcome)
 
-      console.log("User choice:", choiceResult.outcome)
-
-      if (choiceResult.outcome === "accepted") {
-        setIsInstalled(true)
-        setCanInstall(false)
-        setDeferredPrompt(null)
-        return true
+        if (choiceResult.outcome === "accepted") {
+          setIsInstalled(true)
+          setCanInstall(false)
+          setDeferredPrompt(null)
+          return true
+        }
+        return false
+      } catch (error) {
+        console.error("Error during installation:", error)
+        return false
       }
-      return false
-    } catch (error) {
-      console.error("Error during installation:", error)
+    } else {
+      // For browsers that don't support beforeinstallprompt
+      // Try to trigger browser's native install prompt
+      try {
+        // Check if browser supports installation
+        if ("serviceWorker" in navigator) {
+          // Show browser-specific install hint
+          const overlay = document.createElement("div")
+          overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            font-family: system-ui, sans-serif;
+            text-align: center;
+            padding: 20px;
+          `
 
-      // Fallback: show manual instructions
-      alert(
-        "Автомат суулгалт амжилтгүй боллоо.\n\n" +
-          "Гараар суулгахын тулд:\n" +
-          "1. Browser-ын цэсээс 'Апп суулгах' сонголтыг хайна уу\n" +
-          "2. Эсвэл хаягийн мөрөн дэх суулгах товчийг дарна уу",
-      )
-      return false
+          overlay.innerHTML = `
+            <div style="max-width: 350px;">
+              <div style="font-size: 24px; margin-bottom: 20px;">💻</div>
+              <div style="font-size: 18px; margin-bottom: 10px;">Апп суулгах</div>
+              <div style="font-size: 14px; opacity: 0.8; margin-bottom: 20px;">
+                Browser-ын цэсээс "Апп суулгах" эсвэл хаягийн мөрөн дэх суулгах товчийг дарна уу
+              </div>
+              <button onclick="this.parentElement.parentElement.remove()" 
+                      style="background: #0066CC; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px;">
+                Ойлголоо
+              </button>
+            </div>
+          `
+
+          document.body.appendChild(overlay)
+
+          // Auto remove after 5 seconds
+          setTimeout(() => {
+            if (overlay.parentElement) {
+              overlay.remove()
+            }
+          }, 5000)
+        }
+
+        return false
+      } catch (error) {
+        console.error("Browser install error:", error)
+        return false
+      }
     }
   }
 
