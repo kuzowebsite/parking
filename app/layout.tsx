@@ -6,15 +6,15 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Зогсоолын систем",
-  description: "Зогсоолын удирдлагын систем",
+  title: "",
+  description: "",
   manifest: "/api/manifest",
   themeColor: "#10b981",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Зогсоолын систем",
+    title: "",
   },
 }
 
