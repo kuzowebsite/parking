@@ -13,32 +13,38 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [isInstallable, setIsInstallable] = useState(false)
+  const [canInstall, setCanInstall] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
     // Check if app is already installed
-    const checkIfInstalled = () => {
-      if (window.matchMedia("(display-mode: standalone)").matches) {
+    const checkInstalled = () => {
+      if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) {
+        setIsInstalled(true)
+        return true
+      }
+      if ((window.navigator as any).standalone === true) {
         setIsInstalled(true)
         return true
       }
       return false
     }
 
-    if (checkIfInstalled()) {
+    // Don't show install if already installed
+    if (checkInstalled()) {
       return
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-      setIsInstallable(true)
+      const promptEvent = e as BeforeInstallPromptEvent
+      setDeferredPrompt(promptEvent)
+      setCanInstall(true)
     }
 
     const handleAppInstalled = () => {
       setIsInstalled(true)
-      setIsInstallable(false)
+      setCanInstall(false)
       setDeferredPrompt(null)
     }
 
@@ -51,26 +57,31 @@ export function usePWAInstall() {
     }
   }, [])
 
-  const installApp = async () => {
-    if (deferredPrompt) {
-      try {
-        deferredPrompt.prompt()
-        const { outcome } = await deferredPrompt.userChoice
-        setDeferredPrompt(null)
-        setIsInstallable(false)
-        return outcome === "accepted"
-      } catch (error) {
-        console.error("Installation failed:", error)
-        return false
-      }
+  const installApp = async (): Promise<boolean> => {
+    if (!deferredPrompt) {
+      return false
     }
-    return false
+
+    try {
+      await deferredPrompt.prompt()
+      const choiceResult = await deferredPrompt.userChoice
+
+      if (choiceResult.outcome === "accepted") {
+        setIsInstalled(true)
+        setCanInstall(false)
+        setDeferredPrompt(null)
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error("Error during installation:", error)
+      return false
+    }
   }
 
   return {
-    isInstallable,
-    isInstalled,
+    canInstall: canInstall && !isInstalled,
     installApp,
-    canInstall: isInstallable && !isInstalled,
+    isInstalled,
   }
 }
