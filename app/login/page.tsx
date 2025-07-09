@@ -219,19 +219,10 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  // Install handler with better error handling
+  // Simple install handler
   const handleInstall = async () => {
     console.log("Install button clicked")
-    try {
-      const success = await installApp()
-      if (success) {
-        console.log("Installation successful")
-      } else {
-        console.log("Installation cancelled or failed")
-      }
-    } catch (error) {
-      console.error("Installation failed:", error)
-    }
+    await installApp()
   }
 
   if (pageLoading) {
@@ -422,9 +413,9 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              {/* Install button with better status indication */}
+              {/* Install button - simple version */}
               {canInstall && !isInstalled && (
-                <div className="pt-2 space-y-3">
+                <div className="pt-2">
                   <Button
                     onClick={handleInstall}
                     variant="outline"
@@ -436,29 +427,14 @@ export default function LoginPage() {
                       <Download className="w-4 h-4" />
                     </div>
                   </Button>
-
-                  {/* Status indicator */}
-                  <div className="text-xs text-center space-y-1">
-                    {deferredPrompt ? (
-                      <div className="text-green-300 flex items-center justify-center space-x-1">
-                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        <span>Суулгах бэлэн байна</span>
-                      </div>
-                    ) : (
-                      <div className="text-yellow-300 flex items-center justify-center space-x-1">
-                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                        <span>Суулгах боломж бэлтгэж байна...</span>
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
 
               {/* Install error */}
               {installError && (
                 <Alert className="bg-red-500/20 border-red-400/50 backdrop-blur-sm">
-                  <Info className="h-4 w-4 text-yellow-300" />
-                  <AlertDescription className="text-yellow-200 text-sm">{installError}</AlertDescription>
+                  <Info className="h-4 w-4 text-red-300" />
+                  <AlertDescription className="text-red-200 text-sm">{installError}</AlertDescription>
                 </Alert>
               )}
 
