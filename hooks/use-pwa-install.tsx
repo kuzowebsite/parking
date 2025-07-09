@@ -21,14 +21,10 @@ export function usePWAInstall() {
     const checkIfInstalled = () => {
       if (window.matchMedia("(display-mode: standalone)").matches) {
         setIsInstalled(true)
-        return true
       }
-      return false
     }
 
-    if (checkIfInstalled()) {
-      return
-    }
+    checkIfInstalled()
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault()
@@ -53,16 +49,11 @@ export function usePWAInstall() {
 
   const installApp = async () => {
     if (deferredPrompt) {
-      try {
-        deferredPrompt.prompt()
-        const { outcome } = await deferredPrompt.userChoice
-        setDeferredPrompt(null)
-        setIsInstallable(false)
-        return outcome === "accepted"
-      } catch (error) {
-        console.error("Installation failed:", error)
-        return false
-      }
+      deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+      setDeferredPrompt(null)
+      setIsInstallable(false)
+      return outcome === "accepted"
     }
     return false
   }
@@ -71,6 +62,6 @@ export function usePWAInstall() {
     isInstallable,
     isInstalled,
     installApp,
-    canInstall: isInstallable && !isInstalled,
+    deferredPrompt,
   }
 }
