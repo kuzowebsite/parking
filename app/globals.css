@@ -199,3 +199,114 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* Dialog improvements for better visibility */
+.dialog-overlay {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+.dialog-content {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.dialog-content * {
+  color: inherit !important;
+}
+
+.dialog-header {
+  background-color: #f9fafb !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+.dialog-title {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+.dialog-description {
+  color: #6b7280 !important;
+}
+
+/* Form elements in dialogs */
+.dialog-content input,
+.dialog-content select,
+.dialog-content textarea {
+  background-color: white !important;
+  border: 1px solid #d1d5db !important;
+  color: #111827 !important;
+}
+
+.dialog-content input:focus,
+.dialog-content select:focus,
+.dialog-content textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.dialog-content label {
+  color: #374151 !important;
+  font-weight: 500 !important;
+}
+
+/* Radio buttons and checkboxes */
+.dialog-content input[type="radio"],
+.dialog-content input[type="checkbox"] {
+  accent-color: #3b82f6 !important;
+}
+
+/* Buttons in dialogs */
+.dialog-content button {
+  font-weight: 500 !important;
+}
+
+/* Badge components */
+.dialog-content .badge {
+  font-weight: 500 !important;
+}
+
+/* Ensure text contrast */
+.dialog-content .text-muted-foreground {
+  color: #6b7280 !important;
+}
+
+.dialog-content .text-destructive {
+  color: #dc2626 !important;
+}
+
+/* Dialog footer */
+.dialog-footer {
+  background-color: #f9fafb !important;
+  border-top: 1px solid #e5e7eb !important;
+}
+
+/* Loading states */
+.dialog-content .animate-spin {
+  border-color: #e5e7eb !important;
+  border-top-color: #3b82f6 !important;
+}
+
+/* Specific improvements for payment dialog */
+.payment-dialog-content {
+  background-color: white !important;
+}
+
+.payment-dialog-content .bg-muted {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+/* Date range dialog improvements */
+.date-range-dialog-content {
+  background-color: white !important;
+}
+
+.date-range-dialog-content .bg-destructive\/10 {
+  background-color: rgba(220, 38, 38, 0.1) !important;
+  border-color: rgba(220, 38, 38, 0.2) !important;
+}
+
+.date-range-dialog-content .text-destructive {
+  color: #dc2626 !important;
+}
