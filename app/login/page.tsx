@@ -12,8 +12,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Shield, AlertCircle, Sparkles } from "lucide-react"
-import PWAInstaller from "@/components/pwa-installer"
+import { Eye, EyeOff, Shield, AlertCircle, Download, Sparkles, Smartphone } from "lucide-react"
+import { usePWAInstall } from "@/hooks/use-pwa-install"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -24,6 +24,10 @@ export default function LoginPage() {
   const [pageLoading, setPageLoading] = useState(true)
   const [imagesPreloaded, setImagesPreloaded] = useState(false)
   const [preloadProgress, setPreloadProgress] = useState(0)
+  const [installLoading, setInstallLoading] = useState(false)
+
+  // PWA install hook
+  const { canInstall, installApp, isInstalled } = usePWAInstall()
 
   // Site configuration states
   const [siteConfig, setSiteConfig] = useState({
@@ -215,6 +219,20 @@ export default function LoginPage() {
     setLoading(false)
   }
 
+  const handleInstall = async () => {
+    setInstallLoading(true)
+    try {
+      const success = await installApp()
+      if (success) {
+        console.log("App installed successfully")
+      }
+    } catch (error) {
+      console.error("Installation failed:", error)
+    } finally {
+      setInstallLoading(false)
+    }
+  }
+
   if (pageLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -398,10 +416,42 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            {/* PWA Install Component */}
-            <div className="pt-2">
-              <PWAInstaller />
-            </div>
+            {/* Install button below login button */}
+            {(canInstall || !isInstalled) && (
+              <div className="pt-2">
+                <Button
+                  onClick={handleInstall}
+                  variant="outline"
+                  className="w-full h-12 text-base font-medium bg-white/5 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300 hover:scale-[1.02]"
+                  disabled={installLoading}
+                >
+                  {installLoading ? (
+                    <div className="flex items-center space-x-3">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                      <span>Суулгаж байна...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <Smartphone className="w-5 h-5" />
+                      <span>Суулгах</span>
+                      <Download className="w-4 h-4" />
+                    </div>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* Show installed status */}
+            {isInstalled && (
+              <div className="pt-2">
+                <div className="w-full h-12 flex items-center justify-center bg-green-500/20 border border-green-400/50 rounded-lg backdrop-blur-sm">
+                  <div className="flex items-center space-x-2 text-green-300">
+                    <Smartphone className="w-5 h-5" />
+                    <span className="text-base font-medium">Суулгагдсан</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Decorative elements */}
             <div className="flex items-center justify-center space-x-4 pt-4">
