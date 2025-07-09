@@ -31,7 +31,7 @@ export default function LoginPage() {
 
   // Site configuration states
   const [siteConfig, setSiteConfig] = useState({
-    siteName: "Зогсоолын систем",
+    siteName: "",
     siteLogo: "",
     siteBackground: "",
   })
@@ -47,7 +47,7 @@ export default function LoginPage() {
       if (snapshot.exists()) {
         const data = snapshot.val()
         setSiteConfig({
-          siteName: data.siteName || "Зогсоолын систем",
+          siteName: data.siteName || "",
           siteLogo: data.siteLogo || "",
           siteBackground: data.siteBackground || "",
         })
@@ -57,7 +57,7 @@ export default function LoginPage() {
           if (snapshot.exists()) {
             const data = snapshot.val()
             setSiteConfig({
-              siteName: data.siteName || "Зогсоолын систем",
+              siteName: data.siteName || "",
               siteLogo: data.siteLogo || "",
               siteBackground: data.siteBackground || "",
             })
@@ -339,7 +339,7 @@ export default function LoginPage() {
               <div>
                 <CardTitle className="text-2xl sm:text-3xl font-bold text-white mb-2">{siteConfig.siteName}</CardTitle>
                 <CardDescription className="text-white/80 text-base sm:text-lg font-medium">
-                  Системд нэвтрэх
+                  
                 </CardDescription>
               </div>
             </CardHeader>
