@@ -1754,7 +1754,7 @@ export default function ParkingSystem() {
               </div>
             </div>
           )}
-          {/* History хэсгийн records харуулах логикийг засварлах */}
+          {/* History хэс��ийн records харуулах логикийг засварлах */}
           {activeTab === "history" && (
             <div className="space-y-6">
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
@@ -1980,7 +1980,25 @@ export default function ParkingSystem() {
                         />
                       </svg>
                       <span className="font-medium">{filteredRecords.length} бүртгэл олдлоо</span>
-                      <span className="text-white/50 text-sm ml-2">(Нийт: {allRecords.length})</span>
+                      <span className="text-white/50 text-sm ml-2">
+                        (Нийт:{" "}
+                        {profile.role === "employee" && profile.name
+                          ? allRecords.filter(
+                              (record) =>
+                                (record.type === "completed" ||
+                                  record.type === "exit" ||
+                                  (record.exitTime && record.exitTime.trim() !== "")) &&
+                                record.driverName &&
+                                record.driverName.includes(profile.name),
+                            ).length
+                          : allRecords.filter(
+                              (record) =>
+                                record.type === "completed" ||
+                                record.type === "exit" ||
+                                (record.exitTime && record.exitTime.trim() !== ""),
+                            ).length}
+                        )
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2001,7 +2019,7 @@ export default function ParkingSystem() {
                         <p className="text-white/50 text-lg mb-2">Түүх байхгүй байна</p>
                         <p className="text-white/30 text-sm">
                           {profile.role === "employee"
-                            ? "Таны нэр дээр гарсан машины бүртгэл байхгүй байна"
+                            ? "Таны нэр дээр гар��ан машины бүртгэл байхгүй байна"
                             : "Машин орсон/гарсан бүртгэл хийснээр энд харагдана"}
                         </p>
                       </>
@@ -2261,7 +2279,7 @@ export default function ParkingSystem() {
                             disabled={profileLoading}
                             className="flex-1 py-3 bg-emerald-400 hover:bg-emerald-500 text-black font-semibold rounded-xl transition-colors disabled:opacity-50"
                           >
-                            {profileLoading ? "Хадгалж байна..." : "Хадгалах"}
+                            {profileLoading ? "Хадгалж ба��на..." : "Хадгалах"}
                           </button>
                           <button
                             onClick={() => {
