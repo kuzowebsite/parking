@@ -262,7 +262,7 @@ export default function LoginPage() {
             <Sparkles className="absolute inset-0 m-auto w-6 h-6 text-purple-300 animate-pulse" />
           </div>
           <div className="space-y-4">
-            <p className="text-white font-medium text-lg">Зураг ачааллаж байна...</p>
+            <p className="text-white font-medium text-lg">Ачааллаж байна...</p>
             <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
               <div
                 className="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-500 ease-out relative"
