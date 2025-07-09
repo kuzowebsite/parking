@@ -1500,7 +1500,7 @@ export default function ParkingSystem() {
               {profile.role === "employee" && (
                 <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
                   <div className="mb-4">
-                    <h2 className="text-xl font-semibold text-white">Миний зогсож байгаа машинууд</h2>
+                    <h2 className="text-xl font-semibold text-white">Миний үйлчлүүлэгч</h2>
                     <p className="text-white/70 text-sm">Таны нэр дээр бүртгэгдсэн зогсож байгаа машинууд</p>
                   </div>
 
