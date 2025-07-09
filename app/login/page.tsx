@@ -14,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Shield, AlertCircle, Download, Sparkles, Smartphone } from "lucide-react"
 import { usePWAInstall } from "@/hooks/use-pwa-install"
-import ManifestUpdater from "@/components/manifest-updater"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -237,7 +236,6 @@ export default function LoginPage() {
   if (pageLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <ManifestUpdater />
         <div className="text-center space-y-4">
           <div className="relative">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-500 mx-auto"></div>
@@ -265,7 +263,6 @@ export default function LoginPage() {
   if (!imagesPreloaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <ManifestUpdater />
         <div className="text-center space-y-6 max-w-sm mx-4">
           <div className="relative">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-500 mx-auto"></div>
@@ -298,7 +295,6 @@ export default function LoginPage() {
         backgroundImage: `url("${backgroundImage}")`,
       }}
     >
-      <ManifestUpdater />
       {/* Enhanced background overlay with gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60"></div>
 
