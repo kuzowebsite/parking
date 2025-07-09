@@ -26,12 +26,12 @@ export default function LoginPage() {
   const [imagesPreloaded, setImagesPreloaded] = useState(false)
   const [preloadProgress, setPreloadProgress] = useState(0)
 
-  // PWA install hook - энгийн хувилбар
-  const { canInstall, installApp, isInstalled } = usePWAInstall()
+  // PWA install hook with debug info
+  const { canInstall, installApp, isInstalled, debugInfo, hasDeferredPrompt } = usePWAInstall()
 
   // Site configuration states
   const [siteConfig, setSiteConfig] = useState({
-    siteName: "",
+    siteName: "Зогсоолын систем",
     siteLogo: "",
     siteBackground: "",
   })
@@ -47,7 +47,7 @@ export default function LoginPage() {
       if (snapshot.exists()) {
         const data = snapshot.val()
         setSiteConfig({
-          siteName: data.siteName || "",
+          siteName: data.siteName || "Зогсоолын систем",
           siteLogo: data.siteLogo || "",
           siteBackground: data.siteBackground || "",
         })
@@ -57,7 +57,7 @@ export default function LoginPage() {
           if (snapshot.exists()) {
             const data = snapshot.val()
             setSiteConfig({
-              siteName: data.siteName || "",
+              siteName: data.siteName || "Зогсоолын систем",
               siteLogo: data.siteLogo || "",
               siteBackground: data.siteBackground || "",
             })
@@ -219,15 +219,14 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  // Энгийн install handler
+  // Install handler with debug
   const handleInstall = async () => {
+    console.log("🎯 Install button clicked by user")
     try {
       const success = await installApp()
-      if (success) {
-        console.log("Installation successful")
-      }
+      console.log("📊 Install result:", success)
     } catch (error) {
-      console.error("Installation failed:", error)
+      console.error("❌ Install error:", error)
     }
   }
 
@@ -267,7 +266,7 @@ export default function LoginPage() {
             <Sparkles className="absolute inset-0 m-auto w-6 h-6 text-purple-300 animate-pulse" />
           </div>
           <div className="space-y-4">
-            <p className="text-white font-medium text-lg">Ачааллаж байна...</p>
+            <p className="text-white font-medium text-lg">Зураг ачааллаж байна...</p>
             <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
               <div
                 className="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-500 ease-out relative"
@@ -419,20 +418,26 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              {/* Энгийн install товч */}
-              {canInstall && !isInstalled && (
-                <div className="pt-2">
+              {/* ЗААВАЛ ХАРУУЛАХ СУУЛГАХ ТОВЧ */}
+              {canInstall && (
+                <div className="pt-2 space-y-3">
                   <Button
                     onClick={handleInstall}
                     variant="outline"
-                    className="w-full h-12 text-base font-medium bg-white/5 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300 hover:scale-[1.02]"
+                    className="w-full h-12 text-base font-medium bg-emerald-500/20 border-emerald-400/50 text-white hover:bg-emerald-500/30 hover:border-emerald-400/70 transition-all duration-300 hover:scale-[1.02]"
                   >
                     <div className="flex items-center space-x-2">
                       <Smartphone className="w-5 h-5" />
-                      <span>Суулгах</span>
+                      <span>📱 Суулгах</span>
                       <Download className="w-4 h-4" />
                     </div>
                   </Button>
+
+                  {/* Debug мэдээлэл */}
+                  <div className="text-xs text-white/70 text-center space-y-1">
+                    <div>🔧 Debug: {debugInfo}</div>
+                    <div>{hasDeferredPrompt ? "✅ Browser prompt бэлэн" : "⏳ Manual install"}</div>
+                  </div>
                 </div>
               )}
 
@@ -442,7 +447,7 @@ export default function LoginPage() {
                   <div className="w-full h-12 flex items-center justify-center bg-green-500/20 border border-green-400/50 rounded-lg backdrop-blur-sm">
                     <div className="flex items-center space-x-2 text-green-300">
                       <Smartphone className="w-5 h-5" />
-                      <span className="text-base font-medium">Суулгагдсан</span>
+                      <span className="text-base font-medium">✅ Суулгагдсан</span>
                     </div>
                   </div>
                 </div>
