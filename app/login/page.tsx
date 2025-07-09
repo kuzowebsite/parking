@@ -15,7 +15,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Shield, AlertCircle, Download, Sparkles, Smartphone } from "lucide-react"
 import { usePWAInstall } from "@/hooks/use-pwa-install"
 import { PWAUpdater } from "@/components/pwa-updater"
-import InstallPrompt from "@/components/install-prompt"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -26,8 +25,6 @@ export default function LoginPage() {
   const [pageLoading, setPageLoading] = useState(true)
   const [imagesPreloaded, setImagesPreloaded] = useState(false)
   const [preloadProgress, setPreloadProgress] = useState(0)
-  const [installLoading, setInstallLoading] = useState(false)
-  const [showInstallPrompt, setShowInstallPrompt] = useState(false)
 
   // PWA install hook
   const { canInstall, installApp, isInstalled } = usePWAInstall()
@@ -222,16 +219,11 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  const handleDirectInstall = async () => {
-    setInstallLoading(true)
-    try {
-      // Try direct install without showing prompt first
-      await installApp()
-    } catch (error) {
-      console.error("Direct installation failed:", error)
-    } finally {
-      setInstallLoading(false)
-    }
+  // Simple install handler without loading state
+  const handleInstall = () => {
+    installApp().catch((error) => {
+      console.error("Installation failed:", error)
+    })
   }
 
   if (pageLoading) {
@@ -292,7 +284,6 @@ export default function LoginPage() {
   return (
     <>
       <PWAUpdater />
-      {showInstallPrompt && <InstallPrompt onClose={() => setShowInstallPrompt(false)} />}
 
       <div
         className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat relative px-4 py-8"
@@ -423,27 +414,19 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              {/* Install button - direct install without prompt */}
+              {/* Install button - simple click without loading state */}
               {canInstall && !isInstalled && (
                 <div className="pt-2">
                   <Button
-                    onClick={handleDirectInstall}
+                    onClick={handleInstall}
                     variant="outline"
                     className="w-full h-12 text-base font-medium bg-white/5 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300 hover:scale-[1.02]"
-                    disabled={installLoading}
                   >
-                    {installLoading ? (
-                      <div className="flex items-center space-x-3">
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                        <span>Суулгаж байна...</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-2">
-                        <Smartphone className="w-5 h-5" />
-                        <span>Суулгах</span>
-                        <Download className="w-4 h-4" />
-                      </div>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      <Smartphone className="w-5 h-5" />
+                      <span>Суулгах</span>
+                      <Download className="w-4 h-4" />
+                    </div>
                   </Button>
                 </div>
               )}
