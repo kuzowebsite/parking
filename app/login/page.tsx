@@ -31,7 +31,7 @@ export default function LoginPage() {
 
   // Site configuration states
   const [siteConfig, setSiteConfig] = useState({
-    siteName: "Зогсоолын систем",
+    siteName: "",
     siteLogo: "",
     siteBackground: "",
   })
@@ -262,7 +262,7 @@ export default function LoginPage() {
             <Sparkles className="absolute inset-0 m-auto w-6 h-6 text-purple-300 animate-pulse" />
           </div>
           <div className="space-y-4">
-            <p className="text-white font-medium text-lg">Ачааллаж байна...</p>
+            <p className="text-white font-medium text-lg">Зураг ачааллаж байна...</p>
             <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
               <div
                 className="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-500 ease-out relative"
@@ -336,6 +336,8 @@ export default function LoginPage() {
                   <CardTitle className="text-2xl sm:text-3xl font-bold text-white mb-2">
                     {siteConfig.siteName}
                   </CardTitle>
+                  <CardDescription className="text-white/80 text-base sm:text-lg font-medium">
+                    
                   </CardDescription>
                 </div>
               </CardHeader>
