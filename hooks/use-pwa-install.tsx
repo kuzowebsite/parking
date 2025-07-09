@@ -13,138 +13,210 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [isInstallable, setIsInstallable] = useState(false)
+  const [canInstall, setCanInstall] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
-  const [debugInfo, setDebugInfo] = useState("")
+  const [isIOS, setIsIOS] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
+  const [installError, setInstallError] = useState<string>("")
 
   useEffect(() => {
-    console.log("🔧 PWA Install Hook initialized")
-
-    // Register service worker
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((registration) => {
-          console.log("✅ Service Worker registered:", registration)
-          setDebugInfo("Service Worker бүртгэгдлээ")
-        })
-        .catch((error) => {
-          console.log("❌ Service Worker registration failed:", error)
-          setDebugInfo("Service Worker алдаа: " + error.message)
-        })
-    } else {
-      console.log("❌ Service Worker not supported")
-      setDebugInfo("Service Worker дэмжигдэхгүй")
+    // Register service worker first
+    const registerServiceWorker = async () => {
+      if ("serviceWorker" in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register("/sw.js", {
+            scope: "/",
+            updateViaCache: "none",
+          })
+          console.log("Service Worker registered successfully:", registration)
+        } catch (error) {
+          console.error("Service Worker registration failed:", error)
+        }
+      }
     }
 
-    // Check if app is already installed
-    const checkIfInstalled = () => {
-      const isStandalone = window.matchMedia("(display-mode: standalone)").matches
-      const isIOSStandalone = (window.navigator as any).standalone === true
+    registerServiceWorker()
 
-      console.log("📱 Install check:", { isStandalone, isIOSStandalone })
+    // Check if device is iOS
+    const checkIOS = () => {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+    }
 
-      if (isStandalone || isIOSStandalone) {
-        setIsInstalled(true)
-        setDebugInfo("Аппликешн аль хэдийн суулгагдсан")
+    // Check if app is already installed/running in standalone mode
+    const checkInstalled = () => {
+      // Check for standalone mode
+      if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) {
+        return true
+      }
+      // Check for iOS standalone
+      if ((window.navigator as any).standalone === true) {
+        return true
+      }
+      // Check for Android TWA
+      if (document.referrer.includes("android-app://")) {
         return true
       }
       return false
     }
 
-    if (checkIfInstalled()) {
+    const iosDevice = checkIOS()
+    const standaloneMode = checkInstalled()
+
+    setIsIOS(iosDevice)
+    setIsStandalone(standaloneMode)
+    setIsInstalled(standaloneMode)
+
+    console.log("PWA Install Hook initialized:", {
+      isIOS: iosDevice,
+      isStandalone: standaloneMode,
+      isInstalled: standaloneMode,
+    })
+
+    // Don't show install prompt if already installed
+    if (standaloneMode) {
+      console.log("App is already installed or running in standalone mode")
       return
     }
 
-    // Force show install button for testing
-    setTimeout(() => {
-      if (!deferredPrompt) {
-        console.log("🔄 No prompt yet, enabling install anyway")
-        setIsInstallable(true)
-        setDebugInfo("Суулгах боломжтой (forced)")
+    // For non-iOS devices, listen for beforeinstallprompt
+    if (!iosDevice) {
+      const handleBeforeInstallPrompt = (e: Event) => {
+        console.log("beforeinstallprompt event fired")
+        e.preventDefault()
+        const promptEvent = e as BeforeInstallPromptEvent
+        setDeferredPrompt(promptEvent)
+        setCanInstall(true)
+        console.log("Install prompt available")
       }
-    }, 2000)
 
-    const handleBeforeInstallPrompt = (e: Event) => {
-      console.log("🎯 beforeinstallprompt event fired")
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-      setIsInstallable(true)
-      setDebugInfo("Install prompt бэлэн")
-    }
+      const handleAppInstalled = () => {
+        console.log("App installed successfully")
+        setIsInstalled(true)
+        setCanInstall(false)
+        setDeferredPrompt(null)
+      }
 
-    const handleAppInstalled = () => {
-      console.log("✅ App installed")
-      setIsInstalled(true)
-      setIsInstallable(false)
-      setDeferredPrompt(null)
-      setDebugInfo("Амжилттай суулгагдлаа")
-    }
+      window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+      window.addEventListener("appinstalled", handleAppInstalled)
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-    window.addEventListener("appinstalled", handleAppInstalled)
+      // Check if we can install immediately
+      setTimeout(() => {
+        if (!deferredPrompt) {
+          console.log("No install prompt available yet, checking PWA criteria...")
+          // Check if all PWA requirements are met
+          if ("serviceWorker" in navigator && window.location.protocol === "https:") {
+            setCanInstall(true)
+            console.log("PWA requirements met, showing install option")
+          }
+        }
+      }, 2000)
 
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-      window.removeEventListener("appinstalled", handleAppInstalled)
+      return () => {
+        window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+        window.removeEventListener("appinstalled", handleAppInstalled)
+      }
+    } else {
+      // For iOS, always show install option
+      setCanInstall(true)
     }
   }, [])
 
-  const installApp = async () => {
-    console.log("🚀 Install button clicked")
-    console.log("📊 State:", { deferredPrompt: !!deferredPrompt, isInstallable, isInstalled })
+  const installApp = async (): Promise<boolean> => {
+    console.log("Install app called", {
+      deferredPrompt: !!deferredPrompt,
+      isIOS,
+      canInstall,
+      userAgent: navigator.userAgent,
+    })
 
+    setInstallError("")
+
+    // Handle iOS installation
+    if (isIOS) {
+      try {
+        // For iOS, show instructions since we can't programmatically install
+        alert(`iOS дээр суулгахын тулд:
+1. Safari browser ашиглана уу
+2. Хуваалцах товч (⎋) дарна уу  
+3. "Add to Home Screen" (➕) сонгоно уу`)
+        return true
+      } catch (error) {
+        console.error("iOS install error:", error)
+        setInstallError("iOS дээр суулгахад алдаа гарлаа")
+        return false
+      }
+    }
+
+    // Handle Android/Desktop installation
     if (deferredPrompt) {
       try {
-        console.log("📱 Showing install prompt")
+        console.log("Showing install prompt")
         await deferredPrompt.prompt()
-        const { outcome } = await deferredPrompt.userChoice
-        console.log("👤 User choice:", outcome)
+        const choiceResult = await deferredPrompt.userChoice
 
-        setDeferredPrompt(null)
-        setIsInstallable(false)
+        console.log("User choice:", choiceResult.outcome)
 
-        if (outcome === "accepted") {
+        if (choiceResult.outcome === "accepted") {
+          console.log("User accepted the install prompt")
           setIsInstalled(true)
-          setDebugInfo("Хэрэглэгч зөвшөөрлөө")
+          setCanInstall(false)
+          setDeferredPrompt(null)
+          return true
         } else {
-          setDebugInfo("Хэрэглэгч татгалзлаа")
+          console.log("User dismissed the install prompt")
+          return false
         }
-
-        return outcome === "accepted"
       } catch (error) {
-        console.error("❌ Installation failed:", error)
-        setDebugInfo("Суулгахад алдаа: " + (error as Error).message)
+        console.error("Error during installation:", error)
+        setInstallError("Суулгахад алдаа гарлаа")
         return false
       }
     } else {
-      // Manual instructions for browsers without prompt
-      console.log("📖 Showing manual instructions")
-      const userAgent = navigator.userAgent
-      let instructions = ""
+      // No deferred prompt available
+      console.log("No deferred prompt available")
 
-      if (userAgent.includes("Chrome")) {
-        instructions = "Chrome: Хаягийн мөрөнд суулгах icon эсвэл Menu (⋮) > 'Install app'"
-      } else if (userAgent.includes("Firefox")) {
-        instructions = "Firefox: Menu (☰) > 'Install' эсвэл 'Add to Home Screen'"
-      } else if (userAgent.includes("Safari")) {
-        instructions = "Safari: Share button (⎋) > 'Add to Home Screen' (➕)"
-      } else {
-        instructions = "Browser menu-с 'Install' эсвэл 'Add to Home Screen' хайна уу"
+      // Try alternative methods
+      try {
+        // Check if browser supports installation
+        if ("BeforeInstallPromptEvent" in window) {
+          console.log("Browser supports PWA installation but no prompt available")
+          setInstallError("Суулгах боломжгүй. Browser дэмжихгүй байна.")
+        } else {
+          console.log("Browser does not support PWA installation")
+          // Show manual instructions
+          const isChrome = /Chrome/.test(navigator.userAgent)
+          const isEdge = /Edg/.test(navigator.userAgent)
+          const isFirefox = /Firefox/.test(navigator.userAgent)
+
+          let instructions = "Суулгахын тулд:\n"
+
+          if (isChrome || isEdge) {
+            instructions +=
+              "1. Browser-ын хаягийн мөрөнд суулгах icon хайна уу\n2. Эсвэл Menu (⋮) > 'Install app' сонгоно уу"
+          } else if (isFirefox) {
+            instructions += "1. Menu (☰) нээнэ үү\n2. 'Install' эсвэл 'Add to Home Screen' сонгоно уу"
+          } else {
+            instructions += "1. Browser-ын menu нээнэ үү\n2. 'Install' эсвэл 'Add to Home Screen' хайна уу"
+          }
+
+          alert(instructions)
+        }
+        return false
+      } catch (error) {
+        console.error("Alternative install method error:", error)
+        setInstallError("Суулгах боломжгүй")
+        return false
       }
-
-      alert(`Суулгахын тулд:\n\n${instructions}`)
-      setDebugInfo("Гараар суулгах заавар үзүүллээ")
-      return false
     }
   }
 
   return {
-    isInstallable: true, // Заавал харуулах
-    isInstalled,
+    canInstall: canInstall && !isInstalled,
     installApp,
-    canInstall: !isInstalled, // Суулгагдаагүй бол харуулах
-    debugInfo,
-    hasDeferredPrompt: !!deferredPrompt,
+    isInstalled,
+    isIOS,
+    isStandalone,
+    deferredPrompt: !!deferredPrompt,
+    installError,
   }
 }
