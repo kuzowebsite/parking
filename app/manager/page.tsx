@@ -972,7 +972,14 @@ export default function ManagerPage() {
         "Зогссон хугацаа": record.parkingDuration || "-",
         "Төлбөр (₮)": calculateParkingFeeForReport(record),
         "Төлбөрийн төлөв": record.paymentStatus === "paid" ? "Төлсөн" : "Төлөөгүй",
-        "Төлбөрийн хэлбэр": record.paymentMethod === "card" ? "Карт" : record.paymentMethod === "cash" ? "Бэлэн" : record.paymentMethod === "transfer" ? "Харилцах" : "-",
+        "Төлбөрийн хэлбэр":
+          record.paymentMethod === "card"
+            ? "Карт"
+            : record.paymentMethod === "cash"
+              ? "Бэлэн"
+              : record.paymentMethod === "transfer"
+                ? "Харилцах"
+                : "-",
         Зураг: record.images && record.images.length > 0 ? "Байна" : "Байхгүй",
       }))
 
@@ -1061,9 +1068,16 @@ export default function ManagerPage() {
         "Орсон цаг": record.entryTime || "-",
         "Гарсан цаг": record.exitTime || "-",
         "Зогссон хугацаа": record.parkingDuration || "-",
-        "Төлбөр (₮)": calculateParkingFeeForReport(record),
+        "��өлбөр (₮)": calculateParkingFeeForReport(record),
         "Төлбөрийн төлөв": record.paymentStatus === "paid" ? "Төлсөн" : "Төлөөгүй",
-        "Төлбөрийн хэлбэр": record.paymentMethod === "card" ? "Карт" : record.paymentMethod === "cash" ? "Бэлэн" : record.paymentMethod === "transfer" ? "Харилцах" : "-",
+        "Төлбөрийн хэлбэр":
+          record.paymentMethod === "card"
+            ? "Карт"
+            : record.paymentMethod === "cash"
+              ? "Бэлэн"
+              : record.paymentMethod === "transfer"
+                ? "Харилцах"
+                : "-",
         Зураг: record.images && record.images.length > 0 ? "Байна" : "Байхгүй",
       }))
 
@@ -1187,7 +1201,14 @@ export default function ManagerPage() {
     }
 
     setFilteredReportRecords(filtered)
-  }, [reportRecords, reportFilterYear, reportFilterMonth, reportFilterCarNumber, reportFilterMechanic, reportFilterPaymentStatus])
+  }, [
+    reportRecords,
+    reportFilterYear,
+    reportFilterMonth,
+    reportFilterCarNumber,
+    reportFilterMechanic,
+    reportFilterPaymentStatus,
+  ])
 
   const handleRegisterDriver = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1421,7 +1442,7 @@ export default function ManagerPage() {
         updatedAt: new Date().toISOString(),
         updatedBy: userProfile?.name || "Manager",
       })
-      alert("Үний�� тохиргоо амжилттай хадгалагдлаа")
+      alert("Үнийн тохиргоо амжилттай хадгалагдлаа")
       setShowPricingDialog(false)
     } catch (error) {
       alert("Үнийн тохиргоо хадгалахад алдаа гарлаа")
@@ -1447,7 +1468,7 @@ export default function ManagerPage() {
       }
 
       await update(ref(database, `parking_records/${selectedRecord.id}`), updateData)
-      
+
       alert(`Төлбөрийн төлөв амжилттай ${paymentStatus === "paid" ? "төлсөн" : "төлөөгүй"} болж өөрчлөгдлөө`)
       setShowPaymentDialog(false)
       setSelectedRecord(null)
@@ -2108,8 +2129,9 @@ export default function ManagerPage() {
                               {manager.active ? "Идэвхтэй" : "Идэвхгүй"}
                             </Badge>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </div>
@@ -2201,8 +2223,9 @@ export default function ManagerPage() {
                               {driver.active ? "Идэвхтэй" : "Идэвхгүй"}
                             </Badge>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </div>
@@ -2636,7 +2659,7 @@ export default function ManagerPage() {
                             </td>
                             <td className="p-3">
                               <div className="flex items-center space-x-2">
-                                <Badge 
+                                <Badge
                                   variant={record.paymentStatus === "paid" ? "default" : "secondary"}
                                   className={record.paymentStatus === "paid" ? "bg-green-500" : "bg-red-500"}
                                 >
@@ -2647,9 +2670,13 @@ export default function ManagerPage() {
                                     {record.paymentMethod === "card" && <CreditCard className="w-3 h-3 mr-1" />}
                                     {record.paymentMethod === "cash" && <Banknote className="w-3 h-3 mr-1" />}
                                     {record.paymentMethod === "transfer" && <ArrowLeftRight className="w-3 h-3 mr-1" />}
-                                    {record.paymentMethod === "card" ? "Карт" : 
-                                     record.paymentMethod === "cash" ? "Бэлэн" : 
-                                     record.paymentMethod === "transfer" ? "Харилцах" : ""}
+                                    {record.paymentMethod === "card"
+                                      ? "Карт"
+                                      : record.paymentMethod === "cash"
+                                        ? "Бэлэн"
+                                        : record.paymentMethod === "transfer"
+                                          ? "Харилцах"
+                                          : ""}
                                   </div>
                                 )}
                                 <Button
@@ -2693,7 +2720,7 @@ export default function ManagerPage() {
       <Dialog open={showDateRangePicker} onOpenChange={setShowDateRangePicker}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Огнооны хязгаар сонгох</DialogTitle>
+            <DialogTitle>Огноо сонгох</DialogTitle>
             <DialogDescription>Хяналтын самбарт харуулах огнооны хязгаарыг сонгоно уу</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -2720,7 +2747,10 @@ export default function ManagerPage() {
             <Button variant="outline" onClick={() => setShowDateRangePicker(false)}>
               Цуцлах
             </Button>
-            <Button onClick={applyCustomDateRange}>Хэрэглэх</Button>
+            <Button onClick={resetToDefaultRange} variant="outline">
+              Анхдагш
+            </Button>
+            <Button onClick={applyCustomDateRange}>Хадгалах</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2745,12 +2775,7 @@ export default function ManagerPage() {
               </div>
               <div className="space-y-2">
                 <Label>Дуусах огноо</Label>
-                <Input
-                  type="date"
-                  value={dateRangeEnd}
-                  onChange={(e) => setDateRangeEnd(e.target.value)}
-                  required
-                />
+                <Input type="date" value={dateRangeEnd} onChange={(e) => setDateRangeEnd(e.target.value)} required />
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -2760,14 +2785,13 @@ export default function ManagerPage() {
                 onCheckedChange={(checked) => setDeleteAfterExport(checked as boolean)}
               />
               <Label htmlFor="deleteAfterExport" className="text-sm">
-                Татсаны дараа өгөгдлийн сангаас устгах
+                Татсаны дараа бүртгэлийг өгөгдлийн сангаас устгах
               </Label>
             </div>
             {deleteAfterExport && (
               <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
                 <p className="text-sm text-destructive">
-                  <strong>Анхааруулга:</strong> Энэ үйлдэл буцаах боломжгүй. Татсаны дараа бүртгэлүүд бүрмөсөн
-                  устгагдана.
+                  <strong>Анхааруулга:</strong> Энэ үйлдэл буцаах боломжгүй. Татсан бүртгэлүүд бүрмөсөн устах болно.
                 </p>
               </div>
             )}
@@ -2794,48 +2818,42 @@ export default function ManagerPage() {
       </Dialog>
 
       {/* Image Viewer Dialog */}
-      <Dialog open={showImageViewer} onOpenChange={setShowImageViewer}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>
-              Зураг харах ({currentImageIndex + 1}/{currentImages.length})
-            </DialogTitle>
-          </DialogHeader>
+      <Dialog open={showImageViewer} onOpenChange={closeImageViewer}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
           <div className="relative">
             {currentImages.length > 0 && (
-              <div className="flex items-center justify-center">
+              <>
                 <img
                   src={currentImages[currentImageIndex] || "/placeholder.svg"}
                   alt={`Зураг ${currentImageIndex + 1}`}
-                  className="max-w-full max-h-[60vh] object-contain rounded-lg"
+                  className="w-full h-auto max-h-[80vh] object-contain"
                 />
-              </div>
-            )}
-            {currentImages.length > 1 && (
-              <div className="flex justify-between items-center mt-4">
-                <Button variant="outline" onClick={prevImage} disabled={currentImageIndex === 0}>
-                  <ChevronLeft className="w-4 h-4 mr-2" />
-                  Өмнөх
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  {currentImageIndex + 1} / {currentImages.length}
-                </span>
-                <Button
-                  variant="outline"
-                  onClick={nextImage}
-                  disabled={currentImageIndex === currentImages.length - 1}
-                >
-                  Дараах
-                  <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
+                {currentImages.length > 1 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                      onClick={prevImage}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                      onClick={nextImage}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                      {currentImageIndex + 1} / {currentImages.length}
+                    </div>
+                  </>
+                )}
+              </>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeImageViewer}>
-              Хаах
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -2843,17 +2861,17 @@ export default function ManagerPage() {
       <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Шинэ ажилчин нэмэх</DialogTitle>
-            <DialogDescription>Ажилчны мэдээллийг оруулна уу</DialogDescription>
+            <DialogTitle>Ажилчин нэмэх</DialogTitle>
+            <DialogDescription>Шинэ ажилчны мэдээллийг оруулна уу</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddEmployee} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="employeeName">Овог нэр *</Label>
+              <Label htmlFor="employeeName">Нэр *</Label>
               <Input
                 id="employeeName"
                 value={newEmployee.name}
                 onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                placeholder="Ажилчны нэрийг оруулна уу"
+                placeholder="Ажилчны нэр"
                 required
               />
             </div>
@@ -2863,7 +2881,7 @@ export default function ManagerPage() {
                 id="employeePosition"
                 value={newEmployee.position}
                 onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
-                placeholder="Албан тушаалыг оруулна уу"
+                placeholder="Албан тушаал"
               />
             </div>
             <div className="space-y-2">
@@ -2885,14 +2903,14 @@ export default function ManagerPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="employeeImage">Профайл зураг</Label>
+              <Label htmlFor="employeeImage">Зураг</Label>
               <Input id="employeeImage" type="file" accept="image/*" onChange={handleEmployeeImageUpload} />
               {newEmployee.profileImage && (
                 <div className="mt-2">
                   <img
                     src={newEmployee.profileImage || "/placeholder.svg"}
                     alt="Preview"
-                    className="w-16 h-16 object-cover rounded-full"
+                    className="w-20 h-20 object-cover rounded-lg"
                   />
                 </div>
               )}
@@ -2902,14 +2920,7 @@ export default function ManagerPage() {
                 Цуцлах
               </Button>
               <Button type="submit" disabled={employeeLoading}>
-                {employeeLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Нэмж байна...
-                  </>
-                ) : (
-                  "Ажилчин нэмэх"
-                )}
+                {employeeLoading ? "Нэмж байна..." : "Ажилчин нэмэх"}
               </Button>
             </DialogFooter>
           </form>
@@ -2921,22 +2932,18 @@ export default function ManagerPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingDriver?.role === "manager"
-                ? "Менежер"
-                : editingDriver?.role === "driver"
-                  ? "Жолооч"
-                  : "Ажилчин"}{" "}
+              {editingDriver?.role === "manager" ? "Менежер" : editingDriver?.role === "driver" ? "Жолооч" : "Ажилчин"}{" "}
               засах
             </DialogTitle>
             <DialogDescription>Хэрэглэгчийн мэдээллийг шинэчлэх</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Овог нэр</Label>
+              <Label>Нэр</Label>
               <Input
                 value={editDriverData.name}
                 onChange={(e) => setEditDriverData({ ...editDriverData, name: e.target.value })}
-                placeholder="Овог нэр"
+                placeholder="Нэр"
               />
             </div>
             <div className="space-y-2">
@@ -2948,7 +2955,7 @@ export default function ManagerPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>И-мэйл хаяг</Label>
+              <Label>И-мэйл</Label>
               <Input
                 type="email"
                 value={editDriverData.email}
@@ -2957,7 +2964,7 @@ export default function ManagerPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Шинэ нууц үг (хоосон үлдээвэл өөрчлөгдөхгүй)</Label>
+              <Label>Шинэ нууц үг (хоосон үлдээвэл өөрчлөхгүй)</Label>
               <Input
                 type="password"
                 value={editDriverData.newPassword}
@@ -2971,17 +2978,12 @@ export default function ManagerPage() {
               Цуцлах
             </Button>
             <Button
-              onClick={editingEmployee ? handleSaveEmployeeEdit : handleSaveDriverEdit}
+              onClick={
+                editingDriver?.role === "employee" || editingEmployee ? handleSaveEmployeeEdit : handleSaveDriverEdit
+              }
               disabled={editLoading}
             >
-              {editLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
+              {editLoading ? "Хадгалж байна..." : "Хадгалах"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3008,9 +3010,17 @@ export default function ManagerPage() {
               </Avatar>
               <div>
                 <Label htmlFor="profileImage" className="cursor-pointer">
-                  <Button variant="outline" size="sm" asChild>
+                  <div className="flex items-center space-x-2 text-sm text-primary hover:underline">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
                     <span>Зураг солих</span>
-                  </Button>
+                  </div>
                 </Label>
                 <Input
                   id="profileImage"
@@ -3024,11 +3034,11 @@ export default function ManagerPage() {
 
             {/* Basic Info */}
             <div className="space-y-2">
-              <Label>Овог нэр</Label>
+              <Label>Нэр</Label>
               <Input
                 value={profileData.name}
                 onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                placeholder="Овог нэр"
+                placeholder="Нэр"
               />
             </div>
             <div className="space-y-2">
@@ -3040,7 +3050,7 @@ export default function ManagerPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>И-мэйл хаяг</Label>
+              <Label>И-мэйл</Label>
               <Input
                 type="email"
                 value={profileData.email}
@@ -3051,7 +3061,7 @@ export default function ManagerPage() {
 
             {/* Password Change Section */}
             <div className="border-t pt-4 space-y-4">
-              <h4 className="font-medium">Нууц үг солих</h4>
+              <h4 className="font-medium">Нууц үг өөрчлөх</h4>
               <div className="space-y-2">
                 <Label>Одоогийн нууц үг</Label>
                 <div className="relative">
@@ -3065,7 +3075,7 @@ export default function ManagerPage() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -3094,7 +3104,7 @@ export default function ManagerPage() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -3108,14 +3118,7 @@ export default function ManagerPage() {
               Цуцлах
             </Button>
             <Button onClick={handleSaveProfile} disabled={profileLoading}>
-              {profileLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
+              {profileLoading ? "Хадгалж байна..." : "Хадгалах"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3126,7 +3129,7 @@ export default function ManagerPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Сайт тохиргоо</DialogTitle>
-            <DialogDescription>Сайтын ерөнхий тохиргоог өөрчлөх</DialogDescription>
+            <DialogDescription>Сайтын нэр, лого болон арын зургийг тохируулах</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -3138,21 +3141,33 @@ export default function ManagerPage() {
               />
             </div>
 
-            {/* Site Logo */}
+            {/* Logo Upload */}
             <div className="space-y-2">
-              <Label>Сайтын лого</Label>
+              <Label>Лого</Label>
               <div className="flex items-center space-x-4">
                 {siteConfig.siteLogo && (
-                  <img src={siteConfig.siteLogo || "/placeholder.svg"} alt="Site Logo" className="w-12 h-12 object-contain" />
+                  <img
+                    src={siteConfig.siteLogo || "/placeholder.svg"}
+                    alt="Logo"
+                    className="w-12 h-12 object-contain border rounded"
+                  />
                 )}
                 <div>
-                  <Label htmlFor="siteLogo" className="cursor-pointer">
-                    <Button variant="outline" size="sm" asChild>
-                      <span>Лого солих</span>
-                    </Button>
+                  <Label htmlFor="logoUpload" className="cursor-pointer">
+                    <div className="flex items-center space-x-2 text-sm text-primary hover:underline">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <span>Лого сонгох</span>
+                    </div>
                   </Label>
                   <Input
-                    id="siteLogo"
+                    id="logoUpload"
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleImageUpload(e, "logo")}
@@ -3162,25 +3177,33 @@ export default function ManagerPage() {
               </div>
             </div>
 
-            {/* Site Background */}
+            {/* Background Upload */}
             <div className="space-y-2">
-              <Label>Арын дэвсгэр зураг</Label>
+              <Label>Арын зураг</Label>
               <div className="flex items-center space-x-4">
                 {siteConfig.siteBackground && (
                   <img
                     src={siteConfig.siteBackground || "/placeholder.svg"}
                     alt="Background"
-                    className="w-16 h-12 object-cover rounded"
+                    className="w-16 h-12 object-cover border rounded"
                   />
                 )}
                 <div>
-                  <Label htmlFor="siteBackground" className="cursor-pointer">
-                    <Button variant="outline" size="sm" asChild>
-                      <span>Арын зураг солих</span>
-                    </Button>
+                  <Label htmlFor="backgroundUpload" className="cursor-pointer">
+                    <div className="flex items-center space-x-2 text-sm text-primary hover:underline">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <span>Арын зураг сонгох</span>
+                    </div>
                   </Label>
                   <Input
-                    id="siteBackground"
+                    id="backgroundUpload"
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleImageUpload(e, "background")}
@@ -3195,14 +3218,7 @@ export default function ManagerPage() {
               Цуцлах
             </Button>
             <Button onClick={handleSaveSiteConfig} disabled={siteLoading}>
-              {siteLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
+              {siteLoading ? "Хадгалж байна..." : "Хадгалах"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3213,22 +3229,20 @@ export default function ManagerPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Үнийн тохиргоо</DialogTitle>
-            <DialogDescription>Зогсоолын үнийг тохируулах</DialogDescription>
+            <DialogDescription>Зогсоолын минут тутмын үнийг тохируулах</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Минут тутамын үнэ (₮)</Label>
+              <Label>Минут тутмын үнэ (₮)</Label>
               <Input
                 type="number"
                 min="0"
                 step="1"
                 value={pricingConfig.pricePerMinute}
                 onChange={(e) => setPricingConfig({ ...pricingConfig, pricePerMinute: Number(e.target.value) })}
-                placeholder="Минут тутамын үнэ"
+                placeholder="0"
               />
-              <p className="text-sm text-muted-foreground">
-                Одоогийн тохиргоо: {pricingConfig.pricePerMinute}₮/минут
-              </p>
+              <p className="text-sm text-muted-foreground">Одоогийн тохиргоо: {pricingConfig.pricePerMinute}₮/минут</p>
             </div>
           </div>
           <DialogFooter>
@@ -3236,14 +3250,7 @@ export default function ManagerPage() {
               Цуцлах
             </Button>
             <Button onClick={handleSavePricingConfig} disabled={pricingLoading}>
-              {pricingLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
+              {pricingLoading ? "Хадгалж байна..." : "Хадгалах"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -3253,37 +3260,41 @@ export default function ManagerPage() {
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Төлбөрийн төлөв өөрчлөх</DialogTitle>
-            <DialogDescription>
-              {selectedRecord?.carNumber} машины төлбөрийн төлөвийг өөрчлөх
-            </DialogDescription>
+            <DialogTitle>Төлбөрийн төлөв засах</DialogTitle>
+            <DialogDescription>{selectedRecord?.carNumber} машины төлбөрийн төлөвийг өөрчлөх</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-3">
               <Label>Төлбөрийн төлөв</Label>
-              <div className="flex space-x-4">
-                <label className="flex items-center space-x-2 cursor-pointer">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
                   <input
                     type="radio"
+                    id="unpaid"
                     name="paymentStatus"
                     value="unpaid"
                     checked={paymentStatus === "unpaid"}
                     onChange={(e) => setPaymentStatus(e.target.value as "paid" | "unpaid")}
-                    className="text-primary"
+                    className="w-4 h-4"
                   />
-                  <span>Төлөөгүй</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer">
+                  <Label htmlFor="unpaid" className="text-sm font-normal">
+                    Төлөөгүй
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
                   <input
                     type="radio"
+                    id="paid"
                     name="paymentStatus"
                     value="paid"
                     checked={paymentStatus === "paid"}
                     onChange={(e) => setPaymentStatus(e.target.value as "paid" | "unpaid")}
-                    className="text-primary"
+                    className="w-4 h-4"
                   />
-                  <span>Төлсөн</span>
-                </label>
+                  <Label htmlFor="paid" className="text-sm font-normal">
+                    Төлсөн
+                  </Label>
+                </div>
               </div>
             </div>
 
@@ -3291,62 +3302,66 @@ export default function ManagerPage() {
               <div className="space-y-3">
                 <Label>Төлбөрийн хэлбэр</Label>
                 <div className="space-y-2">
-                  <label className="flex items-center space-x-2 cursor-pointer">
+                  <div className="flex items-center space-x-2">
                     <input
                       type="radio"
+                      id="cash"
                       name="paymentMethod"
                       value="cash"
                       checked={paymentMethod === "cash"}
                       onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
-                      className="text-primary"
+                      className="w-4 h-4"
                     />
-                    <Banknote className="w-4 h-4" />
-                    <span>Бэлэн мөнгө</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <Label htmlFor="cash" className="text-sm font-normal flex items-center">
+                      <Banknote className="w-4 h-4 mr-2" />
+                      Бэлэн мөнгө
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
                     <input
                       type="radio"
+                      id="card"
                       name="paymentMethod"
                       value="card"
                       checked={paymentMethod === "card"}
                       onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
-                      className="text-primary"
+                      className="w-4 h-4"
                     />
-                    <CreditCard className="w-4 h-4" />
-                    <span>Карт</span>
-                  </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <Label htmlFor="card" className="text-sm font-normal flex items-center">
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Карт
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
                     <input
                       type="radio"
+                      id="transfer"
                       name="paymentMethod"
                       value="transfer"
                       checked={paymentMethod === "transfer"}
                       onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
-                      className="text-primary"
+                      className="w-4 h-4"
                     />
-                    <ArrowLeftRight className="w-4 h-4" />
-                    <span>Харилцах</span>
-                  </label>
+                    <Label htmlFor="transfer" className="text-sm font-normal flex items-center">
+                      <ArrowLeftRight className="w-4 h-4 mr-2" />
+                      Харилцах
+                    </Label>
+                  </div>
                 </div>
               </div>
             )}
 
             {selectedRecord && (
-              <div className="p-4 bg-muted rounded-lg">
-                <h4 className="font-medium mb-2">Бүртгэлийн мэдээлэл</h4>
-                <div className="text-sm space-y-1">
-                  <p><strong>Машины дугаар:</strong> {selectedRecord.carNumber}</p>
-                  <p><strong>Засварчин:</strong> {selectedRecord.mechanicName || selectedRecord.driverName || "-"}</p>
-                  <p><strong>Төлбөр:</strong> {calculateParkingFeeForReport(selectedRecord).toLocaleString()}₮</p>
-                  <p><strong>Одоогийн төлөв:</strong> 
-                    <Badge 
-                      variant={selectedRecord.paymentStatus === "paid" ? "default" : "secondary"}
-                      className={`ml-2 ${selectedRecord.paymentStatus === "paid" ? "bg-green-500" : "bg-red-500"}`}
-                    >
-                      {selectedRecord.paymentStatus === "paid" ? "Төлсөн" : "Төлөөгүй"}
-                    </Badge>
-                  </p>
-                </div>
+              <div className="p-3 bg-muted rounded-lg text-sm">
+                <p>
+                  <strong>Машины дугаар:</strong> {selectedRecord.carNumber}
+                </p>
+                <p>
+                  <strong>Төлбөр:</strong> {calculateParkingFeeForReport(selectedRecord).toLocaleString()}₮
+                </p>
+                <p>
+                  <strong>Засварчин:</strong> {selectedRecord.mechanicName || selectedRecord.driverName || "-"}
+                </p>
               </div>
             )}
           </div>
@@ -3355,18 +3370,11 @@ export default function ManagerPage() {
               Цуцлах
             </Button>
             <Button onClick={handlePaymentStatusUpdate} disabled={paymentLoading}>
-              {paymentLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
+              {paymentLoading ? "Хадгалж байна..." : "Хадгалах"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )\
+  )
 }
