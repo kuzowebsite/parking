@@ -15,49 +15,27 @@ export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [canInstall, setCanInstall] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
-  const [isIOS, setIsIOS] = useState(false)
-  const [installError, setInstallError] = useState<string>("")
 
   useEffect(() => {
-    // Register service worker
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js", {
-          scope: "/",
-          updateViaCache: "none",
-        })
-        .then((registration) => {
-          console.log("Service Worker registered:", registration)
-        })
-        .catch((error) => {
-          console.error("Service Worker registration failed:", error)
-        })
-    }
-
-    // Check if device is iOS
-    const iosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
-    setIsIOS(iosDevice)
-
     // Check if app is already installed
-    const isStandalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches
-    const isIOSStandalone = (window.navigator as any).standalone === true
-    const isInstalled = isStandalone || isIOSStandalone
-
-    setIsInstalled(isInstalled)
-
-    if (isInstalled) {
-      return // Don't show install if already installed
+    const checkInstalled = () => {
+      if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) {
+        setIsInstalled(true)
+        return true
+      }
+      if ((window.navigator as any).standalone === true) {
+        setIsInstalled(true)
+        return true
+      }
+      return false
     }
 
-    // For iOS, always show install option
-    if (iosDevice) {
-      setCanInstall(true)
+    // Don't show install if already installed
+    if (checkInstalled()) {
       return
     }
 
-    // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
-      console.log("beforeinstallprompt event fired")
       e.preventDefault()
       const promptEvent = e as BeforeInstallPromptEvent
       setDeferredPrompt(promptEvent)
@@ -65,7 +43,6 @@ export function usePWAInstall() {
     }
 
     const handleAppInstalled = () => {
-      console.log("App installed")
       setIsInstalled(true)
       setCanInstall(false)
       setDeferredPrompt(null)
@@ -74,7 +51,6 @@ export function usePWAInstall() {
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
     window.addEventListener("appinstalled", handleAppInstalled)
 
-    // Cleanup
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
       window.removeEventListener("appinstalled", handleAppInstalled)
@@ -82,53 +58,23 @@ export function usePWAInstall() {
   }, [])
 
   const installApp = async (): Promise<boolean> => {
-    setInstallError("")
-
-    // Handle iOS
-    if (isIOS) {
-      alert(`iOS дээр суулгахын тулд:
-1. Safari browser ашиглана уу
-2. Хуваалцах товч (⎋) дарна уу  
-3. "Add to Home Screen" (➕) сонгоно уу`)
-      return true
+    if (!deferredPrompt) {
+      return false
     }
 
-    // Handle Android/Desktop with deferred prompt
-    if (deferredPrompt) {
-      try {
-        console.log("Showing install prompt")
-        await deferredPrompt.prompt()
-        const choiceResult = await deferredPrompt.userChoice
+    try {
+      await deferredPrompt.prompt()
+      const choiceResult = await deferredPrompt.userChoice
 
-        if (choiceResult.outcome === "accepted") {
-          console.log("User accepted install")
-          setIsInstalled(true)
-          setCanInstall(false)
-          setDeferredPrompt(null)
-          return true
-        } else {
-          console.log("User dismissed install")
-          return false
-        }
-      } catch (error) {
-        console.error("Install error:", error)
-        setInstallError("Суулгахад алдаа гарлаа")
-        return false
+      if (choiceResult.outcome === "accepted") {
+        setIsInstalled(true)
+        setCanInstall(false)
+        setDeferredPrompt(null)
+        return true
       }
-    } else {
-      // No deferred prompt - show browser specific instructions
-      const isChrome = /Chrome/.test(navigator.userAgent)
-      const isEdge = /Edg/.test(navigator.userAgent)
-
-      if (isChrome || isEdge) {
-        alert(`Апп суулгахын тулд:
-1. Хаягийн мөрний баруун талд суулгах icon хайна уу
-2. Эсвэл Menu (⋮) > "Install app" сонгоно уу`)
-      } else {
-        alert(`Апп суулгахын тулд:
-1. Browser-ын menu нээнэ үү
-2. "Install" эсвэл "Add to Home Screen" хайна уу`)
-      }
+      return false
+    } catch (error) {
+      console.error("Error during installation:", error)
       return false
     }
   }
@@ -137,8 +83,5 @@ export function usePWAInstall() {
     canInstall: canInstall && !isInstalled,
     installApp,
     isInstalled,
-    isIOS,
-    deferredPrompt: !!deferredPrompt,
-    installError,
   }
 }
