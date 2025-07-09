@@ -1,13 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable experimental features
-  experimental: {
-    // Enable server actions
-    serverActions: true,
-    // Enable app directory
-    appDir: true,
-  },
-
   // Image optimization configuration
   images: {
     // Allow external image domains
@@ -40,11 +32,6 @@ const nextConfig = {
     };
 
     return config;
-  },
-
-  // Environment variables
-  env: {
-    CUSTOM_KEY: 'my-value',
   },
 
   // Headers configuration
@@ -107,9 +94,6 @@ const nextConfig = {
 
   // React strict mode
   reactStrictMode: true,
-
-  // SWC minification
-  swcMinify: true,
 
   // Trailing slash
   trailingSlash: false,
