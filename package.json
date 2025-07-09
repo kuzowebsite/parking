@@ -6,7 +6,11 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "generate-manifest": "node scripts/generate-manifest-simple.js",
+    "prebuild": "npm run generate-manifest",
+    "check-pwa": "node scripts/check-pwa-requirements.js",
+    "pwa-test": "npm run generate-manifest && npm run check-pwa"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
