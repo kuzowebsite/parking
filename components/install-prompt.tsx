@@ -49,13 +49,14 @@ export default function InstallPrompt({ onClose }: InstallPromptProps) {
   const handleInstall = async () => {
     setInstalling(true)
     try {
-      await installApp()
-      // Don't close immediately, let the install process complete
+      const success = await installApp()
+      // Close the prompt regardless of success
       setTimeout(() => {
         onClose()
-      }, 1000)
+      }, 500)
     } catch (error) {
       console.error("Installation failed:", error)
+      onClose()
     } finally {
       setInstalling(false)
     }
