@@ -41,6 +41,12 @@ import {
   Eye,
   EyeOff,
   Save,
+  Search,
+  X,
+  Calendar,
+  TrendingUp,
+  Activity,
+  BarChart3,
 } from "lucide-react"
 import type { ParkingRecord, Employee, SiteConfig, Manager } from "@/types"
 import * as XLSX from "xlsx"
@@ -83,6 +89,7 @@ export default function ManagerPage() {
   const [employeeFilter, setEmployeeFilter] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
 
   // Profile edit states
   const [profileData, setProfileData] = useState({
@@ -97,6 +104,7 @@ export default function ManagerPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [profileLoading, setProfileLoading] = useState(false)
 
   // New employee states
   const [newEmployee, setNewEmployee] = useState({
@@ -105,6 +113,19 @@ export default function ManagerPage() {
     phone: "",
     password: "",
     profileImage: "",
+    position: "",
+  })
+
+  // Statistics states
+  const [stats, setStats] = useState({
+    totalRecords: 0,
+    activeParking: 0,
+    totalRevenue: 0,
+    todayRevenue: 0,
+    weeklyRevenue: 0,
+    monthlyRevenue: 0,
+    averageParkingTime: 0,
+    topEmployee: "",
   })
 
   const router = useRouter()
@@ -240,7 +261,7 @@ export default function ManagerPage() {
   useEffect(() => {
     if (!dbConnected) return
 
-    const recordsRef = ref(database, "parkingRecords")
+    const recordsRef = ref(database, "parking_records")
     const unsubscribe = onValue(recordsRef, (snapshot) => {
       try {
         if (snapshot.exists()) {
@@ -250,6 +271,7 @@ export default function ManagerPage() {
             ...record,
           }))
           setParkingRecords(records.reverse())
+          calculateStats(records)
         }
       } catch (error: any) {
         console.error("Error loading parking records:", error)
@@ -259,6 +281,65 @@ export default function ManagerPage() {
     return () => off(recordsRef, "value", unsubscribe)
   }, [dbConnected])
 
+  // Calculate statistics
+  const calculateStats = (records: ParkingRecord[]) => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+    const activeParking = records.filter((r) => r.status === "parked" || r.type === "entry").length
+    const completedRecords = records.filter((r) => r.amount || r.cost)
+    const totalRevenue = completedRecords.reduce((sum, r) => sum + (r.amount || r.cost || 0), 0)
+
+    const todayRecords = completedRecords.filter((r) => {
+      const recordDate = new Date(r.timestamp || r.entryTime)
+      return recordDate >= today
+    })
+    const todayRevenue = todayRecords.reduce((sum, r) => sum + (r.amount || r.cost || 0), 0)
+
+    const weeklyRecords = completedRecords.filter((r) => {
+      const recordDate = new Date(r.timestamp || r.entryTime)
+      return recordDate >= weekAgo
+    })
+    const weeklyRevenue = weeklyRecords.reduce((sum, r) => sum + (r.amount || r.cost || 0), 0)
+
+    const monthlyRecords = completedRecords.filter((r) => {
+      const recordDate = new Date(r.timestamp || r.entryTime)
+      return recordDate >= monthAgo
+    })
+    const monthlyRevenue = monthlyRecords.reduce((sum, r) => sum + (r.amount || r.cost || 0), 0)
+
+    // Calculate average parking time
+    const recordsWithDuration = records.filter((r) => r.parkingDuration || r.duration)
+    const averageParkingTime =
+      recordsWithDuration.length > 0
+        ? recordsWithDuration.reduce((sum, r) => sum + (r.parkingDuration || r.duration || 0), 0) /
+          recordsWithDuration.length
+        : 0
+
+    // Find top employee
+    const employeeStats: { [key: string]: number } = {}
+    records.forEach((r) => {
+      if (r.driverName || r.employeeName) {
+        const empName = r.driverName || r.employeeName
+        employeeStats[empName] = (employeeStats[empName] || 0) + 1
+      }
+    })
+    const topEmployee = Object.keys(employeeStats).reduce((a, b) => (employeeStats[a] > employeeStats[b] ? a : b), "")
+
+    setStats({
+      totalRecords: records.length,
+      activeParking,
+      totalRevenue,
+      todayRevenue,
+      weeklyRevenue,
+      monthlyRevenue,
+      averageParkingTime: Math.round(averageParkingTime * 10) / 10,
+      topEmployee,
+    })
+  }
+
   // Filter records
   useEffect(() => {
     let filtered = [...parkingRecords]
@@ -266,25 +347,40 @@ export default function ManagerPage() {
     if (dateFilter) {
       const filterDate = new Date(dateFilter)
       filtered = filtered.filter((record) => {
-        const recordDate = new Date(record.entryTime)
+        const recordDate = new Date(record.entryTime || record.timestamp)
         return recordDate.toDateString() === filterDate.toDateString()
       })
     }
 
     if (employeeFilter) {
-      filtered = filtered.filter((record) => record.employeeId === employeeFilter)
+      filtered = filtered.filter(
+        (record) =>
+          record.employeeId === employeeFilter ||
+          record.driverName?.includes(employeeFilter) ||
+          record.employeeName?.includes(employeeFilter),
+      )
     }
 
     if (statusFilter) {
-      filtered = filtered.filter((record) => record.status === statusFilter)
+      filtered = filtered.filter((record) => record.status === statusFilter || record.type === statusFilter)
     }
 
     if (paymentStatusFilter) {
       filtered = filtered.filter((record) => record.paymentStatus === paymentStatusFilter)
     }
 
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (record) =>
+          record.plateNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          record.carNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          record.driverName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          record.employeeName?.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    }
+
     setFilteredRecords(filtered)
-  }, [parkingRecords, dateFilter, employeeFilter, statusFilter, paymentStatusFilter])
+  }, [parkingRecords, dateFilter, employeeFilter, statusFilter, paymentStatusFilter, searchQuery])
 
   // Handle logout
   const handleLogout = async () => {
@@ -299,12 +395,14 @@ export default function ManagerPage() {
   const handleProfileUpdate = async () => {
     if (!user) return
 
+    setProfileLoading(true)
     try {
       const userRef = ref(database, `users/${user.uid}`)
       const updateData: any = {
         name: profileData.name,
         phone: profileData.phone,
         profileImage: profileData.profileImage,
+        updatedAt: new Date().toISOString(),
       }
 
       await update(userRef, updateData)
@@ -313,6 +411,7 @@ export default function ManagerPage() {
     } catch (error: any) {
       alert(`Профайл шинэчлэх алдаа: ${error.message}`)
     }
+    setProfileLoading(false)
   }
 
   // Handle add employee
@@ -328,8 +427,10 @@ export default function ManagerPage() {
         name: newEmployee.name,
         email: newEmployee.email,
         phone: newEmployee.phone,
+        position: newEmployee.position,
         role: "employee",
         profileImage: newEmployee.profileImage,
+        active: true,
         createdAt: new Date().toISOString(),
         createdBy: user?.uid,
       }
@@ -343,6 +444,7 @@ export default function ManagerPage() {
         phone: "",
         password: "",
         profileImage: "",
+        position: "",
       })
 
       setShowAddEmployeeDialog(false)
@@ -357,10 +459,11 @@ export default function ManagerPage() {
     if (!selectedRecord) return
 
     try {
-      const recordRef = ref(database, `parkingRecords/${selectedRecord.id}`)
+      const recordRef = ref(database, `parking_records/${selectedRecord.id}`)
       await update(recordRef, {
         paymentStatus: selectedRecord.paymentStatus,
         paymentMethod: selectedRecord.paymentMethod,
+        updatedAt: new Date().toISOString(),
       })
 
       setShowEditRecordDialog(false)
@@ -371,18 +474,39 @@ export default function ManagerPage() {
     }
   }
 
+  // Handle employee delete
+  const handleDeleteEmployee = async (employeeId: string, employeeName: string) => {
+    if (!confirm(`${employeeName} ажилтныг устгахдаа итгэлтэй байна уу?`)) {
+      return
+    }
+
+    try {
+      const employeeRef = ref(database, `users/${employeeId}`)
+      await update(employeeRef, {
+        active: false,
+        deletedAt: new Date().toISOString(),
+        deletedBy: user?.uid,
+      })
+      alert("Ажилтан амжилттай устгагдлаа")
+    } catch (error: any) {
+      alert(`Ажилтан устгахад алдаа гарлаа: ${error.message}`)
+    }
+  }
+
   // Export to Excel
   const exportToExcel = () => {
     const exportData = filteredRecords.map((record) => ({
-      "Машины дугаар": record.plateNumber,
-      "Орсон цаг": new Date(record.entryTime).toLocaleString("mn-MN"),
+      "Машины дугаар": record.plateNumber || record.carNumber,
+      "Орсон цаг": record.entryTime ? new Date(record.entryTime).toLocaleString("mn-MN") : "",
       "Гарсан цаг": record.exitTime ? new Date(record.exitTime).toLocaleString("mn-MN") : "Гараагүй",
-      "Хугацаа (цаг)": record.duration || 0,
-      "Төлбөр (₮)": record.cost || 0,
-      Ажилтан: record.employeeName,
+      "Хугацаа (цаг)": record.duration || record.parkingDuration || 0,
+      "Төлбөр (₮)": record.cost || record.amount || 0,
+      Ажилтан: record.employeeName || record.driverName,
       "Төлбөрийн төлөв": record.paymentStatus === "paid" ? "Төлсөн" : "Төлөөгүй",
       "Төлбөрийн хэлбэр": record.paymentMethod || "",
-      Төлөв: record.status === "parked" ? "Зогсож байна" : "Гарсан",
+      Төлөв: record.status === "parked" || record.type === "entry" ? "Зогсож байна" : "Гарсан",
+      "Машины марк": record.parkingArea,
+      Огноо: record.timestamp ? new Date(record.timestamp).toLocaleDateString("mn-MN") : "",
     }))
 
     const ws = XLSX.utils.json_to_sheet(exportData)
@@ -391,6 +515,20 @@ export default function ManagerPage() {
 
     const fileName = `parking-report-${new Date().toISOString().split("T")[0]}.xlsx`
     XLSX.writeFile(wb, fileName)
+  }
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("mn-MN").format(amount)
+  }
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleString("mn-MN")
+    } catch {
+      return dateString
+    }
   }
 
   // Loading screen
@@ -486,7 +624,7 @@ export default function ManagerPage() {
               onClick={() => setActiveTab("dashboard")}
               className={`sidebar-nav-item w-full text-left ${activeTab === "dashboard" ? "active" : ""}`}
             >
-              <Car className="w-5 h-5" />
+              <BarChart3 className="w-5 h-5" />
               Хяналтын самбар
             </button>
 
@@ -527,26 +665,26 @@ export default function ManagerPage() {
               </div>
 
               {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card className="enhanced-card">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Нийт машин</CardTitle>
+                    <CardTitle className="text-sm font-medium">Нийт бүртгэл</CardTitle>
                     <Car className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{parkingRecords.length}</div>
+                    <div className="text-2xl font-bold">{stats.totalRecords}</div>
+                    <p className="text-xs text-muted-foreground">Бүх цагийн</p>
                   </CardContent>
                 </Card>
 
                 <Card className="enhanced-card">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Зогсож байгаа</CardTitle>
-                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Activity className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
-                      {parkingRecords.filter((r) => r.status === "parked").length}
-                    </div>
+                    <div className="text-2xl font-bold">{stats.activeParking}</div>
+                    <p className="text-xs text-muted-foreground">Одоогийн</p>
                   </CardContent>
                 </Card>
 
@@ -556,13 +694,8 @@ export default function ManagerPage() {
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
-                      {parkingRecords
-                        .filter((r) => r.cost)
-                        .reduce((sum, r) => sum + (r.cost || 0), 0)
-                        .toLocaleString()}
-                      ₮
-                    </div>
+                    <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}₮</div>
+                    <p className="text-xs text-muted-foreground">Бүх цагийн</p>
                   </CardContent>
                 </Card>
 
@@ -572,7 +705,67 @@ export default function ManagerPage() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{employees.length}</div>
+                    <div className="text-2xl font-bold">{employees.filter((e) => e.active !== false).length}</div>
+                    <p className="text-xs text-muted-foreground">Идэвхтэй</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Revenue Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="enhanced-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Өнөөдрийн орлого</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">{formatCurrency(stats.todayRevenue)}₮</div>
+                    <p className="text-xs text-muted-foreground">Өнөөдөр</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="enhanced-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">7 хоногийн орлого</CardTitle>
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">{formatCurrency(stats.weeklyRevenue)}₮</div>
+                    <p className="text-xs text-muted-foreground">Сүүлийн 7 хоног</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="enhanced-card">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Сарын орлого</CardTitle>
+                    <Clock className="h-4 w-4 text-purple-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">{formatCurrency(stats.monthlyRevenue)}₮</div>
+                    <p className="text-xs text-muted-foreground">Сүүлийн 30 хоног</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Additional Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="enhanced-card">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Дундаж зогсоолын хугацаа</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-indigo-600">{stats.averageParkingTime} цаг</div>
+                    <p className="text-sm text-muted-foreground">Машин бүрийн дундаж</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="enhanced-card">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Шилдэг ажилтан</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold text-emerald-600">{stats.topEmployee || "Тодорхойгүй"}</div>
+                    <p className="text-sm text-muted-foreground">Хамгийн олон бүртгэл хийсэн</p>
                   </CardContent>
                 </Card>
               </div>
@@ -591,23 +784,25 @@ export default function ManagerPage() {
                           <th className="text-left">Орсон цаг</th>
                           <th className="text-left">Ажилтан</th>
                           <th className="text-left">Төлөв</th>
+                          <th className="text-left">Төлбөр</th>
                         </tr>
                       </thead>
                       <tbody>
                         {parkingRecords.slice(0, 10).map((record) => (
                           <tr key={record.id}>
-                            <td className="font-medium">{record.plateNumber}</td>
-                            <td>{new Date(record.entryTime).toLocaleString("mn-MN")}</td>
-                            <td>{record.employeeName}</td>
+                            <td className="font-medium">{record.plateNumber || record.carNumber}</td>
+                            <td>{formatDate(record.entryTime || record.timestamp)}</td>
+                            <td>{record.employeeName || record.driverName}</td>
                             <td>
                               <Badge
                                 className={`enhanced-badge ${
-                                  record.status === "parked" ? "badge-info" : "badge-success"
+                                  record.status === "parked" || record.type === "entry" ? "badge-info" : "badge-success"
                                 }`}
                               >
-                                {record.status === "parked" ? "Зогсож байна" : "Гарсан"}
+                                {record.status === "parked" || record.type === "entry" ? "Зогсож байна" : "Гарсан"}
                               </Badge>
                             </td>
+                            <td>{formatCurrency(record.cost || record.amount || 0)}₮</td>
                           </tr>
                         ))}
                       </tbody>
@@ -632,67 +827,93 @@ export default function ManagerPage() {
                 </Button>
               </div>
 
-              {/* Filters */}
+              {/* Search and Filters */}
               <Card className="enhanced-card">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Filter className="w-5 h-5" />
-                    <span>Шүүлтүүр</span>
+                    <span>Хайлт ба шүүлтүүр</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="space-y-2">
-                      <Label className="form-label">Огноо</Label>
+                  <div className="space-y-4">
+                    {/* Search */}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
-                        type="date"
-                        value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        className="form-input"
+                        placeholder="Машины дугаар, ажилтны нэрээр хайх..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 form-input"
                       />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery("")}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="form-label">Ажилтан</Label>
-                      <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-                        <SelectTrigger className="form-select">
-                          <SelectValue placeholder="Бүгд" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Бүгд</SelectItem>
-                          {employees.map((emp) => (
-                            <SelectItem key={emp.id} value={emp.id}>
-                              {emp.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Filters */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                        <Label className="form-label">Огноо</Label>
+                        <Input
+                          type="date"
+                          value={dateFilter}
+                          onChange={(e) => setDateFilter(e.target.value)}
+                          className="form-input"
+                        />
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label className="form-label">Төлөв</Label>
-                      <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="form-select">
-                          <SelectValue placeholder="Бүгд" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="parked">Зогсож байна</SelectItem>
-                          <SelectItem value="exited">Гарсан</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      <div className="space-y-2">
+                        <Label className="form-label">Ажилтан</Label>
+                        <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+                          <SelectTrigger className="form-select">
+                            <SelectValue placeholder="Бүгд" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Бүгд</SelectItem>
+                            {employees.map((emp) => (
+                              <SelectItem key={emp.id} value={emp.name}>
+                                {emp.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label className="form-label">Төлбөрийн төлөв</Label>
-                      <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
-                        <SelectTrigger className="form-select">
-                          <SelectValue placeholder="Бүх төлөв" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="paid">Төлсөн</SelectItem>
-                          <SelectItem value="unpaid">Төлөөгүй</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-2">
+                        <Label className="form-label">Төлөв</Label>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                          <SelectTrigger className="form-select">
+                            <SelectValue placeholder="Бүгд" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Бүгд</SelectItem>
+                            <SelectItem value="parked">Зогсож байна</SelectItem>
+                            <SelectItem value="entry">Зогсож байна</SelectItem>
+                            <SelectItem value="completed">Гарсан</SelectItem>
+                            <SelectItem value="exited">Гарсан</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="form-label">Төлбөрийн төлөв</Label>
+                        <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                          <SelectTrigger className="form-select">
+                            <SelectValue placeholder="Бүх төлөв" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Бүх төлөв</SelectItem>
+                            <SelectItem value="paid">Төлсөн</SelectItem>
+                            <SelectItem value="unpaid">Төлөөгүй</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -721,12 +942,16 @@ export default function ManagerPage() {
                       <tbody>
                         {filteredRecords.map((record) => (
                           <tr key={record.id}>
-                            <td className="font-medium">{record.plateNumber}</td>
-                            <td>{new Date(record.entryTime).toLocaleString("mn-MN")}</td>
-                            <td>{record.exitTime ? new Date(record.exitTime).toLocaleString("mn-MN") : "Гараагүй"}</td>
-                            <td>{record.duration ? `${record.duration} цаг` : "-"}</td>
-                            <td>{record.cost ? `${record.cost.toLocaleString()}₮` : "-"}</td>
-                            <td>{record.employeeName}</td>
+                            <td className="font-medium">{record.plateNumber || record.carNumber}</td>
+                            <td>{formatDate(record.entryTime || record.timestamp)}</td>
+                            <td>{record.exitTime ? formatDate(record.exitTime) : "Гараагүй"}</td>
+                            <td>
+                              {record.duration || record.parkingDuration
+                                ? `${record.duration || record.parkingDuration} цаг`
+                                : "-"}
+                            </td>
+                            <td>{formatCurrency(record.cost || record.amount || 0)}₮</td>
+                            <td>{record.employeeName || record.driverName}</td>
                             <td>
                               <Badge
                                 className={`enhanced-badge ${
@@ -755,7 +980,11 @@ export default function ManagerPage() {
                     </table>
 
                     {filteredRecords.length === 0 && (
-                      <div className="text-center py-8 text-gray-500">Шүүлтэд тохирох бүртгэл олдсонгүй</div>
+                      <div className="text-center py-8 text-gray-500">
+                        {searchQuery || dateFilter || employeeFilter || statusFilter || paymentStatusFilter
+                          ? "Шүүлтэд тохирох бүртгэл олдсонгүй"
+                          : "Бүртгэл байхгүй байна"}
+                      </div>
                     )}
                   </div>
                 </CardContent>
@@ -769,7 +998,7 @@ export default function ManagerPage() {
               <div className="flex justify-between items-center">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">Ажилчид</h2>
-                  <p className="text-gray-600">Ажилчдын жагсаалт</p>
+                  <p className="text-gray-600">Ажилчдын жагсаалт удирдах</p>
                 </div>
                 <Button onClick={() => setShowAddEmployeeDialog(true)} className="btn-primary">
                   <Plus className="w-4 h-4 mr-2" />
@@ -786,7 +1015,9 @@ export default function ManagerPage() {
                           <th className="text-left">Нэр</th>
                           <th className="text-left">И-мэйл</th>
                           <th className="text-left">Утас</th>
+                          <th className="text-left">Албан тушаал</th>
                           <th className="text-left">Үүсгэсэн огноо</th>
+                          <th className="text-left">Төлөв</th>
                           <th className="text-left">Үйлдэл</th>
                         </tr>
                       </thead>
@@ -796,17 +1027,33 @@ export default function ManagerPage() {
                             <td className="font-medium">{employee.name}</td>
                             <td>{employee.email}</td>
                             <td>{employee.phone}</td>
+                            <td>{employee.position || "Ажилтан"}</td>
                             <td>
                               {employee.createdAt ? new Date(employee.createdAt).toLocaleDateString("mn-MN") : "-"}
                             </td>
                             <td>
+                              <Badge
+                                className={`enhanced-badge ${employee.active !== false ? "badge-success" : "badge-error"}`}
+                              >
+                                {employee.active !== false ? "Идэвхтэй" : "Идэвхгүй"}
+                              </Badge>
+                            </td>
+                            <td>
                               <div className="flex space-x-2">
-                                <Button size="sm" variant="outline">
+                                <Button size="sm" variant="outline" title="Засах">
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                <Button size="sm" variant="outline">
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                {employee.active !== false && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDeleteEmployee(employee.id, employee.name)}
+                                    className="text-red-600 hover:text-red-700"
+                                    title="Устгах"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -828,7 +1075,7 @@ export default function ManagerPage() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Тохиргоо</h2>
-                <p className="text-gray-600">Системийн тохиргоо</p>
+                <p className="text-gray-600">Системийн тохиргоо удирдах</p>
               </div>
 
               <Card className="enhanced-card">
@@ -869,6 +1116,48 @@ export default function ManagerPage() {
                     <Save className="w-4 h-4 mr-2" />
                     Хадгалах
                   </Button>
+                </CardContent>
+              </Card>
+
+              {/* System Information */}
+              <Card className="enhanced-card">
+                <CardHeader>
+                  <CardTitle>Системийн мэдээлэл</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="form-label">Интернет холболт</Label>
+                      <div className="flex items-center space-x-2">
+                        {isOnline ? (
+                          <Badge className="enhanced-badge badge-success">Холбогдсон</Badge>
+                        ) : (
+                          <Badge className="enhanced-badge badge-error">Салсан</Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="form-label">Өгөгдлийн сан</Label>
+                      <div className="flex items-center space-x-2">
+                        {dbConnected ? (
+                          <Badge className="enhanced-badge badge-success">Холбогдсон</Badge>
+                        ) : (
+                          <Badge className="enhanced-badge badge-error">Салсан</Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="form-label">Нийт бүртгэл</Label>
+                      <p className="text-lg font-semibold">{stats.totalRecords}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="form-label">Идэвхтэй ажилтан</Label>
+                      <p className="text-lg font-semibold">{employees.filter((e) => e.active !== false).length}</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -1037,8 +1326,8 @@ export default function ManagerPage() {
             <Button variant="outline" onClick={() => setShowProfileDialog(false)} className="btn-secondary">
               Цуцлах
             </Button>
-            <Button onClick={handleProfileUpdate} className="btn-primary">
-              Хадгалах
+            <Button onClick={handleProfileUpdate} disabled={profileLoading} className="btn-primary">
+              {profileLoading ? "Хадгалж байна..." : "Хадгалах"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1100,6 +1389,21 @@ export default function ManagerPage() {
             </div>
 
             <div className="space-y-2">
+              <Label className="form-label">Албан тушаал</Label>
+              <Input
+                value={newEmployee.position}
+                onChange={(e) =>
+                  setNewEmployee((prev) => ({
+                    ...prev,
+                    position: e.target.value,
+                  }))
+                }
+                className="form-input"
+                placeholder="Жишээ: Зогсоолын ажилтан"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label className="form-label">Нууц үг</Label>
               <Input
                 type="password"
@@ -1139,7 +1443,11 @@ export default function ManagerPage() {
             <div className="space-y-4 p-6">
               <div className="space-y-2">
                 <Label className="form-label">Машины дугаар</Label>
-                <Input value={selectedRecord.plateNumber} disabled className="form-input bg-gray-100" />
+                <Input
+                  value={selectedRecord.plateNumber || selectedRecord.carNumber}
+                  disabled
+                  className="form-input bg-gray-100"
+                />
               </div>
 
               <div className="space-y-2">
