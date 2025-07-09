@@ -424,7 +424,7 @@ export default function LoginPage() {
 
               {/* Install button with better status indication */}
               {canInstall && !isInstalled && (
-                <div className="pt-2 space-y-2">
+                <div className="pt-2 space-y-3">
                   <Button
                     onClick={handleInstall}
                     variant="outline"
@@ -432,21 +432,31 @@ export default function LoginPage() {
                   >
                     <div className="flex items-center space-x-2">
                       <Smartphone className="w-5 h-5" />
-                      <span>Суулгах</span>
+                      <span>Апп суулгах</span>
                       <Download className="w-4 h-4" />
                     </div>
                   </Button>
 
-                  {/* Debug info */}
-                  <div className="text-xs text-white/60 text-center">
-                    {deferredPrompt ? "✓ Суулгах боломжтой" : "⏳ Суулгах боломж хүлээж байна..."}
+                  {/* Status indicator */}
+                  <div className="text-xs text-center space-y-1">
+                    {deferredPrompt ? (
+                      <div className="text-green-300 flex items-center justify-center space-x-1">
+                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                        <span>Суулгах бэлэн байна</span>
+                      </div>
+                    ) : (
+                      <div className="text-yellow-300 flex items-center justify-center space-x-1">
+                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                        <span>Суулгах боломж бэлтгэж байна...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Install error */}
               {installError && (
-                <Alert className="bg-yellow-500/20 border-yellow-400/50 backdrop-blur-sm">
+                <Alert className="bg-red-500/20 border-red-400/50 backdrop-blur-sm">
                   <Info className="h-4 w-4 text-yellow-300" />
                   <AlertDescription className="text-yellow-200 text-sm">{installError}</AlertDescription>
                 </Alert>
@@ -457,6 +467,7 @@ export default function LoginPage() {
                 <div className="pt-2">
                   <div className="w-full h-12 flex items-center justify-center bg-green-500/20 border border-green-400/50 rounded-lg backdrop-blur-sm">
                     <div className="flex items-center space-x-2 text-green-300">
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                       <Smartphone className="w-5 h-5" />
                       <span className="text-base font-medium">Суулгагдсан</span>
                     </div>
