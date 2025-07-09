@@ -2,25 +2,20 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
+import { ManifestUpdater } from "@/components/manifest-updater"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "",
-  description: "",
-  manifest: "/api/manifest",
+  title: "Зогсоолын систем",
+  description: "Зогсоолын удирдлагын систем",
+  manifest: "/manifest.json",
   themeColor: "#10b981",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "",
-  },
-  other: {
-    "mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "Зогсоолын систем",
+    title: "Зогсоолын систем",
   },
 }
 
@@ -32,14 +27,13 @@ export default function RootLayout({
   return (
     <html lang="mn">
       <head>
-        <link rel="manifest" href="/api/manifest" />
+        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#10b981" />
-        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Зогсоолын систем" />
         <link rel="apple-touch-icon" href="/images/logo.png" />
-        <link rel="icon" href="/images/logo.png" />
+        <ManifestUpdater />
       </head>
       <body className={inter.className}>{children}</body>
     </html>
