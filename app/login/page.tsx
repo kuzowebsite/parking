@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Shield, AlertCircle, Download, Sparkles, Smartphone } from "lucide-react"
 import { usePWAInstall } from "@/hooks/use-pwa-install"
 import { PWAUpdater } from "@/components/pwa-updater"
+import InstallPrompt from "@/components/install-prompt"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -26,9 +27,10 @@ export default function LoginPage() {
   const [imagesPreloaded, setImagesPreloaded] = useState(false)
   const [preloadProgress, setPreloadProgress] = useState(0)
   const [installLoading, setInstallLoading] = useState(false)
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false)
 
   // PWA install hook
-  const { canInstall, installApp, isInstalled } = usePWAInstall()
+  const { canInstall, installApp, isInstalled, isIOS } = usePWAInstall()
 
   // Site configuration states
   const [siteConfig, setSiteConfig] = useState({
@@ -234,6 +236,10 @@ export default function LoginPage() {
     }
   }
 
+  const handleInstallPrompt = () => {
+    setShowInstallPrompt(true)
+  }
+
   if (pageLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -292,6 +298,8 @@ export default function LoginPage() {
   return (
     <>
       <PWAUpdater />
+      {showInstallPrompt && <InstallPrompt onClose={() => setShowInstallPrompt(false)} />}
+
       <div
         className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat relative px-4 py-8"
         style={{
@@ -422,10 +430,10 @@ export default function LoginPage() {
               </form>
 
               {/* Install button below login button */}
-              {(canInstall || !isInstalled) && (
+              {canInstall && !isInstalled && (
                 <div className="pt-2">
                   <Button
-                    onClick={handleInstall}
+                    onClick={handleInstallPrompt}
                     variant="outline"
                     className="w-full h-12 text-base font-medium bg-white/5 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300 hover:scale-[1.02]"
                     disabled={installLoading}
@@ -438,7 +446,7 @@ export default function LoginPage() {
                     ) : (
                       <div className="flex items-center space-x-2">
                         <Smartphone className="w-5 h-5" />
-                        <span>Суулгах</span>
+                        <span>Апп суулгах</span>
                         <Download className="w-4 h-4" />
                       </div>
                     )}
