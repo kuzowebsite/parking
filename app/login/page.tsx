@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Shield, AlertCircle, Download, Sparkles, Smartphone } from "lucide-react"
+import { Eye, EyeOff, Shield, AlertCircle, Download, Sparkles, Smartphone, Info } from "lucide-react"
 import { usePWAInstall } from "@/hooks/use-pwa-install"
 import { PWAUpdater } from "@/components/pwa-updater"
 
@@ -26,8 +26,8 @@ export default function LoginPage() {
   const [imagesPreloaded, setImagesPreloaded] = useState(false)
   const [preloadProgress, setPreloadProgress] = useState(0)
 
-  // PWA install hook with debug info
-  const { canInstall, installApp, isInstalled, debugInfo, hasDeferredPrompt } = usePWAInstall()
+  // PWA install hook
+  const { canInstall, installApp, isInstalled, installError, deferredPrompt } = usePWAInstall()
 
   // Site configuration states
   const [siteConfig, setSiteConfig] = useState({
@@ -219,14 +219,18 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  // Install handler with debug
+  // Install handler with better error handling
   const handleInstall = async () => {
-    console.log("🎯 Install button clicked by user")
+    console.log("Install button clicked")
     try {
       const success = await installApp()
-      console.log("📊 Install result:", success)
+      if (success) {
+        console.log("Installation successful")
+      } else {
+        console.log("Installation cancelled or failed")
+      }
     } catch (error) {
-      console.error("❌ Install error:", error)
+      console.error("Installation failed:", error)
     }
   }
 
@@ -418,27 +422,34 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              {/* ЗААВАЛ ХАРУУЛАХ СУУЛГАХ ТОВЧ */}
-              {canInstall && (
-                <div className="pt-2 space-y-3">
+              {/* Install button with better status indication */}
+              {canInstall && !isInstalled && (
+                <div className="pt-2 space-y-2">
                   <Button
                     onClick={handleInstall}
                     variant="outline"
-                    className="w-full h-12 text-base font-medium bg-emerald-500/20 border-emerald-400/50 text-white hover:bg-emerald-500/30 hover:border-emerald-400/70 transition-all duration-300 hover:scale-[1.02]"
+                    className="w-full h-12 text-base font-medium bg-white/5 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300 hover:scale-[1.02]"
                   >
                     <div className="flex items-center space-x-2">
                       <Smartphone className="w-5 h-5" />
-                      <span>📱 Суулгах</span>
+                      <span>Суулгах</span>
                       <Download className="w-4 h-4" />
                     </div>
                   </Button>
 
-                  {/* Debug мэдээлэл */}
-                  <div className="text-xs text-white/70 text-center space-y-1">
-                    <div>🔧 Debug: {debugInfo}</div>
-                    <div>{hasDeferredPrompt ? "✅ Browser prompt бэлэн" : "⏳ Manual install"}</div>
+                  {/* Debug info */}
+                  <div className="text-xs text-white/60 text-center">
+                    {deferredPrompt ? "✓ Суулгах боломжтой" : "⏳ Суулгах боломж хүлээж байна..."}
                   </div>
                 </div>
+              )}
+
+              {/* Install error */}
+              {installError && (
+                <Alert className="bg-yellow-500/20 border-yellow-400/50 backdrop-blur-sm">
+                  <Info className="h-4 w-4 text-yellow-300" />
+                  <AlertDescription className="text-yellow-200 text-sm">{installError}</AlertDescription>
+                </Alert>
               )}
 
               {/* Show installed status */}
@@ -447,7 +458,7 @@ export default function LoginPage() {
                   <div className="w-full h-12 flex items-center justify-center bg-green-500/20 border border-green-400/50 rounded-lg backdrop-blur-sm">
                     <div className="flex items-center space-x-2 text-green-300">
                       <Smartphone className="w-5 h-5" />
-                      <span className="text-base font-medium">✅ Суулгагдсан</span>
+                      <span className="text-base font-medium">Суулгагдсан</span>
                     </div>
                   </div>
                 </div>
