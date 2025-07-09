@@ -2277,7 +2277,7 @@ export default function ParkingSystem() {
                             disabled={profileLoading}
                             className="flex-1 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 transition-colors"
                           >
-                            Ц��цлах
+                            Цуцлах
                           </button>
                         </>
                       ) : (
@@ -2515,4 +2515,3 @@ export default function ParkingSystem() {
     </div>
   )
 }
-</merged_code>
