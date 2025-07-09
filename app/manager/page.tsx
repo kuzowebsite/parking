@@ -593,15 +593,15 @@ export default function ManagerPage() {
 
   // Handle driver operations
   const handleDeleteDriver = async (driverId: string, driverName: string) => {
-    if (!confirm(`${driverName} жолоочийг устгахдаа итгэлтэй байна уу?`)) {
+    if (!confirm(`${driverName} бүртгэлийг устгахдаа итгэлтэй байна уу?`)) {
       return
     }
 
     try {
       await remove(ref(database, `users/${driverId}`))
-      alert("Жолооч амжилттай устгагдлаа")
+      alert("Бүртгэл амжилттай устгагдлаа")
     } catch (error) {
-      alert("Жолооч устгахад алдаа гарлаа")
+      alert("Бүртгэл устгахад алдаа гарлаа")
     }
   }
 
@@ -620,7 +620,7 @@ export default function ManagerPage() {
     const newStatus = !currentStatus
     const statusText = newStatus ? "идэвхжүүлэх" : "идэвхгүй болгох"
 
-    if (!confirm(`${driverName} жолоочийг ${statusText}даа итгэлтэй байна уу?`)) {
+    if (!confirm(`${driverName} бүртгэлийг ${statusText}даа итгэлтэй байна уу?`)) {
       return
     }
 
@@ -629,9 +629,9 @@ export default function ManagerPage() {
         active: newStatus,
         updatedAt: new Date().toISOString(),
       })
-      alert(`Жолооч амжилттай ${newStatus ? "идэвхжлээ" : "идэвхгүй боллоо"}`)
+      alert(`Бүртгэл амжилттай ${newStatus ? "идэвхжлээ" : "идэвхгүй боллоо"}`)
     } catch (error) {
-      alert("Жолоочийн төлөв өөрчлөхөд алдаа гарлаа")
+      alert("Бүргэлийн төлөв өөрчлөхөд алдаа гарлаа")
     }
   }
 
@@ -1244,7 +1244,7 @@ export default function ManagerPage() {
       await set(ref(database, `users/${newUserId}`), userData)
 
       alert(
-        `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Жолооч" : "Ажилчин"} амжилттай бүртгэгдлээ`,
+        `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Бүртгэл" : "Ажилчин"} амжилттай бүртгэгдлээ`,
       )
 
       // Form цэвэрлэх
@@ -1265,7 +1265,7 @@ export default function ManagerPage() {
       } else if (error.code === "auth/invalid-email") {
         alert("И-мэйл хаяг буруу байна")
       } else {
-        alert("Жолооч бүртгэхэд алдаа гарлаа")
+        alert("Бүртгэхэд алдаа гарлаа")
       }
     }
 
@@ -1310,14 +1310,14 @@ export default function ManagerPage() {
       }
 
       const userType =
-        editingDriver.role === "manager" ? "Менежерийн" : editingDriver.role === "driver" ? "Жолоочийн" : "Ажилчны"
+        editingDriver.role === "manager" ? "Менежерийн" : editingDriver.role === "driver" ? "Бүртгэлийн" : "Ажилчны"
       alert(`${userType} мэдээлэл амжилттай шинэчлэгдлээ`)
       setShowEditDialog(false)
       setEditingDriver(null)
     } catch (error) {
       console.error("Error updating user:", error)
       const userType =
-        editingDriver?.role === "manager" ? "менежерийн" : editingDriver?.role === "driver" ? "жолоочийн" : "ажилчны"
+        editingDriver?.role === "manager" ? "менежерийн" : editingDriver?.role === "driver" ? "бүртгэлийн" : "ажилчны"
       alert(`${userType} мэдээлэл шинэчлэхэд алдаа гарлаа`)
     }
 
@@ -1919,7 +1919,7 @@ export default function ManagerPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">Жолоочид</p>
+                        <p className="text-sm font-medium text-muted-foreground">Бүртгэл</p>
                         <p className="text-3xl font-bold text-orange-600">{drivers.length}</p>
                       </div>
                       <div className="p-3 bg-orange-100 rounded-full">
@@ -2143,8 +2143,8 @@ export default function ManagerPage() {
                     <Car className="w-5 h-5 text-orange-600" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold">Жолоочид</h3>
-                    <p className="text-sm text-muted-foreground">{drivers.length} жолооч бүртгэлтэй</p>
+                    <h3 className="text-xl font-semibold">Бүртгэл</h3>
+                    <p className="text-sm text-muted-foreground">{drivers.length} Бүртгэлтэй байна.</p>
                   </div>
                 </div>
 
@@ -2165,7 +2165,7 @@ export default function ManagerPage() {
                             </Avatar>
                             <div>
                               <h4 className="font-semibold">{driver.name}</h4>
-                              <p className="text-sm text-muted-foreground">Жолооч</p>
+                              <p className="text-sm text-muted-foreground">Бүртгэл</p>
                             </div>
                           </div>
                           <DropdownMenu>
@@ -2265,7 +2265,7 @@ export default function ManagerPage() {
                             onChange={(e) => setSelectedRole(e.target.value as "manager" | "driver" | "employee")}
                           >
                             <option value="employee">Ажилчин</option>
-                            <option value="driver">Жолооч</option>
+                            <option value="driver">Бүртгэл</option>
                             <option value="manager">Менежер</option>
                           </select>
                         </div>
@@ -2375,7 +2375,7 @@ export default function ManagerPage() {
                               {selectedRole === "manager"
                                 ? "Менежер"
                                 : selectedRole === "driver"
-                                  ? "Жолооч"
+                                  ? "Бүртгэл"
                                   : "Ажилчин"}{" "}
                               бүртгэх
                             </>
@@ -2421,7 +2421,7 @@ export default function ManagerPage() {
                             <Car className="w-5 h-5 text-orange-600" />
                           </div>
                           <div>
-                            <h4 className="font-medium text-orange-900">Жолооч</h4>
+                            <h4 className="font-medium text-orange-900">Бүртгэл</h4>
                             <p className="text-sm text-orange-700">Зогсоолын бүртгэл хийх, бүх түүх харах эрх</p>
                           </div>
                         </div>
@@ -2456,7 +2456,7 @@ export default function ManagerPage() {
                         <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                           <div className="flex items-center space-x-3">
                             <Car className="w-5 h-5 text-orange-600" />
-                            <span className="font-medium">Жолооч</span>
+                            <span className="font-medium">Бүртгэл</span>
                           </div>
                           <span className="text-2xl font-bold text-orange-600">{drivers.length}</span>
                         </div>
@@ -2929,7 +2929,7 @@ export default function ManagerPage() {
         <DialogContent className="dialog-content">
           <DialogHeader className="dialog-header">
             <DialogTitle className="dialog-title">
-              {editingDriver?.role === "manager" ? "Менежер" : editingDriver?.role === "driver" ? "Жолооч" : "Ажилчин"}{" "}
+              {editingDriver?.role === "manager" ? "Менежер" : editingDriver?.role === "driver" ? "Бүртгэл" : "Ажилчин"}{" "}
               засах
             </DialogTitle>
             <DialogDescription className="dialog-description">Хэрэглэгчийн мэдээллийг шинэчлэх</DialogDescription>
