@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Eye, EyeOff, Shield, AlertCircle, Database, Globe } from "lucide-react"
+import { Eye, EyeOff, Shield, AlertCircle, Database, Globe, Users, Car } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -126,17 +126,25 @@ export default function LoginPage() {
       // Check if user is already logged in
       const unsubscribe = onAuthStateChanged(auth, async (user) => {
         if (user) {
-          // Check user role
+          // Check user role and redirect accordingly
           try {
             const userRef = ref(database, `users/${user.uid}`)
             const snapshot = await get(userRef)
             if (snapshot.exists()) {
               const userData = snapshot.val()
+
+              // Check if user is active
+              if (userData.active === false) {
+                console.log("User is inactive, staying on login page")
+                setPageLoading(false)
+                return
+              }
+
+              // Redirect based on role
               if (userData.role === "manager") {
                 router.push("/manager")
                 return
-              } else {
-                // If user is not manager, redirect to main app
+              } else if (userData.role === "employee" || userData.role === "driver") {
                 router.push("/")
                 return
               }
@@ -170,35 +178,63 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      // Check user role
+      // Check user data in database
       const userRef = ref(database, `users/${user.uid}`)
       const snapshot = await get(userRef)
 
       if (snapshot.exists()) {
         const userData = snapshot.val()
 
-        // Only allow managers to login through this page
-        if (userData.role === "manager") {
-          router.push("/manager")
-        } else {
-          setError("Зөвхөн менежер энэ хуудсаар нэвтэрч болно")
+        // Check if user is active
+        if (userData.active === false) {
+          setError("Таны эрх хаагдсан байна. Менежертэй холбогдоно уу.")
           await auth.signOut()
+          setLoading(false)
+          return
+        }
+
+        // Redirect based on role
+        switch (userData.role) {
+          case "manager":
+            router.push("/manager")
+            break
+          case "employee":
+          case "driver":
+            router.push("/")
+            break
+          default:
+            setError("Тодорхойгүй хэрэглэгчийн төрөл")
+            await auth.signOut()
         }
       } else {
         setError("Хэрэглэгчийн мэдээлэл олдсонгүй")
         await auth.signOut()
       }
     } catch (error: any) {
-      if (error.code === "auth/user-not-found") {
-        setError("И-мэйл хаяг олдсонгүй")
-      } else if (error.code === "auth/wrong-password") {
-        setError("Нууц үг буруу байна")
-      } else if (error.code === "auth/invalid-email") {
-        setError("И-мэйл хаяг буруу байна")
-      } else if (error.code === "auth/too-many-requests") {
-        setError("Хэт олон удаа оролдлоо. Түр хүлээнэ үү")
-      } else {
-        setError("Нэвтрэхэд алдаа гарлаа")
+      console.error("Login error:", error)
+
+      // Handle different error types
+      switch (error.code) {
+        case "auth/user-not-found":
+          setError("И-мэйл хаяг олдсонгүй")
+          break
+        case "auth/wrong-password":
+          setError("Нууц үг буруу байна")
+          break
+        case "auth/invalid-email":
+          setError("И-мэйл хаяг буруу байна")
+          break
+        case "auth/too-many-requests":
+          setError("Хэт олон удаа оролдлоо. Түр хүлээнэ үү")
+          break
+        case "auth/user-disabled":
+          setError("Энэ хэрэглэгчийн эрх хаагдсан байна")
+          break
+        case "auth/invalid-credential":
+          setError("И-мэйл эсвэл нууц үг буруу байна")
+          break
+        default:
+          setError("Нэвтрэхэд алдаа гарлаа. Дахин оролдоно уу.")
       }
     }
 
@@ -290,7 +326,7 @@ export default function LoginPage() {
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-gray-900">{siteConfig.siteName}</CardTitle>
-              <CardDescription className="text-gray-600 mt-2">Менежерийн системд нэвтрэх</CardDescription>
+              <CardDescription className="text-gray-600 mt-2">Системд нэвтрэх</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
@@ -360,6 +396,31 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+
+            {/* User Role Information */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Хэрэглэгчийн төрөл:</h4>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 text-xs text-gray-600">
+                  <Shield className="w-4 h-4 text-blue-600" />
+                  <span>
+                    <strong>Менежер:</strong> Бүх системийн удирдлага
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-gray-600">
+                  <Users className="w-4 h-4 text-green-600" />
+                  <span>
+                    <strong>Ажилчин:</strong> Зогсоолын бүртгэл хийх
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-gray-600">
+                  <Car className="w-4 h-4 text-orange-600" />
+                  <span>
+                    <strong>Жолооч:</strong> Зогсоолын бүртгэл хийх
+                  </span>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
