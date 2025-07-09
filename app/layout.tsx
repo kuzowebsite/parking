@@ -16,6 +16,12 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "apple-mobile-web-app-title": "Зогсоолын систем",
+  },
 }
 
 export default function RootLayout({
@@ -28,10 +34,12 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/api/manifest" />
         <meta name="theme-color" content="#10b981" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Зогсоолын систем" />
         <link rel="apple-touch-icon" href="/images/logo.png" />
+        <link rel="icon" href="/images/logo.png" />
       </head>
       <body className={inter.className}>{children}</body>
     </html>
