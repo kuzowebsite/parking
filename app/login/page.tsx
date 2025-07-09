@@ -30,7 +30,7 @@ export default function LoginPage() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
 
   // PWA install hook
-  const { canInstall, installApp, isInstalled, isIOS } = usePWAInstall()
+  const { canInstall, installApp, isInstalled } = usePWAInstall()
 
   // Site configuration states
   const [siteConfig, setSiteConfig] = useState({
@@ -222,22 +222,21 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  const handleInstall = async () => {
+  const handleInstallPrompt = async () => {
     setInstallLoading(true)
     try {
+      // Try direct install first
       const success = await installApp()
-      if (success) {
-        console.log("App installed successfully")
+      if (!success) {
+        // If direct install fails, show prompt
+        setShowInstallPrompt(true)
       }
     } catch (error) {
       console.error("Installation failed:", error)
+      setShowInstallPrompt(true)
     } finally {
       setInstallLoading(false)
     }
-  }
-
-  const handleInstallPrompt = () => {
-    setShowInstallPrompt(true)
   }
 
   if (pageLoading) {
@@ -446,7 +445,7 @@ export default function LoginPage() {
                     ) : (
                       <div className="flex items-center space-x-2">
                         <Smartphone className="w-5 h-5" />
-                        <span>Апп суулгах</span>
+                        <span>Суулгах</span>
                         <Download className="w-4 h-4" />
                       </div>
                     )}
