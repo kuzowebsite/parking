@@ -3,23 +3,18 @@
 import { useState, useEffect } from "react"
 import { ref, get } from "firebase/database"
 import { database } from "@/lib/firebase"
-
-interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: string[]
-  readonly userChoice: Promise<{
-    outcome: "accepted" | "dismissed"
-    platform: string
-  }>
-  prompt(): Promise<void>
-}
+import { usePWAInstall } from "@/hooks/use-pwa-install"
+import { Button } from "@/components/ui/button"
+import { X, Download, Smartphone, Share, Plus } from "lucide-react"
 
 interface InstallPromptProps {
   onClose: () => void
 }
 
 export default function InstallPrompt({ onClose }: InstallPromptProps) {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const { canInstall, installApp, isIOS, isInstalled } = usePWAInstall()
   const [showConfirm, setShowConfirm] = useState(false)
+  const [installing, setInstalling] = useState(false)
   const [siteConfig, setSiteConfig] = useState({
     siteName: "Зогсоолын систем",
     siteLogo: "/images/logo.png",
@@ -44,34 +39,31 @@ export default function InstallPrompt({ onClose }: InstallPromptProps) {
     }
 
     loadSiteConfig()
-
-    // Listen for beforeinstallprompt event
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-    }
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-    }
   }, [])
+
+  // Don't show if already installed
+  if (isInstalled) {
+    onClose()
+    return null
+  }
 
   const handleInstallClick = () => {
     setShowConfirm(true)
   }
 
   const handleConfirmInstall = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt()
-      const { outcome } = await deferredPrompt.userChoice
-      if (outcome === "accepted") {
-        console.log("User accepted the install prompt")
+    setInstalling(true)
+    try {
+      const success = await installApp()
+      if (success) {
+        console.log("Installation successful")
+        onClose()
       }
-      setDeferredPrompt(null)
+    } catch (error) {
+      console.error("Installation failed:", error)
+    } finally {
+      setInstalling(false)
     }
-    onClose()
   }
 
   const handleCancel = () => {
@@ -85,22 +77,57 @@ export default function InstallPrompt({ onClose }: InstallPromptProps) {
   if (!showConfirm) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+
+          <div className="flex items-center justify-between mb-6 pr-8">
             <div className="flex items-center space-x-3">
-              <img src={siteConfig.siteLogo || "/placeholder.svg"} alt="Logo" className="w-12 h-12 rounded-lg" />
+              <img
+                src={siteConfig.siteLogo || "/placeholder.svg"}
+                alt="Logo"
+                className="w-12 h-12 rounded-lg object-contain"
+              />
               <div>
-                <h3 className="font-semibold text-gray-900">Суулгах</h3>
-                <p className="text-sm text-gray-600">Апп болгон суулгах</p>
+                <h3 className="font-semibold text-gray-900">Апп суулгах</h3>
+                <p className="text-sm text-gray-600">{siteConfig.siteName}</p>
               </div>
             </div>
-            <button
-              onClick={handleInstallClick}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              Суулгах
-            </button>
           </div>
+
+          <div className="space-y-4 mb-6">
+            <div className="flex items-start space-x-3">
+              <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Smartphone className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">Хурдан хандалт</h4>
+                <p className="text-sm text-gray-600">Нүүр дэлгэцээсээ шууд нээх</p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Download className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-900">Offline ажиллах</h4>
+                <p className="text-sm text-gray-600">Интернет байхгүй үед ч ашиглах</p>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            onClick={handleInstallClick}
+            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-lg font-medium transition-colors"
+          >
+            <Download className="w-5 h-5 mr-2" />
+            Суулгах
+          </Button>
         </div>
       </div>
     )
@@ -110,26 +137,65 @@ export default function InstallPrompt({ onClose }: InstallPromptProps) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
         <div className="text-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Програм суулгах</h3>
-          <div className="flex flex-col items-center space-y-2">
-            <img src={siteConfig.siteLogo || "/placeholder.svg"} alt="Logo" className="w-16 h-16 rounded-lg" />
-            <p className="text-gray-700 font-medium">{siteConfig.siteName}</p>
+          <div className="flex flex-col items-center space-y-3">
+            <img
+              src={siteConfig.siteLogo || "/placeholder.svg"}
+              alt="Logo"
+              className="w-16 h-16 rounded-lg object-contain"
+            />
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">{siteConfig.siteName} суулгах</h3>
+              {isIOS ? (
+                <div className="text-left space-y-2 text-sm text-gray-600">
+                  <p className="font-medium">iOS дээр суулгахын тулд:</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <Share className="w-4 h-4" />
+                      <span>1. Доод хэсгийн "Хуваалцах" товчийг дарна уу</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Plus className="w-4 h-4" />
+                      <span>2. "Нүүр дэлгэцэнд нэмэх" сонгоно уу</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Download className="w-4 h-4" />
+                      <span>3. "Нэмэх" товчийг дарна уу</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-700">Апп-г өөрийн төхөөрөмж дээр суулгахдаа итгэлтэй байна уу?</p>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="flex space-x-3">
-          <button
+          <Button
             onClick={handleCancel}
-            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-medium transition-colors"
+            variant="outline"
+            className="flex-1 py-3 rounded-lg font-medium bg-transparent"
+            disabled={installing}
           >
             Болих
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleConfirmInstall}
             className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-lg font-medium transition-colors"
+            disabled={installing}
           >
-            Суулгах
-          </button>
+            {installing ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                <span>Суулгаж байна...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Download className="w-4 h-4" />
+                <span>{isIOS ? "Ойлголоо" : "Суулгах"}</span>
+              </div>
+            )}
+          </Button>
         </div>
       </div>
     </div>
