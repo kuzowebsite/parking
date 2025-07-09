@@ -156,12 +156,18 @@ async function generateManifest() {
     // Manifest файл бичих
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8")
 
-    console.log("🎉 Manifest.json файлыг Firebase-ээс өгөгдөл авч амжилттай үүсгэлээ!")
-    console.log(`📁 Файлын байршил: ${manifestPath}`)
-    console.log(`🎨 Өнгө: ${manifest.theme_color}`)
-    console.log(`🖼️  Лого: ${siteData.siteLogo}`)
+    // Файл үүссэн эсэхийг шалгах
+    if (fs.existsSync(manifestPath)) {
+      console.log("🎉 Manifest.json файлыг Firebase-ээс өгөгдөл авч амжилттай үүсгэлээ!")
+      console.log(`📁 Файлын байршил: ${manifestPath}`)
+      console.log(`🎨 Өнгө: ${manifest.theme_color}`)
+      console.log(`🖼️  Лого: ${siteData.siteLogo}`)
+    } else {
+      throw new Error("Manifest файл үүсгэж чадсангүй")
+    }
   } catch (error) {
     console.error("❌ Manifest үүсгэхэд алдаа гарлаа:", error.message)
+    console.log("🔄 Default manifest үүсгэж байна...")
 
     // Алдаа гарсан тохиолдолд default manifest үүсгэх
     const defaultManifest = {
