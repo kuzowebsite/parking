@@ -7,32 +7,7 @@
   "background_color": "#ffffff",
   "theme_color": "#10b981",
   "orientation": "portrait",
-  "scope": "/",
   "icons": [
-    {
-      "src": "/images/logo.png",
-      "sizes": "48x48",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/images/logo.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/images/logo.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/images/logo.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any"
-    },
     {
       "src": "/images/logo.png",
       "sizes": "192x192",
@@ -46,36 +21,7 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["business", "productivity", "utilities"],
+  "categories": ["business", "productivity"],
   "lang": "mn",
-  "dir": "ltr",
-  "prefer_related_applications": false,
-  "shortcuts": [
-    {
-      "name": "Зогсоол бүртгэх",
-      "short_name": "Бүртгэх",
-      "description": "Шинэ зогсоолын бүртгэл үүсгэх",
-      "url": "/?action=register",
-      "icons": [
-        {
-          "src": "/images/logo.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Тайлан харах",
-      "short_name": "Тайлан",
-      "description": "Зогсоолын тайлан харах",
-      "url": "/?action=report",
-      "icons": [
-        {
-          "src": "/images/logo.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
-    }
-  ]
+  "dir": "ltr"
 }
