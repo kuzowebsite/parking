@@ -25,8 +25,8 @@ export default function RootLayout({
   return (
     <html lang="mn">
       <head>
-        {/* Динамик manifest линк */}
-        <link rel="manifest" href="/api/manifest" />
+        {/* Статик manifest линк */}
+        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#10b981" />
 
         {/* Apple PWA мета тагууд */}
