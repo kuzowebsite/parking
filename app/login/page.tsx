@@ -222,18 +222,13 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  const handleInstallPrompt = async () => {
+  const handleDirectInstall = async () => {
     setInstallLoading(true)
     try {
-      // Try direct install first
-      const success = await installApp()
-      if (!success) {
-        // If direct install fails, show prompt
-        setShowInstallPrompt(true)
-      }
+      // Try direct install without showing prompt first
+      await installApp()
     } catch (error) {
-      console.error("Installation failed:", error)
-      setShowInstallPrompt(true)
+      console.error("Direct installation failed:", error)
     } finally {
       setInstallLoading(false)
     }
@@ -428,11 +423,11 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              {/* Install button below login button */}
+              {/* Install button - direct install without prompt */}
               {canInstall && !isInstalled && (
                 <div className="pt-2">
                   <Button
-                    onClick={handleInstallPrompt}
+                    onClick={handleDirectInstall}
                     variant="outline"
                     className="w-full h-12 text-base font-medium bg-white/5 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300 hover:scale-[1.02]"
                     disabled={installLoading}
