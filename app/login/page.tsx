@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Shield, AlertCircle, Download, Sparkles, Smartphone, Info } from "lucide-react"
+import { Eye, EyeOff, Shield, AlertCircle, Download, Sparkles, Smartphone } from "lucide-react"
 import { usePWAInstall } from "@/hooks/use-pwa-install"
 import { PWAUpdater } from "@/components/pwa-updater"
 
@@ -26,8 +26,8 @@ export default function LoginPage() {
   const [imagesPreloaded, setImagesPreloaded] = useState(false)
   const [preloadProgress, setPreloadProgress] = useState(0)
 
-  // PWA install hook
-  const { canInstall, installApp, isInstalled, installError, deferredPrompt } = usePWAInstall()
+  // PWA install hook - энгийн хувилбар
+  const { canInstall, installApp, isInstalled } = usePWAInstall()
 
   // Site configuration states
   const [siteConfig, setSiteConfig] = useState({
@@ -219,15 +219,12 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  // Install handler with better error handling
+  // Энгийн install handler
   const handleInstall = async () => {
-    console.log("Install button clicked")
     try {
       const success = await installApp()
       if (success) {
         console.log("Installation successful")
-      } else {
-        console.log("Installation cancelled or failed")
       }
     } catch (error) {
       console.error("Installation failed:", error)
@@ -422,9 +419,9 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              {/* Install button with better status indication */}
+              {/* Энгийн install товч */}
               {canInstall && !isInstalled && (
-                <div className="pt-2 space-y-2">
+                <div className="pt-2">
                   <Button
                     onClick={handleInstall}
                     variant="outline"
@@ -436,20 +433,7 @@ export default function LoginPage() {
                       <Download className="w-4 h-4" />
                     </div>
                   </Button>
-
-                  {/* Debug info */}
-                  <div className="text-xs text-white/60 text-center">
-                    {deferredPrompt ? "✓ Суулгах боломжтой" : "⏳ Суулгах боломж хүлээж байна..."}
-                  </div>
                 </div>
-              )}
-
-              {/* Install error */}
-              {installError && (
-                <Alert className="bg-yellow-500/20 border-yellow-400/50 backdrop-blur-sm">
-                  <Info className="h-4 w-4 text-yellow-300" />
-                  <AlertDescription className="text-yellow-200 text-sm">{installError}</AlertDescription>
-                </Alert>
               )}
 
               {/* Show installed status */}
