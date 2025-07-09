@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Shield, AlertCircle, Download, Sparkles } from "lucide-react"
+import { Eye, EyeOff, Shield, AlertCircle, Download, Sparkles, Smartphone } from "lucide-react"
 import { usePWAInstall } from "@/hooks/use-pwa-install"
 
 export default function LoginPage() {
@@ -24,9 +24,10 @@ export default function LoginPage() {
   const [pageLoading, setPageLoading] = useState(true)
   const [imagesPreloaded, setImagesPreloaded] = useState(false)
   const [preloadProgress, setPreloadProgress] = useState(0)
+  const [installLoading, setInstallLoading] = useState(false)
 
   // PWA install hook
-  const { canInstall, install } = usePWAInstall()
+  const { canInstall, installApp, isInstalled } = usePWAInstall()
 
   // Site configuration states
   const [siteConfig, setSiteConfig] = useState({
@@ -219,18 +220,16 @@ export default function LoginPage() {
   }
 
   const handleInstall = async () => {
+    setInstallLoading(true)
     try {
-      if (canInstall) {
-        await install()
-      } else {
-        // Show instructions for manual installation
-        alert(
-          "Суулгахын тулд: \n1. Хөтчийн цэсээс 'Add to Home Screen' сонгоно уу\n2. Эсвэл хөтчийн хаягийн мөрөнд байгаа суулгах товчийг дарна уу",
-        )
+      const success = await installApp()
+      if (success) {
+        console.log("App installed successfully")
       }
     } catch (error) {
       console.error("Installation failed:", error)
-      alert("Суулгахад алдаа гарлаа. Дахин оролдоно уу.")
+    } finally {
+      setInstallLoading(false)
     }
   }
 
@@ -306,18 +305,6 @@ export default function LoginPage() {
           className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"
           style={{ animationDelay: "1s" }}
         ></div>
-      </div>
-
-      {/* Install button with enhanced design - always show for testing */}
-      <div className="absolute top-6 right-6 z-10">
-        <Button
-          onClick={handleInstall}
-          className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg backdrop-blur-sm border border-white/20 transition-all duration-300 hover:scale-105"
-          size="sm"
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Суулгах
-        </Button>
       </div>
 
       {/* Login form with enhanced design */}
@@ -428,6 +415,43 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+
+            {/* Install button below login button */}
+            {(canInstall || !isInstalled) && (
+              <div className="pt-2">
+                <Button
+                  onClick={handleInstall}
+                  variant="outline"
+                  className="w-full h-12 text-base font-medium bg-white/5 border-white/30 text-white hover:bg-white/10 hover:border-white/50 transition-all duration-300 hover:scale-[1.02]"
+                  disabled={installLoading}
+                >
+                  {installLoading ? (
+                    <div className="flex items-center space-x-3">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                      <span>Суулгаж байна...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <Smartphone className="w-5 h-5" />
+                      <span>Суулгах</span>
+                      <Download className="w-4 h-4" />
+                    </div>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* Show installed status */}
+            {isInstalled && (
+              <div className="pt-2">
+                <div className="w-full h-12 flex items-center justify-center bg-green-500/20 border border-green-400/50 rounded-lg backdrop-blur-sm">
+                  <div className="flex items-center space-x-2 text-green-300">
+                    <Smartphone className="w-5 h-5" />
+                    <span className="text-base font-medium">Суулгагдсан</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Decorative elements */}
             <div className="flex items-center justify-center space-x-4 pt-4">
