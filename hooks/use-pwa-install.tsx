@@ -86,7 +86,7 @@ export function usePWAInstall() {
   const installApp = async (): Promise<boolean> => {
     console.log("Install app called", { deferredPrompt, isIOS, canInstall })
 
-    // Handle iOS installation - trigger native share menu
+    // Handle iOS installation - use Web Share API
     if (isIOS) {
       try {
         // Try to use Web Share API to trigger native share menu
@@ -98,53 +98,12 @@ export function usePWAInstall() {
           })
           return true
         } else {
-          // Fallback: Try to trigger iOS add to home screen
-          // This creates a custom event that might trigger the add to home screen banner
-          const event = new CustomEvent("beforeinstallprompt")
-          window.dispatchEvent(event)
-
-          // Show a brief instruction overlay
-          const overlay = document.createElement("div")
-          overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            text-align: center;
-            padding: 20px;
-          `
-
-          overlay.innerHTML = `
-            <div style="max-width: 300px;">
-              <div style="font-size: 24px; margin-bottom: 20px;">📱</div>
-              <div style="font-size: 18px; margin-bottom: 10px;">Апп суулгах</div>
-              <div style="font-size: 14px; opacity: 0.8; margin-bottom: 20px;">
-                Доод хэсгийн "Хуваалцах" товчийг дараад "Нүүр дэлгэцэнд нэмэх" сонгоно уу
-              </div>
-              <button onclick="this.parentElement.parentElement.remove()" 
-                      style="background: #007AFF; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px;">
-                Ойлголоо
-              </button>
-            </div>
-          `
-
-          document.body.appendChild(overlay)
-
-          // Auto remove after 5 seconds
-          setTimeout(() => {
-            if (overlay.parentElement) {
-              overlay.remove()
-            }
-          }, 5000)
-
+          // Fallback: Try to programmatically trigger add to home screen
+          // Create a temporary link and click it to potentially trigger iOS install
+          const link = document.createElement("a")
+          link.href = window.location.href
+          link.setAttribute("data-turbo", "false")
+          link.click()
           return false
         }
       } catch (error) {
@@ -175,53 +134,23 @@ export function usePWAInstall() {
       }
     } else {
       // For browsers that don't support beforeinstallprompt
-      // Try to trigger browser's native install prompt
+      // Try to trigger browser's native install functionality
       try {
-        // Check if browser supports installation
+        // Check if we can trigger browser install menu
         if ("serviceWorker" in navigator) {
-          // Show browser-specific install hint
-          const overlay = document.createElement("div")
-          overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            font-family: system-ui, sans-serif;
-            text-align: center;
-            padding: 20px;
-          `
+          // Try to focus address bar to show install icon
+          window.focus()
 
-          overlay.innerHTML = `
-            <div style="max-width: 350px;">
-              <div style="font-size: 24px; margin-bottom: 20px;">💻</div>
-              <div style="font-size: 18px; margin-bottom: 10px;">Апп суулгах</div>
-              <div style="font-size: 14px; opacity: 0.8; margin-bottom: 20px;">
-                Browser-ын цэсээс "Апп суулгах" эсвэл хаягийн мөрөн дэх суулгах товчийг дарна уу
-              </div>
-              <button onclick="this.parentElement.parentElement.remove()" 
-                      style="background: #0066CC; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px;">
-                Ойлголоо
-              </button>
-            </div>
-          `
+          // Try to trigger browser install via meta refresh
+          const meta = document.createElement("meta")
+          meta.httpEquiv = "refresh"
+          meta.content = "0;url=" + window.location.href
+          document.head.appendChild(meta)
 
-          document.body.appendChild(overlay)
-
-          // Auto remove after 5 seconds
           setTimeout(() => {
-            if (overlay.parentElement) {
-              overlay.remove()
-            }
-          }, 5000)
+            document.head.removeChild(meta)
+          }, 100)
         }
-
         return false
       } catch (error) {
         console.error("Browser install error:", error)
