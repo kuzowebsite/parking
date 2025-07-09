@@ -220,9 +220,17 @@ export default function LoginPage() {
 
   const handleInstall = async () => {
     try {
-      await install()
+      if (canInstall) {
+        await install()
+      } else {
+        // Show instructions for manual installation
+        alert(
+          "Суулгахын тулд: \n1. Хөтчийн цэсээс 'Add to Home Screen' сонгоно уу\n2. Эсвэл хөтчийн хаягийн мөрөнд байгаа суулгах товчийг дарна уу",
+        )
+      }
     } catch (error) {
       console.error("Installation failed:", error)
+      alert("Суулгахад алдаа гарлаа. Дахин оролдоно уу.")
     }
   }
 
@@ -300,19 +308,17 @@ export default function LoginPage() {
         ></div>
       </div>
 
-      {/* Install button with enhanced design */}
-      {canInstall && (
-        <div className="absolute top-6 right-6 z-10">
-          <Button
-            onClick={handleInstall}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg backdrop-blur-sm border border-white/20 transition-all duration-300 hover:scale-105"
-            size="sm"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Суулгах
-          </Button>
-        </div>
-      )}
+      {/* Install button with enhanced design - always show for testing */}
+      <div className="absolute top-6 right-6 z-10">
+        <Button
+          onClick={handleInstall}
+          className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg backdrop-blur-sm border border-white/20 transition-all duration-300 hover:scale-105"
+          size="sm"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Суулгах
+        </Button>
+      </div>
 
       {/* Login form with enhanced design */}
       <div className="relative z-10 w-full max-w-md">
