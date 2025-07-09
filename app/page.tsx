@@ -1047,7 +1047,6 @@ export default function ParkingSystem() {
                 style={{ width: `${loadingProgress}%` }}
               ></div>
             </div>
-
             {/* Progress Text */}
             <div className="flex justify-between items-center text-sm">
               <span className="text-blue-200">Ачааллаж байна...</span>
@@ -1281,7 +1280,7 @@ export default function ParkingSystem() {
                         <div className="relative">
                           <div
                             onClick={() => setShowEmployeeDropdown(!showEmployeeDropdown)}
-                            className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white cursor-pointer flex items-center justify-between text-sm md:text-base min-h-[48px] md:min-h-[56px]"
+                            className="w-full px-4 py-3 md:px-6 md:py-4 bg-gray-900/95 backdrop-blur-md border border-gray-700/50 rounded-xl md:rounded-2xl text-white cursor-pointer flex items-center justify-between text-sm md:text-base min-h-[48px] md:min-h-[56px]"
                           >
                             <span className={selectedEmployees.length > 0 ? "text-white" : "text-white/50"}>
                               {selectedEmployees.length > 0 ? selectedEmployees.join(", ") : "Ажилчин сонгоно уу"}
@@ -1297,9 +1296,9 @@ export default function ParkingSystem() {
                           </div>
 
                           {showEmployeeDropdown && (
-                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl max-h-48 overflow-y-auto z-50">
+                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-900/95 backdrop-blur-md border border-gray-700/50 rounded-xl md:rounded-2xl max-h-48 overflow-y-auto z-50 shadow-2xl">
                               {employees.length === 0 ? (
-                                <div className="p-4 text-white/50 text-center text-sm">Ажилчин бүртгэлгүй байна</div>
+                                <div className="p-4 text-white/70 text-center text-sm">Ажилчин бүртгэлгүй байна</div>
                               ) : (
                                 <div className="p-2 max-h-44 overflow-y-auto">
                                   {employees.map((employee) => (
@@ -1315,17 +1314,17 @@ export default function ParkingSystem() {
                                           setSelectedEmployees([...selectedEmployees, employee.name])
                                         }
                                       }}
-                                      className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                                      className={`flex items-center space-x-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
                                         selectedEmployees.includes(employee.name)
-                                          ? "bg-emerald-400/20 text-emerald-400"
-                                          : "hover:bg-white/10 text-white"
+                                          ? "bg-emerald-500/30 text-emerald-300 border border-emerald-400/40"
+                                          : "hover:bg-gray-800/80 text-white border border-transparent"
                                       }`}
                                     >
                                       <div
-                                        className={`w-4 h-4 border-2 rounded flex items-center justify-center ${
+                                        className={`w-4 h-4 border-2 rounded flex items-center justify-center transition-colors ${
                                           selectedEmployees.includes(employee.name)
                                             ? "border-emerald-400 bg-emerald-400"
-                                            : "border-white/30"
+                                            : "border-gray-400"
                                         }`}
                                       >
                                         {selectedEmployees.includes(employee.name) && (
@@ -1339,8 +1338,8 @@ export default function ParkingSystem() {
                                         )}
                                       </div>
                                       <div className="flex-1">
-                                        <p className="font-medium">{employee.name}</p>
-                                        <div className="flex items-center space-x-2 text-xs opacity-70">
+                                        <p className="font-medium text-white">{employee.name}</p>
+                                        <div className="flex items-center space-x-2 text-xs text-gray-300">
                                           {employee.position && <span>{employee.position}</span>}
                                           {employee.phone && (
                                             <>
@@ -1689,9 +1688,6 @@ export default function ParkingSystem() {
                                 <span className="text-white/70">Машин:</span> {record.carNumber}
                               </p>
                               <p className="text-white text-sm">
-                                <span className="text-white/70">Ажилчин:</span> {record.driverName}
-                              </p>
-                              <p className="text-white text-sm">
                                 <span className="text-white/70">Машины марк:</span> {record.parkingArea}
                               </p>
                               <p className="text-white/50 text-xs">
@@ -1748,12 +1744,6 @@ export default function ParkingSystem() {
                                 {currentFee === 0 ? "Үнэгүй" : `${currentFee} ₮`}
                               </p>
                               <p className="text-xs text-white/50">{pricingConfig.pricePerMinute}₮/цаг</p>
-                              <button
-                                onClick={() => handleExitFromRecord(record.id, record)}
-                                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
-                              >
-                                Гарсан
-                              </button>
                             </div>
                           </div>
                         </div>
@@ -2287,7 +2277,7 @@ export default function ParkingSystem() {
                             disabled={profileLoading}
                             className="flex-1 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 transition-colors"
                           >
-                            Цуцлах
+                            Ц��цлах
                           </button>
                         </>
                       ) : (
@@ -2414,13 +2404,13 @@ export default function ParkingSystem() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={cancelExit}
-                  className="flex-1 py-3 px-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-medium rounded-xl hover:bg-white/20 transition-colors text-sm md:text-base"
+                  className="flex-1 py-3 px-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-medium rounded-xl hover:bg-white/20 transition-colors"
                 >
                   Цуцлах
                 </button>
                 <button
                   onClick={confirmExit}
-                  className="flex-1 py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-colors text-sm md:text-base"
+                  className="flex-1 py-3 px-4 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-colors"
                 >
                   Гарсан бүртгэл хийх
                 </button>
@@ -2525,3 +2515,4 @@ export default function ParkingSystem() {
     </div>
   )
 }
+</merged_code>
