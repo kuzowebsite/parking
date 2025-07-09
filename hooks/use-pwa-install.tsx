@@ -89,7 +89,7 @@ export function usePWAInstall() {
     // Handle iOS installation - use Web Share API
     if (isIOS) {
       try {
-        // Try to use Web Share API to trigger native share menu
+        // For iOS, try to use Web Share API to trigger native share menu
         if (navigator.share) {
           await navigator.share({
             title: document.title,
@@ -97,15 +97,8 @@ export function usePWAInstall() {
             url: window.location.href,
           })
           return true
-        } else {
-          // Fallback: Try to programmatically trigger add to home screen
-          // Create a temporary link and click it to potentially trigger iOS install
-          const link = document.createElement("a")
-          link.href = window.location.href
-          link.setAttribute("data-turbo", "false")
-          link.click()
-          return false
         }
+        return false
       } catch (error) {
         console.error("iOS install error:", error)
         return false
@@ -132,31 +125,10 @@ export function usePWAInstall() {
         console.error("Error during installation:", error)
         return false
       }
-    } else {
-      // For browsers that don't support beforeinstallprompt
-      // Try to trigger browser's native install functionality
-      try {
-        // Check if we can trigger browser install menu
-        if ("serviceWorker" in navigator) {
-          // Try to focus address bar to show install icon
-          window.focus()
-
-          // Try to trigger browser install via meta refresh
-          const meta = document.createElement("meta")
-          meta.httpEquiv = "refresh"
-          meta.content = "0;url=" + window.location.href
-          document.head.appendChild(meta)
-
-          setTimeout(() => {
-            document.head.removeChild(meta)
-          }, 100)
-        }
-        return false
-      } catch (error) {
-        console.error("Browser install error:", error)
-        return false
-      }
     }
+
+    // If no deferredPrompt available, return false
+    return false
   }
 
   return {
