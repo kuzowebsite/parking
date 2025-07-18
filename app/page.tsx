@@ -1,7 +1,5 @@
 "use client"
-
 import type React from "react"
-
 import { useState, useEffect, useRef } from "react"
 import { onAuthStateChanged, signOut, updatePassword, type User as FirebaseUser } from "firebase/auth"
 import { ref, push, onValue, set, update } from "firebase/database"
@@ -9,41 +7,33 @@ import { auth, database } from "@/lib/firebase"
 import type { ParkingRecord, UserProfile } from "@/types"
 import { Home, History, User, LogOut, Search, X, Car, Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
-
 export default function ParkingSystem() {
   const [user, setUser] = useState<FirebaseUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [showSplash, setShowSplash] = useState(true)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const router = useRouter()
-
   // Home states
   const [carNumber, setCarNumber] = useState("")
   const [parkingArea, setParkingArea] = useState("")
   const [recentRecords, setRecentRecords] = useState<ParkingRecord[]>([])
   const [actionLoading, setActionLoading] = useState(false)
-
   // Add new state for images after other home states
   const [capturedImages, setCapturedImages] = useState<string[]>([])
   const [showCamera, setShowCamera] = useState(false)
-
   // Camera refs
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-
   // Add camera facing state
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
-
   // History states
   const [allRecords, setAllRecords] = useState<ParkingRecord[]>([])
   const [filteredRecords, setFilteredRecords] = useState<ParkingRecord[]>([])
-
   // Filter states
   const [filterYear, setFilterYear] = useState("")
   const [filterMonth, setFilterMonth] = useState("")
   const [filterCarNumber, setFilterCarNumber] = useState("")
-
   // Profile states
   const [profile, setProfile] = useState<UserProfile>({
     name: "",
@@ -55,10 +45,8 @@ export default function ParkingSystem() {
   })
   const [editing, setEditing] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
-
   // Employee profile states
   const [employeeProfile, setEmployeeProfile] = useState<any>(null)
-
   // Password change states for employees
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
@@ -68,38 +56,30 @@ export default function ParkingSystem() {
     newPassword: "",
     confirmPassword: "",
   })
-
   // Pricing state
   const [pricingConfig, setPricingConfig] = useState({
     pricePerMinute: 0,
   })
-
   // Site configuration state
   const [siteConfig, setSiteConfig] = useState({
     siteName: "",
     siteLogo: "",
     siteBackground: "",
   })
-
   // Tabs-ийн оронд activeTab state нэмэх
   const [activeTab, setActiveTab] = useState("home")
-
   // Logout confirmation modal state
   const [showLogoutModal, setShowLogoutModal] = useState(false)
-
   // Filter collapse state
   const [filterCollapsed, setFilterCollapsed] = useState(true)
-
   // Employee states for dropdown
   const [employees, setEmployees] = useState<any[]>([])
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false)
-
   // Active parking records states
   const [activeParkingRecords, setActiveParkingRecords] = useState<ParkingRecord[]>([])
   const [filteredActiveParkingRecords, setFilteredActiveParkingRecords] = useState<ParkingRecord[]>([])
   const [activeRecordsSearch, setActiveRecordsSearch] = useState("")
-
   // Custom exit confirmation modal states
   const [showExitModal, setShowExitModal] = useState(false)
   const [exitingRecord, setExitingRecord] = useState<ParkingRecord | null>(null)
@@ -108,10 +88,8 @@ export default function ParkingSystem() {
     duration: 0,
     fee: 0,
   })
-
   // Add state to track if user is manager to prevent showing main interface
   const [isManager, setIsManager] = useState(false)
-
   useEffect(() => {
     // Splash screen loading animation
     if (showSplash) {
@@ -127,11 +105,9 @@ export default function ParkingSystem() {
           return prev + 2 // 2% -аар нэмэгдэх (50 алхам = 2.5 секунд)
         })
       }, 50) // 50ms тутамд шинэчлэх
-
       return () => clearInterval(interval)
     }
   }, [showSplash])
-
   useEffect(() => {
     if (!showSplash) {
       const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -146,11 +122,9 @@ export default function ParkingSystem() {
       return unsubscribe
     }
   }, [showSplash, router])
-
   // Filter records based on year, month, car number, and type
   useEffect(() => {
     let filtered = [...allRecords]
-
     // Filter by year
     if (filterYear) {
       filtered = filtered.filter((record) => {
@@ -158,7 +132,6 @@ export default function ParkingSystem() {
         return recordDate.getFullYear().toString() === filterYear
       })
     }
-
     // Filter by month
     if (filterMonth) {
       filtered = filtered.filter((record) => {
@@ -166,18 +139,15 @@ export default function ParkingSystem() {
         return (recordDate.getMonth() + 1).toString().padStart(2, "0") === filterMonth
       })
     }
-
     // Filter by car number
     if (filterCarNumber) {
       filtered = filtered.filter((record) => record.carNumber.toLowerCase().includes(filterCarNumber.toLowerCase()))
     }
-
     // Filter only completed/exit records for history tab
     filtered = filtered.filter(
       (record) =>
         record.type === "completed" || record.type === "exit" || (record.exitTime && record.exitTime.trim() !== ""),
     )
-
     // If user is employee, filter by employee name
     if (profile.role === "employee" && profile.name) {
       filtered = filtered.filter((record) => {
@@ -185,19 +155,15 @@ export default function ParkingSystem() {
         return record.driverName && record.driverName.includes(profile.name)
       })
     }
-
     setFilteredRecords(filtered)
   }, [allRecords, filterYear, filterMonth, filterCarNumber, profile.role, profile.name])
-
   // Update the loadRecentRecords function to ensure proper data fetching
   const loadRecentRecords = () => {
     if (!user?.uid) {
       console.log("No authenticated user, skipping recent records load")
       return
     }
-
     console.log("Loading recent records for user:", user.uid)
-
     const recordsRef = ref(database, "parking_records")
     onValue(
       recordsRef,
@@ -220,7 +186,6 @@ export default function ParkingSystem() {
             })
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
             .slice(0, 3) // Last 3 records
-
           setRecentRecords(records)
           console.log("Recent records loaded:", records.length, "records")
         } else {
@@ -238,39 +203,32 @@ export default function ParkingSystem() {
       },
     )
   }
-
   // loadActiveParkingRecords функцийг бүрэн засварлах
   const loadActiveParkingRecords = () => {
     console.log("Loading active parking records...")
-
     const recordsRef = ref(database, "parking_records")
     onValue(
       recordsRef,
       (snapshot) => {
         const data = snapshot.val()
         console.log("Raw parking records data:", data)
-
         if (data) {
           const allRecords = Object.keys(data).map((key) => ({ id: key, ...data[key] }))
           console.log("All records:", allRecords)
-
           // Илүү энгийн filtering logic ашиглах
           const activeRecords: ParkingRecord[] = allRecords
             .filter((record) => {
               // Зөвхөн entry type бөгөөд exitTime байхгүй бүртгэлүүдийг авах
               const isActive = record.type === "entry" && !record.exitTime && record.type !== "completed"
-
               // If user is employee, filter by employee name
               if (profile.role === "employee" && profile.name) {
                 const isEmployeeRecord = record.driverName && record.driverName.includes(profile.name)
                 return isActive && isEmployeeRecord
               }
-
               console.log(`Record ${record.id}: type=${record.type}, exitTime=${record.exitTime}, isActive=${isActive}`)
               return isActive
             })
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
           console.log("Filtered active records:", activeRecords)
           setActiveParkingRecords(activeRecords)
           setFilteredActiveParkingRecords(activeRecords)
@@ -287,23 +245,19 @@ export default function ParkingSystem() {
       },
     )
   }
-
   // loadAllRecords функцийг засварлах - бүх бүртгэлүүдийг ачаалах
   const loadAllRecords = () => {
     console.log("Loading all records...")
-
     const recordsRef = ref(database, "parking_records")
     onValue(
       recordsRef,
       (snapshot) => {
         const data = snapshot.val()
         console.log("All records raw data:", data)
-
         if (data) {
           const records: ParkingRecord[] = Object.keys(data)
             .map((key) => ({ id: key, ...data[key] }))
             .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
           console.log("All records processed:", records)
           setAllRecords(records)
         } else {
@@ -317,7 +271,6 @@ export default function ParkingSystem() {
       },
     )
   }
-
   // Load employees from database
   const loadEmployees = () => {
     const employeesRef = ref(database, "employees")
@@ -333,7 +286,6 @@ export default function ParkingSystem() {
       }
     })
   }
-
   // Load employee profile from employees database
   const loadEmployeeProfile = (employeeName: string) => {
     const employeesRef = ref(database, "employees")
@@ -347,7 +299,6 @@ export default function ParkingSystem() {
       }
     })
   }
-
   // Update the loadProfile function to call record loading functions
   const loadProfile = () => {
     const userId = auth.currentUser?.uid
@@ -356,9 +307,7 @@ export default function ParkingSystem() {
       setLoading(false)
       return
     }
-
     console.log("Loading profile for user:", userId)
-
     const profileRef = ref(database, `users/${userId}`)
     onValue(
       profileRef,
@@ -373,16 +322,13 @@ export default function ParkingSystem() {
             profileImage: data.profileImage || "",
             active: data.active !== false, // Default to true if not set
           }
-
           setProfile(userProfile)
-
           // Check if user is active
           if (userProfile.active === false) {
             alert("Таны эрх хаагдсан байна. Менежертэй холбогдоно уу.")
             signOut(auth)
             return
           }
-
           // Redirect manager to manager page immediately
           if (userProfile.role === "manager") {
             console.log("Manager detected, redirecting to manager page...")
@@ -391,14 +337,11 @@ export default function ParkingSystem() {
             window.location.replace("/manager")
             return
           }
-
           // Load employee profile if user is employee
           if (userProfile.role === "employee" && userProfile.name) {
             loadEmployeeProfile(userProfile.name)
           }
-
           console.log("Profile loaded, now loading records...")
-
           // Load pricing configuration
           const pricingRef = ref(database, "pricingConfig")
           onValue(pricingRef, (snapshot) => {
@@ -409,7 +352,6 @@ export default function ParkingSystem() {
               })
             }
           })
-
           // Load site configuration
           const siteRef = ref(database, "siteConfig")
           onValue(siteRef, (snapshot) => {
@@ -422,16 +364,14 @@ export default function ParkingSystem() {
               })
             }
           })
-
           // Load records after profile is loaded and we have user context
           setTimeout(() => {
             console.log("Loading all data after profile load...")
             loadRecentRecords()
             loadAllRecords()
-            loadActiveParkingRecords() // Load active parking records
+            loadActiveParkingRecords()
             loadEmployees() // Load employees for dropdown
           }, 500)
-
           setLoading(false)
         } else {
           // Create default profile for new users
@@ -444,16 +384,14 @@ export default function ParkingSystem() {
             active: true,
           }
           setProfile(defaultProfile)
-
           // Still try to load records even if profile is empty
           setTimeout(() => {
             console.log("Loading data with empty profile...")
             loadRecentRecords()
             loadAllRecords()
-            loadActiveParkingRecords() // Load active parking records
+            loadActiveParkingRecords()
             loadEmployees() // Load employees for dropdown
           }, 500)
-
           setLoading(false)
         }
       },
@@ -472,48 +410,38 @@ export default function ParkingSystem() {
       },
     )
   }
-
   // Real-time parking fee calculation функцийг засварлах
   const calculateCurrentParkingFee = (entryTime: string): number => {
     if (!entryTime || pricingConfig.pricePerMinute === 0) {
       return 0
     }
-
     try {
       const entryDate = parseFlexibleDate(entryTime)
       const currentTime = new Date()
-
       if (isNaN(entryDate.getTime())) {
         console.error("Invalid entry time after parsing:", entryTime)
         return 0
       }
-
       const diffInMs = currentTime.getTime() - entryDate.getTime()
       const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60)) // Calculate in hours and round up
-
       // Хэрэв 1 цагаас бага бол 1 цаг гэж тооцох
       const hoursToCharge = Math.max(1, diffInHours)
-
       return hoursToCharge * (pricingConfig.pricePerMinute || 100) // pricePerMinute is now price per hour
     } catch (error) {
       console.error("Error calculating current parking fee:", error)
       return 0
     }
   }
-
   // Calculate parking duration функцийг засварлах
   const calculateParkingDuration = (entryTime: string, exitTime?: string): number => {
     try {
       const entryDate = parseFlexibleDate(entryTime)
       const endDate = exitTime ? parseFlexibleDate(exitTime) : new Date()
-
       if (isNaN(entryDate.getTime()) || isNaN(endDate.getTime())) {
         return 0
       }
-
       const diffInMs = endDate.getTime() - entryDate.getTime()
       const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60)) // Calculate in hours and round up
-
       // Хэрэв 1 цагаас бага бол 1 цаг гэж тооцох
       return Math.max(1, diffInHours)
     } catch (error) {
@@ -521,18 +449,14 @@ export default function ParkingSystem() {
       return 0
     }
   }
-
   // Unified date parsing function
   const parseFlexibleDate = (dateStr: string): Date => {
     if (!dateStr) return new Date()
-
     const cleanStr = dateStr.trim()
-
     // Format 1: "07/01/2025, 08:42 AM" (US format with AM/PM)
     if (cleanStr.includes("AM") || cleanStr.includes("PM")) {
       return new Date(cleanStr)
     }
-
     // Format 2: "2025.01.07, 14:30" (Mongolian format)
     if (cleanStr.includes(".")) {
       const parts = cleanStr.replace(/[^\d\s:.,]/g, "").split(/[,\s]+/)
@@ -544,13 +468,11 @@ export default function ParkingSystem() {
         return new Date(year, month - 1, day, hour, minute)
       }
     }
-
     // Format 3: ISO string or other standard formats
     const standardDate = new Date(cleanStr)
     if (!isNaN(standardDate.getTime())) {
       return new Date(cleanStr)
     }
-
     // Format 4: Try to parse as locale string
     try {
       return new Date(Date.parse(cleanStr))
@@ -559,7 +481,6 @@ export default function ParkingSystem() {
       return new Date()
     }
   }
-
   // Format detailed time display
   const formatDetailedTime = (timeString: string): string => {
     try {
@@ -567,20 +488,17 @@ export default function ParkingSystem() {
       if (isNaN(date.getTime())) {
         return timeString // Return original if parsing fails
       }
-
       const year = date.getFullYear()
       const month = date.getMonth() + 1
       const day = date.getDate()
       const hour = date.getHours()
       const minute = date.getMinutes()
-
       return `${year}/${month.toString().padStart(2, "0")}/${day.toString().padStart(2, "0")}, ${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
     } catch (error) {
       console.error("Error formatting time:", error)
       return timeString // Return original string on error
     }
   }
-
   // Updated camera functionality functions
   const startCamera = async (facingMode: "user" | "environment" = cameraFacing) => {
     try {
@@ -588,7 +506,6 @@ export default function ParkingSystem() {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
       }
-
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
@@ -596,11 +513,9 @@ export default function ParkingSystem() {
           height: { ideal: 720 },
         },
       })
-
       streamRef.current = stream
       setCameraFacing(facingMode)
       setShowCamera(true)
-
       // Wait for the modal to render before setting video source
       setTimeout(() => {
         if (videoRef.current) {
@@ -612,40 +527,30 @@ export default function ParkingSystem() {
       alert("Камер ашиглахад алдаа гарлаа. Камерын эрхийг олгоно уу.")
     }
   }
-
   const switchCamera = async () => {
     const newFacing = cameraFacing === "environment" ? "user" : "environment"
     await startCamera(newFacing)
   }
-
   const captureImage = () => {
     if (!videoRef.current || !canvasRef.current) return
-
     const video = videoRef.current
     const canvas = canvasRef.current
     const ctx = canvas.getContext("2d")
-
     if (!ctx) return
-
     // Set canvas dimensions to match video
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
-
     // Draw the current video frame to canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
     // Convert canvas to base64 image
     const imageData = canvas.toDataURL("image/jpeg", 0.8)
-
     // Add image if less than 2 images
     if (capturedImages.length < 2) {
       setCapturedImages((prev) => [...prev, imageData])
     }
-
     // Close camera after capture
     stopCamera()
   }
-
   const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
@@ -653,11 +558,9 @@ export default function ParkingSystem() {
     }
     setShowCamera(false)
   }
-
   const removeImage = (index: number) => {
     setCapturedImages((prev) => prev.filter((_, i) => i !== index))
   }
-
   const handleImageUploadFromFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file && capturedImages.length < 2) {
@@ -666,7 +569,6 @@ export default function ParkingSystem() {
         alert("Зургийн хэмжээ 5MB-аас бага байх ёстой")
         return
       }
-
       const reader = new FileReader()
       reader.onload = (event) => {
         const base64String = event.target?.result as string
@@ -675,26 +577,21 @@ export default function ParkingSystem() {
       reader.readAsDataURL(file)
     }
   }
-
   // Update handleEntry function to include images
   const handleEntry = async () => {
     if (!carNumber.trim()) {
       alert("Машины дугаарыг оруулна уу")
       return
     }
-
     if (!parkingArea.trim()) {
       alert("Машины маркийг оруулна уу")
       return
     }
-
     if (selectedEmployees.length === 0) {
       alert("Ажилчин сонгоно уу")
       return
     }
-
     setActionLoading(true)
-
     const currentTime = new Date()
     const record: Omit<ParkingRecord, "id"> = {
       carNumber: carNumber.trim().toUpperCase(),
@@ -712,18 +609,15 @@ export default function ParkingSystem() {
       timestamp: currentTime.toISOString(),
       images: capturedImages, // Add images to the record
     }
-
     try {
       await push(ref(database, "parking_records"), record)
       alert("Орсон бүртгэл амжилттай хийгдлээ")
-
       // Refresh records after adding new entry
       setTimeout(() => {
         loadRecentRecords()
         loadAllRecords()
         loadActiveParkingRecords()
       }, 500)
-
       // Clear form after successful entry
       setCarNumber("")
       setParkingArea("")
@@ -735,13 +629,11 @@ export default function ParkingSystem() {
     }
     setActionLoading(false)
   }
-
   // Function to calculate parking fee
   const calculateParkingFee = (entryTime: string, exitTime: string): number => {
     const duration = calculateParkingDuration(entryTime, exitTime)
     return duration * (pricingConfig.pricePerMinute || 100) // pricePerMinute is now price per hour
   }
-
   // Handle exit from records tab - show custom confirmation
   const handleExitFromRecord = (recordId: string, record: ParkingRecord) => {
     const currentTime = new Date()
@@ -752,11 +644,9 @@ export default function ParkingSystem() {
       hour: "2-digit",
       minute: "2-digit",
     })
-
     // Calculate parking duration and fee
     const calculatedFee = calculateParkingFee(record.entryTime || "", exitTimeFormatted)
     const parkingDuration = calculateParkingDuration(record.entryTime || "", exitTimeFormatted)
-
     // Set exit details and show modal
     setExitingRecord({ ...record, id: recordId })
     setExitDetails({
@@ -766,14 +656,11 @@ export default function ParkingSystem() {
     })
     setShowExitModal(true)
   }
-
   // Confirm exit action
   const confirmExit = async () => {
     if (!exitingRecord) return
-
     try {
       const currentTime = new Date()
-
       // Update existing entry record with exit information, duration, and fee
       await update(ref(database, `parking_records/${exitingRecord.id}`), {
         exitTime: exitDetails.exitTime,
@@ -782,12 +669,10 @@ export default function ParkingSystem() {
         type: "completed",
         updatedAt: currentTime.toISOString(),
       })
-
       // Close modal and reset states
       setShowExitModal(false)
       setExitingRecord(null)
       setExitDetails({ exitTime: "", duration: 0, fee: 0 })
-
       // Refresh records after updating
       setTimeout(() => {
         loadRecentRecords()
@@ -799,14 +684,12 @@ export default function ParkingSystem() {
       alert("Гарсан бүртгэл хийхэд алдаа гарлаа")
     }
   }
-
   // Cancel exit action
   const cancelExit = () => {
     setShowExitModal(false)
     setExitingRecord(null)
     setExitDetails({ exitTime: "", duration: 0, fee: 0 })
   }
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -815,7 +698,6 @@ export default function ParkingSystem() {
         alert("Зургийн хэмжээ 5MB-аас бага байх ёстой")
         return
       }
-
       const reader = new FileReader()
       reader.onload = (event) => {
         const base64String = event.target?.result as string
@@ -824,7 +706,6 @@ export default function ParkingSystem() {
       reader.readAsDataURL(file)
     }
   }
-
   // Save profile function for employees
   const saveEmployeeProfile = async () => {
     const userId = auth.currentUser?.uid
@@ -832,7 +713,6 @@ export default function ParkingSystem() {
       alert("Нэрээ оруулна уу")
       return
     }
-
     // Validate password if provided
     if (passwordData.newPassword) {
       if (passwordData.newPassword.length < 6) {
@@ -844,7 +724,6 @@ export default function ParkingSystem() {
         return
       }
     }
-
     setProfileLoading(true)
     try {
       // Update user profile in users database
@@ -855,7 +734,6 @@ export default function ParkingSystem() {
         profileImage: profile.profileImage || "",
         updatedAt: new Date().toISOString(),
       })
-
       // Update employee profile in employees database if exists
       if (employeeProfile && employeeProfile.id) {
         await update(ref(database, `employees/${employeeProfile.id}`), {
@@ -864,7 +742,6 @@ export default function ParkingSystem() {
           updatedAt: new Date().toISOString(),
         })
       }
-
       // Update password if provided
       if (passwordData.newPassword && auth.currentUser) {
         try {
@@ -880,7 +757,6 @@ export default function ParkingSystem() {
       } else {
         alert("Профайл амжилттай шинэчлэгдлээ")
       }
-
       setEditing(false)
       // Reset password fields
       setPasswordData({
@@ -894,19 +770,16 @@ export default function ParkingSystem() {
     }
     setProfileLoading(false)
   }
-
   const saveProfile = async () => {
     if (profile.role === "employee") {
       await saveEmployeeProfile()
       return
     }
-
     const userId = auth.currentUser?.uid
     if (!userId || !profile.name.trim()) {
       alert("Нэрээ оруулна уу")
       return
     }
-
     setProfileLoading(true)
     try {
       await set(ref(database, `users/${userId}`), {
@@ -925,26 +798,21 @@ export default function ParkingSystem() {
     }
     setProfileLoading(false)
   }
-
   const handleLogoutClick = () => {
     setShowLogoutModal(true)
   }
-
   const confirmLogout = async () => {
     setShowLogoutModal(false)
     await signOut(auth)
   }
-
   const cancelLogout = () => {
     setShowLogoutModal(false)
   }
-
   // Get unique years from records for dropdown
   const getAvailableYears = () => {
     const years = allRecords.map((record) => new Date(record.timestamp).getFullYear())
     return [...new Set(years)].sort((a, b) => b - a)
   }
-
   // Add useEffect to load records when user changes
   useEffect(() => {
     if (user && !showSplash && user.uid && profile.name && !isManager) {
@@ -956,13 +824,11 @@ export default function ParkingSystem() {
         loadAllRecords()
         loadActiveParkingRecords()
       }, 1000)
-
       return () => clearTimeout(timeoutId)
     } else {
       console.log("User not ready:", { user: !!user, showSplash, uid: user?.uid, profileName: profile.name, isManager })
     }
   }, [user, profile.name, showSplash, isManager])
-
   // Close employee dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -971,24 +837,19 @@ export default function ParkingSystem() {
         setShowEmployeeDropdown(false)
       }
     }
-
     if (showEmployeeDropdown) {
       document.addEventListener("mousedown", handleClickOutside)
       return () => document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [showEmployeeDropdown])
-
   // Filter active parking records based on search
   useEffect(() => {
     let filtered = [...activeParkingRecords]
-
     if (activeRecordsSearch) {
       filtered = filtered.filter((record) => record.carNumber.toLowerCase().includes(activeRecordsSearch.toLowerCase()))
     }
-
     setFilteredActiveParkingRecords(filtered)
   }, [activeParkingRecords, activeRecordsSearch])
-
   // Cleanup camera stream when component unmounts
   useEffect(() => {
     return () => {
@@ -997,7 +858,6 @@ export default function ParkingSystem() {
       }
     }
   }, [])
-
   // Splash Screen
   if (showSplash) {
     return (
@@ -1008,7 +868,6 @@ export default function ParkingSystem() {
           <div className="absolute bottom-32 right-16 w-24 h-24 bg-cyan-400 rounded-full blur-2xl animate-pulse delay-1000"></div>
           <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-emerald-400 rounded-full blur-xl animate-pulse delay-500"></div>
         </div>
-
         {/* Main Content */}
         <div className="relative z-10 flex flex-col items-center space-y-8">
           {/* Logo */}
@@ -1019,7 +878,6 @@ export default function ParkingSystem() {
             {/* Glow effect */}
             <div className="absolute inset-0 w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 bg-blue-400 rounded-2xl md:rounded-3xl blur-xl opacity-30 animate-pulse"></div>
           </div>
-
           {/* App Name */}
           <div className="text-center space-y-2 md:space-y-4">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold">
@@ -1027,7 +885,6 @@ export default function ParkingSystem() {
               <span className="text-white">SPOT</span>
             </h1>
           </div>
-
           {/* Loading Progress */}
           <div className="w-64 md:w-80 lg:w-96 space-y-4">
             {/* Progress Bar */}
@@ -1053,7 +910,6 @@ export default function ParkingSystem() {
               <span className="text-white font-mono font-bold">{loadingProgress}%</span>
             </div>
           </div>
-
           {/* Loading Dots */}
           <div className="flex space-x-2">
             <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce"></div>
@@ -1061,7 +917,6 @@ export default function ParkingSystem() {
             <div className="w-2 h-2 bg-white rounded-full animate-bounce delay-200"></div>
           </div>
         </div>
-
         {/* Bottom decoration */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
           <div className="flex items-center space-x-2 text-blue-300 text-xs">
@@ -1072,7 +927,6 @@ export default function ParkingSystem() {
       </div>
     )
   }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1083,7 +937,6 @@ export default function ParkingSystem() {
       </div>
     )
   }
-
   // Don't render main interface if user is manager (they will be redirected)
   if (isManager) {
     return (
@@ -1095,7 +948,6 @@ export default function ParkingSystem() {
       </div>
     )
   }
-
   // If no user, the useEffect will redirect to login page
   if (!user) {
     return (
@@ -1107,7 +959,6 @@ export default function ParkingSystem() {
       </div>
     )
   }
-
   return (
     <div className="min-h-screen relative">
       {/* Background Image */}
@@ -1119,7 +970,6 @@ export default function ParkingSystem() {
       >
         <div className="absolute inset-0 bg-black/70"></div>
       </div>
-
       {/* Header - Fixed at top, doesn't move when scrolling */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 backdrop-blur-sm bg-white/5">
         <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 flex items-center justify-between">
@@ -1136,7 +986,6 @@ export default function ParkingSystem() {
               )}
             </div>
           </div>
-
           <div className="flex items-center space-x-4 md:space-x-6">
             {/* Manager холбоос - зөвхөн manager-д харагдах */}
             {profile.role === "manager" && (
@@ -1147,15 +996,12 @@ export default function ParkingSystem() {
                 Менежер
               </button>
             )}
-
             {/* Greeting text */}
             <span className="text-white/70 text-sm md:text-base">Сайн байна уу!</span>
-
             {/* User name */}
             <span className="text-white text-sm md:text-base font-medium">
               {profile.name || user.email?.split("@")[0]}
             </span>
-
             {/* Profile image */}
             <div className="w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center overflow-hidden">
               {profile.profileImage ? (
@@ -1173,7 +1019,6 @@ export default function ParkingSystem() {
           </div>
         </div>
       </header>
-
       {/* Main Content Area with Sidebar Layout */}
       <div className="lg:flex pt-16 md:pt-20 lg:pt-24">
         {/* Left Sidebar - Desktop Only */}
@@ -1239,7 +1084,6 @@ export default function ParkingSystem() {
             </div>
           </div>
         </div>
-
         {/* Main Content */}
         <main className="relative z-10 container mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8 lg:py-10 pb-20 md:pb-24 lg:pb-10 lg:ml-20 xl:ml-24">
           {activeTab === "home" && (
@@ -1262,7 +1106,6 @@ export default function ParkingSystem() {
                           className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm md:text-base"
                         />
                       </div>
-
                       <div className="space-y-2">
                         <label className="text-white/70 text-sm md:text-base">Машины марк</label>
                         <input
@@ -1273,7 +1116,6 @@ export default function ParkingSystem() {
                         />
                       </div>
                     </div>
-
                     <div className="employee-dropdown-container">
                       <div className="space-y-2">
                         <label className="text-white/70 text-sm md:text-base">Ажилчин</label>
@@ -1294,7 +1136,6 @@ export default function ParkingSystem() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
                           </div>
-
                           {showEmployeeDropdown && (
                             <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-900/95 backdrop-blur-md border border-gray-700/50 rounded-xl md:rounded-2xl max-h-48 overflow-y-auto z-50 shadow-2xl">
                               {employees.length === 0 ? (
@@ -1392,12 +1233,10 @@ export default function ParkingSystem() {
                         )}
                       </div>
                     </div>
-
                     <div className="space-y-4 md:space-y-6">
                       {/* Image Capture Section */}
                       <div className="space-y-2">
                         <label className="text-white/70 text-sm md:text-base">Зураг</label>
-
                         {/* Image Controls */}
                         <div className="flex flex-wrap gap-3">
                           {capturedImages.length < 2 && (
@@ -1423,7 +1262,6 @@ export default function ParkingSystem() {
                                 </svg>
                                 Камер
                               </button>
-
                               <label className="flex items-center px-4 py-2 bg-emerald-400/20 border border-emerald-400/30 text-emerald-400 rounded-lg hover:bg-emerald-400/30 transition-colors text-sm cursor-pointer">
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path
@@ -1444,7 +1282,6 @@ export default function ParkingSystem() {
                             </>
                           )}
                         </div>
-
                         {/* Image Preview */}
                         {capturedImages.length > 0 && (
                           <div className="grid grid-cols-2 gap-3 mt-4">
@@ -1475,12 +1312,10 @@ export default function ParkingSystem() {
                             ))}
                           </div>
                         )}
-
                         {capturedImages.length >= 2 && (
                           <p className="text-yellow-400 text-xs">Хамгийн ихдээ 2 зураг оруулах боломжтой</p>
                         )}
                       </div>
-
                       {/* Submit Button */}
                       <div className="flex flex-col pt-4">
                         <button
@@ -1495,7 +1330,6 @@ export default function ParkingSystem() {
                   </div>
                 </div>
               )}
-
               {/* Active Records Section for Employees */}
               {profile.role === "employee" && (
                 <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
@@ -1503,11 +1337,9 @@ export default function ParkingSystem() {
                     <h2 className="text-xl font-semibold text-white">Миний үйлчлүүлэгч</h2>
                     <p className="text-white/70 text-sm">Таны нэр дээр бүртгэгдсэн зогсож байгаа машинууд</p>
                   </div>
-
                   <div className="mb-4 text-white/70 text-sm">
                     Нийт {filteredActiveParkingRecords.length} машин зогсож байна
                   </div>
-
                   {filteredActiveParkingRecords.length === 0 ? (
                     <div className="text-center py-12">
                       <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
@@ -1521,7 +1353,6 @@ export default function ParkingSystem() {
                       {filteredActiveParkingRecords.map((record) => {
                         const currentFee = calculateCurrentParkingFee(record.entryTime || "")
                         const duration = calculateParkingDuration(record.entryTime || "")
-
                         return (
                           <div
                             key={record.id}
@@ -1546,7 +1377,6 @@ export default function ParkingSystem() {
                                 <p className="text-white/50 text-xs">
                                   Зогссон хугацаа: {duration === 0 ? "1 цагаас бага" : `${duration} цаг`}
                                 </p>
-
                                 {/* Images Section */}
                                 {record.images && record.images.length > 0 && (
                                   <div className="mt-3">
@@ -1574,7 +1404,6 @@ export default function ParkingSystem() {
                                                 </div>
                                               `
                                               document.body.appendChild(modal)
-
                                               // Close modal on click
                                               modal.addEventListener("click", (e) => {
                                                 if (e.target === modal || e.target.closest("button")) {
@@ -1597,6 +1426,13 @@ export default function ParkingSystem() {
                                   {currentFee === 0 ? "Үнэгүй" : `${currentFee} ₮`}
                                 </p>
                                 <p className="text-xs text-white/50">{pricingConfig.pricePerMinute}₮/цаг</p>
+                                {/* Add the "Гарсан" button here */}
+                                <button
+                                  onClick={() => handleExitFromRecord(record.id, record)}
+                                  className="mt-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg text-sm transition-colors"
+                                >
+                                  Гарсан
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -1615,7 +1451,6 @@ export default function ParkingSystem() {
                 <div className="mb-4">
                   <h2 className="text-xl font-semibold text-white">Идэвхтэй бүртгэлүүд</h2>
                 </div>
-
                 {/* Search Section */}
                 <div className="mb-6">
                   <div className="relative">
@@ -1639,13 +1474,11 @@ export default function ParkingSystem() {
                     )}
                   </div>
                 </div>
-
                 <div className="mb-4 text-white/70 text-sm">
                   {activeRecordsSearch
                     ? `${filteredActiveParkingRecords.length} бүртгэл олдлоо (нийт ${activeParkingRecords.length})`
                     : `Нийт ${activeParkingRecords.length} идэвхтэй бүртгэл`}
                 </div>
-
                 {filteredActiveParkingRecords.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="w-16 h-16 mx-auto mb-4 bg-white/10 rounded-full flex items-center justify-center">
@@ -1668,7 +1501,6 @@ export default function ParkingSystem() {
                     {filteredActiveParkingRecords.map((record) => {
                       const currentFee = calculateCurrentParkingFee(record.entryTime || "")
                       const duration = calculateParkingDuration(record.entryTime || "")
-
                       return (
                         <div
                           key={record.id}
@@ -1693,7 +1525,6 @@ export default function ParkingSystem() {
                               <p className="text-white/50 text-xs">
                                 Зогссон хугацаа: {duration === 0 ? "1 цагаас бага" : `${duration} цаг`}
                               </p>
-
                               {/* Images Section */}
                               {record.images && record.images.length > 0 && (
                                 <div className="mt-3">
@@ -1721,7 +1552,6 @@ export default function ParkingSystem() {
                                               </div>
                                             `
                                             document.body.appendChild(modal)
-
                                             // Close modal on click
                                             modal.addEventListener("click", (e) => {
                                               if (e.target === modal || e.target.closest("button")) {
@@ -1744,6 +1574,13 @@ export default function ParkingSystem() {
                                 {currentFee === 0 ? "Үнэгүй" : `${currentFee} ₮`}
                               </p>
                               <p className="text-xs text-white/50">{pricingConfig.pricePerMinute}₮/цаг</p>
+                              {/* Add the "Гарсан" button here */}
+                              <button
+                                onClick={() => handleExitFromRecord(record.id, record)}
+                                className="mt-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg text-sm transition-colors"
+                              >
+                                Гарсан
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -1754,7 +1591,7 @@ export default function ParkingSystem() {
               </div>
             </div>
           )}
-          {/* History хэс��ийн records харуулах логикийг засварлах */}
+          {/* History хэсгийн records харуулах логикийг засварлах */}
           {activeTab === "history" && (
             <div className="space-y-6">
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6">
@@ -1786,7 +1623,6 @@ export default function ParkingSystem() {
                       </svg>
                     </button>
                   </div>
-
                   {/* Collapsible Filter Content */}
                   {!filterCollapsed && (
                     <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 animate-in slide-in-from-top duration-300 ease-out">
@@ -1831,7 +1667,6 @@ export default function ParkingSystem() {
                             </div>
                           </div>
                         </div>
-
                         {/* Month Filter */}
                         <div className="space-y-3">
                           <label className="text-white/80 text-sm font-medium flex items-center">
@@ -1903,7 +1738,6 @@ export default function ParkingSystem() {
                             </div>
                           </div>
                         </div>
-
                         {/* Car Number Filter */}
                         <div className="space-y-3">
                           <label className="text-white/80 text-sm font-medium flex items-center">
@@ -1912,8 +1746,7 @@ export default function ParkingSystem() {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0
-01.293.707V19a2 2 0 01-2 2z"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 001.293.707V19a2 2 0 01-2 2z"
                               />
                             </svg>
                             Машины дугаар
@@ -1932,7 +1765,6 @@ export default function ParkingSystem() {
                           </div>
                         </div>
                       </div>
-
                       {/* Active Filters Display */}
                       {(filterYear || filterMonth || filterCarNumber) && (
                         <div className="mt-6 pt-4 border-t border-white/10">
@@ -1967,7 +1799,6 @@ export default function ParkingSystem() {
                       )}
                     </div>
                   )}
-
                   {/* Results Count */}
                   <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-3">
                     <div className="flex items-center text-white/80">
@@ -2002,7 +1833,6 @@ export default function ParkingSystem() {
                     </div>
                   </div>
                 </div>
-
                 {/* Records List - Бүх бүртгэлүүдийг харуулах */}
                 {filteredRecords.length === 0 ? (
                   <div className="text-center py-12">
@@ -2019,7 +1849,7 @@ export default function ParkingSystem() {
                         <p className="text-white/50 text-lg mb-2">Түүх байхгүй байна</p>
                         <p className="text-white/30 text-sm">
                           {profile.role === "employee"
-                            ? "Таны нэр дээр гар��ан машины бүртгэл байхгүй байна"
+                            ? "Таны нэр дээр гарсан машины бүртгэл байхгүй байна"
                             : "Машин орсон/гарсан бүртгэл хийснээр энд харагдана"}
                         </p>
                       </>
@@ -2073,7 +1903,6 @@ export default function ParkingSystem() {
                               <span className="text-white/70">Гарсан:</span> {record.exitTime}
                             </p>
                           )}
-
                           {/* Images Section */}
                           {record.images && record.images.length > 0 && (
                             <div className="mt-3">
@@ -2101,7 +1930,6 @@ export default function ParkingSystem() {
                                           </div>
                                         `
                                         document.body.appendChild(modal)
-
                                         // Close modal on click
                                         modal.addEventListener("click", (e) => {
                                           if (e.target === modal || e.target.closest("button")) {
@@ -2118,7 +1946,6 @@ export default function ParkingSystem() {
                               </div>
                             </div>
                           )}
-
                           <div className="flex justify-between items-center">
                             <p className="text-emerald-400 text-lg font-semibold">
                               <span className="text-white/70 text-base font-normal">Төлбөр:</span> {record.amount || 0}{" "}
@@ -2145,7 +1972,6 @@ export default function ParkingSystem() {
                     {profile.role === "employee" ? "Ажилчны мэдээлэл" : "Хувийн мэдээлэл засах"}
                   </p>
                 </div>
-
                 <div className="flex justify-center mb-8">
                   <div className="relative">
                     <div className="w-24 h-24 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl flex items-center justify-center overflow-hidden">
@@ -2176,7 +2002,6 @@ export default function ParkingSystem() {
                     )}
                   </div>
                 </div>
-
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-white/70 text-sm">Нэр</label>
@@ -2188,7 +2013,6 @@ export default function ParkingSystem() {
                       className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 disabled:opacity-50"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <label className="text-white/70 text-sm">Утасны дугаар</label>
                     <input
@@ -2199,7 +2023,6 @@ export default function ParkingSystem() {
                       className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 disabled:opacity-50"
                     />
                   </div>
-
                   <div className="space-y-2">
                     <label className="text-white/70 text-sm">И-мэйл</label>
                     <input
@@ -2210,7 +2033,6 @@ export default function ParkingSystem() {
                       className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 disabled:opacity-50"
                     />
                   </div>
-
                   {/* Show start date only for employees and only when not editing */}
                   {profile.role === "employee" && employeeProfile && employeeProfile.startDate && !editing && (
                     <div className="space-y-2">
@@ -2222,12 +2044,10 @@ export default function ParkingSystem() {
                       />
                     </div>
                   )}
-
                   {/* Password change section for employees when editing */}
                   {profile.role === "employee" && editing && (
                     <div className="space-y-4 border-t border-white/10 pt-6">
                       <h4 className="text-white font-medium">Нууц үг солих</h4>
-
                       <div className="space-y-2">
                         <label className="text-white/70 text-sm">Шинэ нууц үг</label>
                         <div className="relative">
@@ -2247,7 +2067,6 @@ export default function ParkingSystem() {
                           </button>
                         </div>
                       </div>
-
                       <div className="space-y-2">
                         <label className="text-white/70 text-sm">Нууц үг баталгаажуулах</label>
                         <div className="relative">
@@ -2269,7 +2088,6 @@ export default function ParkingSystem() {
                       </div>
                     </div>
                   )}
-
                   <div className="border-t border-white/10 pt-6">
                     <div className="flex space-x-4">
                       {editing ? (
@@ -2279,7 +2097,7 @@ export default function ParkingSystem() {
                             disabled={profileLoading}
                             className="flex-1 py-3 bg-emerald-400 hover:bg-emerald-500 text-black font-semibold rounded-xl transition-colors disabled:opacity-50"
                           >
-                            {profileLoading ? "Хадгалж ба��на..." : "Хадгалах"}
+                            {profileLoading ? "Хадгалж байна..." : "Хадгалах"}
                           </button>
                           <button
                             onClick={() => {
@@ -2314,7 +2132,6 @@ export default function ParkingSystem() {
           )}
         </main>
       </div>
-
       {/* Bottom Navigation - Mobile/Tablet Only */}
       <div className="lg:hidden fixed bottom-3 md:bottom-6 left-4 right-4 md:left-12 md:right-12 z-50">
         <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl shadow-lg">
@@ -2363,13 +2180,11 @@ export default function ParkingSystem() {
           </div>
         </div>
       </div>
-
       {/* Custom Exit Confirmation Modal */}
       {showExitModal && exitingRecord && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelExit}></div>
-
           {/* Modal - responsive sizing */}
           <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 md:p-6 mx-4 w-full max-w-sm md:max-w-md lg:max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200">
             <div className="text-center">
@@ -2377,11 +2192,9 @@ export default function ParkingSystem() {
               <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
                 <Car className="w-6 h-6 md:w-8 md:h-8 text-red-400" />
               </div>
-
               {/* Title */}
               <h3 className="text-lg md:text-xl font-semibold text-white mb-2">Гарсан бүртгэл</h3>
               <p className="text-white/70 text-sm md:text-base mb-6">Машин гарсан бүртгэлийг баталгаажуулна уу</p>
-
               {/* Car Details */}
               <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6 text-left">
                 <div className="space-y-2 text-sm md:text-base">
@@ -2402,7 +2215,6 @@ export default function ParkingSystem() {
                   </p>
                 </div>
               </div>
-
               {/* Fee Calculation */}
               <div className="bg-emerald-400/10 border border-emerald-400/20 rounded-xl p-4 mb-6">
                 <div className="text-center">
@@ -2417,7 +2229,6 @@ export default function ParkingSystem() {
                   <p className="text-white/50 text-xs mt-1">{pricingConfig.pricePerMinute}₮/цаг</p>
                 </div>
               </div>
-
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
@@ -2437,24 +2248,20 @@ export default function ParkingSystem() {
           </div>
         </div>
       )}
-
       {/* Camera Modal */}
       {showCamera && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={stopCamera}></div>
-
           {/* Modal */}
           <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mx-4 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="text-center">
               <h3 className="text-xl font-semibold text-white mb-4">Зураг авах</h3>
-
               {/* Camera View */}
               <div className="relative mb-4">
                 <video ref={videoRef} autoPlay playsInline className="w-full h-64 object-cover rounded-xl bg-black" />
                 <canvas ref={canvasRef} className="hidden" />
               </div>
-
               {/* Camera Controls */}
               <div className="flex justify-center space-x-4 mb-4">
                 <button
@@ -2483,7 +2290,6 @@ export default function ParkingSystem() {
                   <X className="w-6 h-6" />
                 </button>
               </div>
-
               <p className="text-white/70 text-sm">
                 {capturedImages.length}/2 зураг авсан
                 {capturedImages.length >= 2 && " (Хамгийн ихдээ 2 зураг)"}
@@ -2492,13 +2298,11 @@ export default function ParkingSystem() {
           </div>
         </div>
       )}
-
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancelLogout}></div>
-
           {/* Modal */}
           <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 mx-4 w-full max-w-sm animate-in fade-in zoom-in duration-200">
             <div className="text-center">
@@ -2506,11 +2310,9 @@ export default function ParkingSystem() {
               <div className="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
                 <LogOut className="w-8 h-8 text-red-400" />
               </div>
-
               {/* Title */}
               <h3 className="text-xl font-semibold text-white mb-2">Системээс гарах</h3>
               <p className="text-white/70 text-sm mb-6">Та системээс гарахдаа итгэлтэй байна уу?</p>
-
               {/* Action Buttons */}
               <div className="flex space-x-3">
                 <button
