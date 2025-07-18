@@ -1,5 +1,4 @@
 "use client"
-
 import type React from "react"
 import { useState, useEffect } from "react"
 import { onAuthStateChanged, createUserWithEmailAndPassword, signOut, type User } from "firebase/auth"
@@ -49,18 +48,14 @@ import {
   ArrowLeftRight,
 } from "lucide-react"
 import * as XLSX from "xlsx"
-
 export default function ManagerPage() {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
-
   // Manager states
   const [managers, setManagers] = useState<UserProfile[]>([])
-
   // Driver states - add after managers states
   const [drivers, setDrivers] = useState<UserProfile[]>([])
-
   // Report states
   const [reportRecords, setReportRecords] = useState<any[]>([])
   const [filteredReportRecords, setFilteredReportRecords] = useState<any[]>([])
@@ -70,7 +65,6 @@ export default function ManagerPage() {
   const [reportFilterMechanic, setReportFilterMechanic] = useState("")
   const [reportFilterPaymentStatus, setReportFilterPaymentStatus] = useState("") // New filter
   const [reportLoading, setReportLoading] = useState(false)
-
   // Enhanced Dashboard states
   const [dashboardStats, setDashboardStats] = useState({
     totalCustomers: 0,
@@ -85,7 +79,6 @@ export default function ManagerPage() {
   const [dailyStats, setDailyStats] = useState<any[]>([])
   const [recentActivity, setRecentActivity] = useState<any[]>([])
   const [dashboardLoading, setDashboardLoading] = useState(false)
-
   // Add these new states for custom date range
   const [customDateRange, setCustomDateRange] = useState({
     startDate: "",
@@ -93,25 +86,20 @@ export default function ManagerPage() {
     useCustomRange: false,
   })
   const [showDateRangePicker, setShowDateRangePicker] = useState(false)
-
   // Date range filter states
   const [showDateRangeDialog, setShowDateRangeDialog] = useState(false)
   const [dateRangeStart, setDateRangeStart] = useState("")
   const [dateRangeEnd, setDateRangeEnd] = useState("")
   const [deleteAfterExport, setDeleteAfterExport] = useState(false)
   const [exportLoading, setExportLoading] = useState(false)
-
   // Image viewer states
   const [showImageViewer, setShowImageViewer] = useState(false)
   const [currentImages, setCurrentImages] = useState<string[]>([])
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-
   // Employee states - now using UserProfile type for consistency
   const [employees, setEmployees] = useState<UserProfile[]>([])
-
   // Add state for login-enabled employees
   const [loginEmployees, setLoginEmployees] = useState<UserProfile[]>([])
-
   const [newEmployee, setNewEmployee] = useState({
     name: "",
     position: "",
@@ -122,7 +110,6 @@ export default function ManagerPage() {
   const [editingEmployee, setEditingEmployee] = useState<UserProfile | null>(null)
   const [showEmployeeDialog, setShowEmployeeDialog] = useState(false)
   const [employeeLoading, setEmployeeLoading] = useState(false)
-
   // Driver registration states
   const [newDriver, setNewDriver] = useState<DriverRegistration>({
     email: "",
@@ -136,10 +123,8 @@ export default function ManagerPage() {
   })
   const [registrationLoading, setRegistrationLoading] = useState(false)
   const [selectedRole, setSelectedRole] = useState<"manager" | "driver" | "employee">("employee")
-
   // Add this after the existing states, around line 100
   const [availableEmployees, setAvailableEmployees] = useState<any[]>([])
-
   // Edit driver states
   const [editingDriver, setEditingDriver] = useState<UserProfile | null>(null)
   const [editDriverData, setEditDriverData] = useState({
@@ -150,7 +135,6 @@ export default function ManagerPage() {
   })
   const [editLoading, setEditLoading] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
-
   // Profile dialog state
   const [showProfileDialog, setShowProfileDialog] = useState(false)
   const [profileData, setProfileData] = useState({
@@ -160,7 +144,6 @@ export default function ManagerPage() {
     profileImage: "",
   })
   const [profileLoading, setProfileLoading] = useState(false)
-
   // Site configuration states
   const [showSiteDialog, setShowSiteDialog] = useState(false)
   const [siteConfig, setSiteConfig] = useState({
@@ -169,7 +152,6 @@ export default function ManagerPage() {
     siteBackground: "",
   })
   const [siteLoading, setSiteLoading] = useState(false)
-
   // Profile image and password states
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -178,21 +160,18 @@ export default function ManagerPage() {
     newPassword: "",
     confirmPassword: "",
   })
-
   // Pricing states
   const [showPricingDialog, setShowPricingDialog] = useState(false)
   const [pricingConfig, setPricingConfig] = useState({
     pricePerMinute: 0,
   })
   const [pricingLoading, setPricingLoading] = useState(false)
-
   // Payment status dialog states
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<any>(null)
   const [paymentStatus, setPaymentStatus] = useState<"paid" | "unpaid">("unpaid")
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | "transfer">("cash")
   const [paymentLoading, setPaymentLoading] = useState(false)
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user)
@@ -204,7 +183,6 @@ export default function ManagerPage() {
     })
     return unsubscribe
   }, [])
-
   const loadUserProfile = async (userId: string) => {
     const profileRef = ref(database, `users/${userId}`)
     onValue(profileRef, (snapshot) => {
@@ -224,7 +202,6 @@ export default function ManagerPage() {
         setLoading(false)
       }
     })
-
     // Load site configuration
     const siteRef = ref(database, "siteConfig")
     onValue(siteRef, (snapshot) => {
@@ -237,7 +214,6 @@ export default function ManagerPage() {
         })
       }
     })
-
     // Load pricing configuration
     const pricingRef = ref(database, "pricingConfig")
     onValue(pricingRef, (snapshot) => {
@@ -248,23 +224,19 @@ export default function ManagerPage() {
         })
       }
     })
-
     // Load report records after profile is loaded
     setTimeout(() => {
       loadReportRecords()
     }, 500)
-
     // Add this line after loadReportRecords() call:
     loadEmployees()
     loadManagers()
     loadDrivers()
     loadDashboardData()
     loadLoginEmployees() // Add this line
-
     // In the loadUserProfile function, after the existing load calls around line 200, add:
     loadAvailableEmployees()
   }
-
   // Load drivers from database
   const loadDrivers = () => {
     const usersRef = ref(database, "users")
@@ -281,7 +253,6 @@ export default function ManagerPage() {
       }
     })
   }
-
   // Enhanced dashboard data loading with better analytics
   const loadDashboardData = (startDate?: string, endDate?: string) => {
     setDashboardLoading(true)
@@ -290,38 +261,31 @@ export default function ManagerPage() {
       const data = snapshot.val()
       if (data) {
         let records = Object.keys(data).map((key) => ({ id: key, ...data[key] }))
-
         // Filter by custom date range if provided
         if (startDate && endDate) {
           const start = new Date(startDate)
           const end = new Date(endDate)
           end.setHours(23, 59, 59, 999) // Include the entire end date
-
           records = records.filter((record) => {
             const recordDate = new Date(record.timestamp)
             return recordDate >= start && recordDate <= end
           })
         }
-
         // Calculate enhanced statistics
         const completedRecords = records.filter(
           (record) => record.type === "completed" || record.type === "exit" || record.exitTime,
         )
         const activeRecords = records.filter((record) => record.type === "entry" && !record.exitTime)
-
         // Today's statistics
         const today = new Date()
         const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
         const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
-
         const todayRecords = completedRecords.filter((record) => {
           const recordDate = new Date(record.timestamp)
           return recordDate >= todayStart && recordDate < todayEnd
         })
-
         const totalRevenue = completedRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
         const todayRevenue = todayRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
-
         // Calculate average session time (in hours)
         const avgSessionTime =
           completedRecords.length > 0
@@ -334,9 +298,7 @@ export default function ManagerPage() {
                 return sum
               }, 0) / completedRecords.length
             : 0
-
         const avgRevenue = completedRecords.length > 0 ? totalRevenue / completedRecords.length : 0
-
         setDashboardStats({
           totalCustomers: completedRecords.length,
           totalRevenue: totalRevenue,
@@ -346,34 +308,27 @@ export default function ManagerPage() {
           averageSessionTime: avgSessionTime,
           averageRevenue: avgRevenue,
         })
-
         // Generate monthly statistics
         const monthlyStatsData = []
         const now = new Date()
-
         if (startDate && endDate) {
           // Custom date range logic
           const start = new Date(startDate)
           const end = new Date(endDate)
           const diffTime = Math.abs(end.getTime() - start.getTime())
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
           if (diffDays <= 31) {
             // Show daily data for ranges 31 days or less
             for (let i = 0; i <= diffDays; i++) {
               const currentDate = new Date(start)
               currentDate.setDate(start.getDate() + i)
-
               const dayStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate())
               const dayEnd = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 1)
-
               const dayRecords = completedRecords.filter((record) => {
                 const recordDate = new Date(record.timestamp)
                 return recordDate >= dayStart && recordDate < dayEnd
               })
-
               const dayRevenue = dayRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
-
               monthlyStatsData.push({
                 period: currentDate.toLocaleDateString("mn-MN", { month: "short", day: "numeric" }),
                 customers: dayRecords.length,
@@ -386,25 +341,20 @@ export default function ManagerPage() {
             const startMonth = new Date(start.getFullYear(), start.getMonth(), 1)
             const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
             const currentMonth = new Date(startMonth)
-
             while (currentMonth <= endMonth) {
               const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
               const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
-
               const monthRecords = completedRecords.filter((record) => {
                 const recordDate = new Date(record.timestamp)
                 return recordDate >= monthStart && recordDate <= monthEnd
               })
-
               const monthRevenue = monthRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
-
               monthlyStatsData.push({
                 period: currentMonth.toLocaleDateString("mn-MN", { year: "numeric", month: "short" }),
                 customers: monthRecords.length,
                 revenue: monthRevenue,
                 date: currentMonth.toISOString().split("T")[0],
               })
-
               currentMonth.setMonth(currentMonth.getMonth() + 1)
             }
           }
@@ -414,14 +364,11 @@ export default function ManagerPage() {
             const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
             const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1)
             const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0)
-
             const monthRecords = completedRecords.filter((record) => {
               const recordDate = new Date(record.timestamp)
               return recordDate >= monthStart && recordDate <= monthEnd
             })
-
             const monthRevenue = monthRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
-
             monthlyStatsData.push({
               period: monthDate.toLocaleDateString("mn-MN", { year: "numeric", month: "short" }),
               customers: monthRecords.length,
@@ -430,25 +377,19 @@ export default function ManagerPage() {
             })
           }
         }
-
         setMonthlyStats(monthlyStatsData)
-
         // Generate last 7 days statistics for daily chart
         const dailyStatsData = []
         for (let i = 6; i >= 0; i--) {
           const date = new Date()
           date.setDate(date.getDate() - i)
-
           const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
           const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)
-
           const dayRecords = completedRecords.filter((record) => {
             const recordDate = new Date(record.timestamp)
             return recordDate >= dayStart && recordDate < dayEnd
           })
-
           const dayRevenue = dayRecords.reduce((sum, record) => sum + (record.amount || 0), 0)
-
           dailyStatsData.push({
             day: date.toLocaleDateString("mn-MN", { weekday: "short" }),
             date: date.toLocaleDateString("mn-MN", { month: "numeric", day: "numeric" }),
@@ -456,40 +397,32 @@ export default function ManagerPage() {
             revenue: dayRevenue,
           })
         }
-
         setDailyStats(dailyStatsData)
-
         // Get recent activity (last 10 records from filtered data)
         const sortedRecords = records
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
           .slice(0, 10)
-
         setRecentActivity(sortedRecords)
       }
       setDashboardLoading(false)
     })
   }
-
   // Apply custom date range
   const applyCustomDateRange = () => {
     if (!customDateRange.startDate || !customDateRange.endDate) {
       alert("Эхлэх болон дуусах огноог оруулна уу")
       return
     }
-
     const startDate = new Date(customDateRange.startDate)
     const endDate = new Date(customDateRange.endDate)
-
     if (startDate > endDate) {
       alert("Эхлэх огноо дуусах огнооноос өмнө байх ёстой")
       return
     }
-
     setCustomDateRange({ ...customDateRange, useCustomRange: true })
     loadDashboardData(customDateRange.startDate, customDateRange.endDate)
     setShowDateRangePicker(false)
   }
-
   // Reset to default (last 6 months)
   const resetToDefaultRange = () => {
     setCustomDateRange({
@@ -500,28 +433,23 @@ export default function ManagerPage() {
     loadDashboardData()
     setShowDateRangePicker(false)
   }
-
   // Load employees from users table where role is 'employee'
   const loadEmployees = () => {
     // Load from employees node
     const employeesRef = ref(database, "employees")
     onValue(employeesRef, (snapshot) => {
       const employeesData = snapshot.val()
-
       // Also load from users node where role is 'employee'
       const usersRef = ref(database, "users")
       onValue(usersRef, (usersSnapshot) => {
         const usersData = usersSnapshot.val()
-
         let employeesList: UserProfile[] = []
-
         // Combine data from both sources
         if (employeesData) {
           Object.keys(employeesData).forEach((key) => {
             employeesList.push({ id: key, ...employeesData[key] })
           })
         }
-
         if (usersData) {
           Object.keys(usersData).forEach((key) => {
             const user = usersData[key]
@@ -530,17 +458,14 @@ export default function ManagerPage() {
             }
           })
         }
-
         // Sort by name and remove duplicates
         employeesList = employeesList
           .filter((employee, index, self) => index === self.findIndex((e) => e.name === employee.name))
           .sort((a, b) => a.name.localeCompare(b.name))
-
         setEmployees(employeesList)
       })
     })
   }
-
   // Load employees with login access (role = 'employee' from users table)
   const loadLoginEmployees = () => {
     const usersRef = ref(database, "users")
@@ -557,7 +482,6 @@ export default function ManagerPage() {
       }
     })
   }
-
   // Load managers from database
   const loadManagers = () => {
     const usersRef = ref(database, "users")
@@ -574,7 +498,6 @@ export default function ManagerPage() {
       }
     })
   }
-
   // Add this function after the loadManagers function, around line 300
   const loadAvailableEmployees = () => {
     const employeesRef = ref(database, "employees")
@@ -590,13 +513,11 @@ export default function ManagerPage() {
       }
     })
   }
-
   // Handle driver operations
   const handleDeleteDriver = async (driverId: string, driverName: string) => {
     if (!confirm(`${driverName} бүртгэлийг устгахдаа итгэлтэй байна уу?`)) {
       return
     }
-
     try {
       await remove(ref(database, `users/${driverId}`))
       alert("Бүртгэл амжилттай устгагдлаа")
@@ -604,7 +525,6 @@ export default function ManagerPage() {
       alert("Бүртгэл устгахад алдаа гарлаа")
     }
   }
-
   const handleEditDriver = (driver: UserProfile) => {
     setEditingDriver(driver)
     setEditDriverData({
@@ -615,15 +535,12 @@ export default function ManagerPage() {
     })
     setShowEditDialog(true)
   }
-
   const handleToggleDriverStatus = async (driverId: string, currentStatus: boolean, driverName: string) => {
     const newStatus = !currentStatus
     const statusText = newStatus ? "идэвхжүүлэх" : "идэвхгүй болгох"
-
     if (!confirm(`${driverName} бүртгэлийг ${statusText}даа итгэлтэй байна уу?`)) {
       return
     }
-
     try {
       await update(ref(database, `users/${driverId}`), {
         active: newStatus,
@@ -634,7 +551,6 @@ export default function ManagerPage() {
       alert("Бүргэлийн төлөв өөрчлөхөд алдаа гарлаа")
     }
   }
-
   // Handle employee image upload
   const handleEmployeeImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -644,7 +560,6 @@ export default function ManagerPage() {
         alert("Зургийн хэмжээ 5MB-аас бага байх ёстой")
         return
       }
-
       const reader = new FileReader()
       reader.onload = (event) => {
         const base64String = event.target?.result as string
@@ -653,16 +568,13 @@ export default function ManagerPage() {
       reader.readAsDataURL(file)
     }
   }
-
   // Add employee
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!newEmployee.name.trim()) {
       alert("Ажилчны нэрийг оруулна уу")
       return
     }
-
     setEmployeeLoading(true)
     try {
       // Create employee data for employees node
@@ -677,10 +589,8 @@ export default function ManagerPage() {
         active: true,
         email: `${newEmployee.name.toLowerCase().replace(/\s+/g, "")}@company.com`, // Generate email if not provided
       }
-
       // Save to employees node
       const employeeRef = await push(ref(database, "employees"), employeeData)
-
       // Also save to users node with employee role for authentication
       if (employeeRef.key) {
         const userData = {
@@ -689,13 +599,10 @@ export default function ManagerPage() {
           id: employeeRef.key,
           updatedAt: new Date().toISOString(),
         }
-
         // Save to users node using the same key
         await set(ref(database, `users/${employeeRef.key}`), userData)
       }
-
       alert("Ажилчин амжилттай нэмэгдлээ")
-
       // Reset form
       setNewEmployee({
         name: "",
@@ -710,7 +617,6 @@ export default function ManagerPage() {
     }
     setEmployeeLoading(false)
   }
-
   // Edit employee
   const handleEditEmployee = (employee: UserProfile) => {
     setEditingEmployee(employee)
@@ -722,14 +628,12 @@ export default function ManagerPage() {
     })
     setShowEditDialog(true)
   }
-
   // Save employee edit
   const handleSaveEmployeeEdit = async () => {
     if (!editingEmployee || !editDriverData.name.trim() || !editDriverData.email.trim()) {
       alert("Нэр болон и-мэйл хаягийг бөглөнө үү")
       return
     }
-
     setEditLoading(true)
     try {
       const updateData: any = {
@@ -738,7 +642,6 @@ export default function ManagerPage() {
         email: editDriverData.email.trim(),
         updatedAt: new Date().toISOString(),
       }
-
       await update(ref(database, `users/${editingEmployee.id}`), updateData)
       alert("Ажилчны мэдээлэл амжилттай шинэчлэгдлээ")
       setShowEditDialog(false)
@@ -748,13 +651,11 @@ export default function ManagerPage() {
     }
     setEditLoading(false)
   }
-
   // Delete employee
   const handleDeleteEmployee = async (employeeId: string, employeeName: string) => {
     if (!confirm(`${employeeName} ажилчныг устгахдаа итгэлтэй байна уу?`)) {
       return
     }
-
     try {
       await remove(ref(database, `users/${employeeId}`))
       alert("Ажилчин амжилттай устгагдлаа")
@@ -762,16 +663,13 @@ export default function ManagerPage() {
       alert("Ажилчин устгахад алдаа гарлаа")
     }
   }
-
   // Toggle employee status
   const handleToggleEmployeeStatus = async (employeeId: string, currentStatus: boolean, employeeName: string) => {
     const newStatus = !currentStatus
     const statusText = newStatus ? "идэвхжүүлэх" : "идэвхгүй болгох"
-
     if (!confirm(`${employeeName} ажилчныг ${statusText}даа итгэлтэй байна уу?`)) {
       return
     }
-
     try {
       await update(ref(database, `users/${employeeId}`), {
         active: newStatus,
@@ -782,13 +680,11 @@ export default function ManagerPage() {
       alert("Ажилчны төлөв өөрчлөхөд алдаа гарлаа")
     }
   }
-
   // Handle manager operations
   const handleDeleteManager = async (managerId: string, managerName: string) => {
     if (!confirm(`${managerName} менежерийг устгахдаа итгэлтэй байна уу?`)) {
       return
     }
-
     try {
       await remove(ref(database, `users/${managerId}`))
       alert("Менежер амжилттай устгагдлаа")
@@ -796,7 +692,6 @@ export default function ManagerPage() {
       alert("Менежер устгахад алдаа гарлаа")
     }
   }
-
   const handleEditManager = (manager: UserProfile) => {
     setEditingDriver(manager)
     setEditDriverData({
@@ -807,15 +702,12 @@ export default function ManagerPage() {
     })
     setShowEditDialog(true)
   }
-
   const handleToggleManagerStatus = async (managerId: string, currentStatus: boolean, managerName: string) => {
     const newStatus = !currentStatus
     const statusText = newStatus ? "идэвхжүүлэх" : "идэвхгүй болгох"
-
     if (!confirm(`${managerName} менежерийг ${statusText}даа итгэлтэй байна уу?`)) {
       return
     }
-
     try {
       await update(ref(database, `users/${managerId}`), {
         active: newStatus,
@@ -826,7 +718,6 @@ export default function ManagerPage() {
       alert("Менежерийн төлөв өөрчлөхөд алдаа гарлаа")
     }
   }
-
   const loadReportRecords = () => {
     setReportLoading(true)
     const recordsRef = ref(database, "parking_records")
@@ -836,7 +727,6 @@ export default function ManagerPage() {
         const records = Object.keys(data)
           .map((key) => ({ id: key, ...data[key] }))
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
         setReportRecords(records)
         setFilteredReportRecords(records)
       } else {
@@ -846,94 +736,75 @@ export default function ManagerPage() {
       setReportLoading(false)
     })
   }
-
   const calculateParkingFee = (entryTime: string, exitTime: string): number => {
     if (!entryTime || !exitTime || pricingConfig.pricePerMinute === 0) {
       return 0
     }
-
     try {
       // Parse the Mongolian formatted dates
       const parseMongoDate = (dateStr: string) => {
         // Format: "2024.01.15, 14:30" or similar
         const cleanStr = dateStr.replace(/[^\d\s:.,]/g, "")
         const parts = cleanStr.split(/[,\s]+/)
-
         if (parts.length >= 2) {
           const datePart = parts[0] // "2024.01.15"
           const timePart = parts[1] // "14:30"
-
           const [year, month, day] = datePart.split(".").map(Number)
           const [hour, minute] = timePart.split(":").map(Number)
-
           return new Date(year, month - 1, day, hour, minute)
         }
-
         // Fallback to direct parsing
         return new Date(dateStr)
       }
-
       const entryDate = parseMongoDate(entryTime)
       const exitDate = parseMongoDate(exitTime)
-
       if (isNaN(entryDate.getTime()) || isNaN(exitDate.getTime())) {
         return 0
       }
-
       const diffInMs = exitDate.getTime() - entryDate.getTime()
       const diffInMinutes = Math.ceil(diffInMs / (1000 * 60)) // Round up to next minute
-
       return Math.max(0, diffInMinutes * pricingConfig.pricePerMinute)
     } catch (error) {
       console.error("Error calculating parking fee:", error)
       return 0
     }
   }
-
   const calculateParkingFeeForReport = (record: any): number => {
     if (record.type === "exit" && record.entryTime) {
       return calculateParkingFee(record.entryTime, record.exitTime || "")
     }
     return record.amount || 0
   }
-
   // Filter records by date range
   const getDateRangeFilteredRecords = () => {
     if (!dateRangeStart || !dateRangeEnd) {
       return filteredReportRecords
     }
-
     const startDate = new Date(dateRangeStart)
     const endDate = new Date(dateRangeEnd)
     endDate.setHours(23, 59, 59, 999) // Include the entire end date
-
     return filteredReportRecords.filter((record) => {
       const recordDate = new Date(record.timestamp)
       return recordDate >= startDate && recordDate <= endDate
     })
   }
-
   // Image viewer functions
   const openImageViewer = (images: string[], startIndex = 0) => {
     setCurrentImages(images)
     setCurrentImageIndex(startIndex)
     setShowImageViewer(true)
   }
-
   const closeImageViewer = () => {
     setShowImageViewer(false)
     setCurrentImages([])
     setCurrentImageIndex(0)
   }
-
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % currentImages.length)
   }
-
   const prevImage = () => {
     setCurrentImageIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length)
   }
-
   // Handle keyboard navigation for image viewer
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -951,16 +822,13 @@ export default function ManagerPage() {
         }
       }
     }
-
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [showImageViewer, currentImages.length])
-
   const exportToExcel = () => {
     try {
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new()
-
       // Prepare data for Excel
       const excelData = filteredReportRecords.map((record, index) => ({
         "№": index + 1,
@@ -982,10 +850,8 @@ export default function ManagerPage() {
                 : "-",
         Зураг: record.images && record.images.length > 0 ? "Байна" : "Байхгүй",
       }))
-
       // Create worksheet
       const ws = XLSX.utils.json_to_sheet(excelData)
-
       // Set column widths
       const colWidths = [
         { wch: 5 }, // №
@@ -1001,18 +867,14 @@ export default function ManagerPage() {
         { wch: 10 }, // Зураг
       ]
       ws["!cols"] = colWidths
-
       // Add worksheet to workbook
       XLSX.utils.book_append_sheet(wb, ws, "Зогсоолын тайлан")
-
       // Generate filename with current date
       const currentDate = new Date().toISOString().split("T")[0]
       const filename = `Зогсоолын_тайлан_${currentDate}.xlsx`
-
       // Create blob and download file (browser-compatible way)
       const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
       const blob = new Blob([wbout], { type: "application/octet-stream" })
-
       // Create download link
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement("a")
@@ -1022,43 +884,34 @@ export default function ManagerPage() {
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
-
       alert("Excel файл амжилттай татагдлаа!")
     } catch (error) {
       console.error("Excel export error:", error)
       alert("Excel файл татахад алдаа гарлаа")
     }
   }
-
   // Export with date range and optional deletion
   const handleDateRangeExport = async () => {
     if (!dateRangeStart || !dateRangeEnd) {
       alert("Эхлэх болон дуусах огноог оруулна уу")
       return
     }
-
     const startDate = new Date(dateRangeStart)
     const endDate = new Date(dateRangeEnd)
-
     if (startDate > endDate) {
       alert("Эхлэх огноо дуусах огнооноос өмнө байх ёстой")
       return
     }
-
     setExportLoading(true)
-
     try {
       const recordsToExport = getDateRangeFilteredRecords()
-
       if (recordsToExport.length === 0) {
         alert("Тухайн хугацаанд бүртгэл олдсонгүй")
         setExportLoading(false)
         return
       }
-
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new()
-
       // Prepare data for Excel
       const excelData = recordsToExport.map((record, index) => ({
         "№": index + 1,
@@ -1080,10 +933,8 @@ export default function ManagerPage() {
                 : "-",
         Зураг: record.images && record.images.length > 0 ? "Байна" : "Байхгүй",
       }))
-
       // Create worksheet
       const ws = XLSX.utils.json_to_sheet(excelData)
-
       // Set column widths
       const colWidths = [
         { wch: 5 }, // №
@@ -1099,19 +950,15 @@ export default function ManagerPage() {
         { wch: 10 }, // Зураг
       ]
       ws["!cols"] = colWidths
-
       // Add worksheet to workbook
       XLSX.utils.book_append_sheet(wb, ws, "Зогсоолын тайлан")
-
       // Generate filename with date range
       const startDateStr = dateRangeStart.replace(/-/g, ".")
       const endDateStr = dateRangeEnd.replace(/-/g, ".")
       const filename = `Зогсоолын_тайлан_${startDateStr}_${endDateStr}.xlsx`
-
       // Create blob and download file (browser-compatible way)
       const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" })
       const blob = new Blob([wbout], { type: "application/octet-stream" })
-
       // Create download link
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement("a")
@@ -1121,17 +968,14 @@ export default function ManagerPage() {
       link.click()
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
-
       // Delete records if option is selected
       if (deleteAfterExport) {
         const deletePromises = recordsToExport.map((record) => remove(ref(database, `parking_records/${record.id}`)))
-
         await Promise.all(deletePromises)
         alert(`Excel файл амжилттай татагдлаа! ${recordsToExport.length} бүртгэл өгөгдлийн сангаас устгагдлаа.`)
       } else {
         alert(`Excel файл амжилттай татагдлаа! ${recordsToExport.length} бүртгэл татагдлаа.`)
       }
-
       // Reset form
       setDateRangeStart("")
       setDateRangeEnd("")
@@ -1141,53 +985,44 @@ export default function ManagerPage() {
       console.error("Date range export error:", error)
       alert("Excel файл татахад алдаа гарлаа")
     }
-
     setExportLoading(false)
   }
-
   // Get unique mechanic names for filter
   const getAvailableMechanicNames = () => {
     const names = reportRecords.map((record) => record.mechanicName || record.driverName)
     return [...new Set(names)].filter((name) => name).sort()
   }
-
   // Get unique years for report filter
   const getReportAvailableYears = () => {
     const years = reportRecords.map((record) => new Date(record.timestamp).getFullYear())
     return [...new Set(years)].sort((a, b) => b - a)
   }
-
   // Filter report records
   useEffect(() => {
     let filtered = [...reportRecords]
-
     if (reportFilterYear) {
       filtered = filtered.filter((record) => {
         const recordDate = new Date(record.timestamp)
         return recordDate.getFullYear().toString() === reportFilterYear
       })
     }
-
     if (reportFilterMonth) {
       filtered = filtered.filter((record) => {
         const recordDate = new Date(record.timestamp)
         return (recordDate.getMonth() + 1).toString().padStart(2, "0") === reportFilterMonth
       })
     }
-
     if (reportFilterCarNumber) {
       filtered = filtered.filter((record) =>
         record.carNumber.toLowerCase().includes(reportFilterCarNumber.toLowerCase()),
       )
     }
-
     if (reportFilterMechanic) {
       filtered = filtered.filter((record) => {
         const mechanicName = record.mechanicName || record.driverName || ""
         return mechanicName.toLowerCase().includes(reportFilterMechanic.toLowerCase())
       })
     }
-
     // Add payment status filter
     if (reportFilterPaymentStatus) {
       filtered = filtered.filter((record) => {
@@ -1199,7 +1034,6 @@ export default function ManagerPage() {
         return true
       })
     }
-
     setFilteredReportRecords(filtered)
   }, [
     reportRecords,
@@ -1209,27 +1043,21 @@ export default function ManagerPage() {
     reportFilterMechanic,
     reportFilterPaymentStatus,
   ])
-
   const handleRegisterDriver = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!newDriver.email || !newDriver.password || !newDriver.name) {
       alert("Бүх талбарыг бөглөнө үү")
       return
     }
-
     if (newDriver.password.length < 6) {
       alert("Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой")
       return
     }
-
     setRegistrationLoading(true)
-
     try {
       // Firebase Auth дээр хэрэглэгч үүсгэх
       const userCredential = await createUserWithEmailAndPassword(auth, newDriver.email, newDriver.password)
       const newUserId = userCredential.user.uid
-
       // Database дээр хэрэглэгчийн мэдээлэл хадгалах
       const userData: UserProfile = {
         name: newDriver.name.trim(),
@@ -1240,13 +1068,10 @@ export default function ManagerPage() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
-
       await set(ref(database, `users/${newUserId}`), userData)
-
       alert(
         `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Бүртгэл" : "Ажилчин"} амжилттай бүртгэгдлээ`,
       )
-
       // Form цэвэрлэх
       setNewDriver({
         email: "",
@@ -1268,10 +1093,8 @@ export default function ManagerPage() {
         alert("Бүртгэхэд алдаа гарлаа")
       }
     }
-
     setRegistrationLoading(false)
   }
-
   // Add this function after the handleRegisterDriver function, around line 1000
   const handleEmployeeSelection = (employeeId: string) => {
     const selectedEmployee = availableEmployees.find((emp) => emp.id === employeeId)
@@ -1283,15 +1106,12 @@ export default function ManagerPage() {
       })
     }
   }
-
   const handleSaveDriverEdit = async () => {
     if (!editingDriver || !editDriverData.name.trim() || !editDriverData.email.trim()) {
       alert("Нэр болон и-мэйл хаягийг бөглөнө үү")
       return
     }
-
     setEditLoading(true)
-
     try {
       // Update user data in database
       const updateData: any = {
@@ -1300,15 +1120,12 @@ export default function ManagerPage() {
         email: editDriverData.email.trim(),
         updatedAt: new Date().toISOString(),
       }
-
       await update(ref(database, `users/${editingDriver.id}`), updateData)
-
       // If password is provided, update it
       if (editDriverData.newPassword && editDriverData.newPassword.length >= 6) {
         // Note: Password update would require re-authentication in production
         alert("Нууц үг шинэчлэх функц нэмэгдэх ёстой")
       }
-
       const userType =
         editingDriver.role === "manager" ? "Менежерийн" : editingDriver.role === "driver" ? "Бүртгэлийн" : "Ажилчны"
       alert(`${userType} мэдээлэл амжилттай шинэчлэгдлээ`)
@@ -1320,10 +1137,8 @@ export default function ManagerPage() {
         editingDriver?.role === "manager" ? "менежерийн" : editingDriver?.role === "driver" ? "бүртгэлийн" : "ажилчны"
       alert(`${userType} мэдээлэл шинэчлэхэд алдаа гарлаа`)
     }
-
     setEditLoading(false)
   }
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "profile" | "logo" | "background") => {
     const file = e.target.files?.[0]
     if (file) {
@@ -1332,11 +1147,9 @@ export default function ManagerPage() {
         alert("Зургийн хэмжээ 5MB-аас бага байх ёстой")
         return
       }
-
       const reader = new FileReader()
       reader.onload = (event) => {
         const base64String = event.target?.result as string
-
         if (type === "profile") {
           setProfileData({ ...profileData, profileImage: base64String })
         } else if (type === "logo") {
@@ -1348,18 +1161,15 @@ export default function ManagerPage() {
       reader.readAsDataURL(file)
     }
   }
-
   const handleSaveProfile = async () => {
     if (!profileData.name.trim()) {
       alert("Нэрээ оруулна уу")
       return
     }
-
     if (!profileData.email.trim()) {
       alert("И-мэйл хаягаа оруулна уу")
       return
     }
-
     // Validate password if provided
     if (passwordData.newPassword) {
       if (passwordData.newPassword.length < 6) {
@@ -1371,7 +1181,6 @@ export default function ManagerPage() {
         return
       }
     }
-
     setProfileLoading(true)
     try {
       const userId = auth.currentUser?.uid
@@ -1383,7 +1192,6 @@ export default function ManagerPage() {
           profileImage: profileData.profileImage,
           updatedAt: new Date().toISOString(),
         })
-
         // Handle password update (simplified - in real app would need proper authentication)
         if (passwordData.newPassword) {
           // Note: Password update would require re-authentication in production
@@ -1391,7 +1199,6 @@ export default function ManagerPage() {
         } else {
           alert("Профайл амжилттай шинэчлэгдлээ")
         }
-
         setShowProfileDialog(false)
         // Reset password fields
         setPasswordData({
@@ -1405,13 +1212,11 @@ export default function ManagerPage() {
     }
     setProfileLoading(false)
   }
-
   const handleSaveSiteConfig = async () => {
     if (!siteConfig.siteName.trim()) {
       alert("Сайтын нэрийг оруулна уу")
       return
     }
-
     setSiteLoading(true)
     try {
       await set(ref(database, "siteConfig"), {
@@ -1428,13 +1233,11 @@ export default function ManagerPage() {
     }
     setSiteLoading(false)
   }
-
   const handleSavePricingConfig = async () => {
     if (pricingConfig.pricePerMinute < 0) {
       alert("Үнэ сөрөг тоо байж болохгүй")
       return
     }
-
     setPricingLoading(true)
     try {
       await set(ref(database, "pricingConfig"), {
@@ -1449,11 +1252,9 @@ export default function ManagerPage() {
     }
     setPricingLoading(false)
   }
-
   // Handle payment status update
   const handlePaymentStatusUpdate = async () => {
     if (!selectedRecord) return
-
     setPaymentLoading(true)
     try {
       const updateData: any = {
@@ -1461,14 +1262,11 @@ export default function ManagerPage() {
         updatedAt: new Date().toISOString(),
         updatedBy: userProfile?.name || "Manager",
       }
-
       if (paymentStatus === "paid") {
         updateData.paymentMethod = paymentMethod
         updateData.paidAt = new Date().toISOString()
       }
-
       await update(ref(database, `parking_records/${selectedRecord.id}`), updateData)
-
       alert(`Төлбөрийн төлөв амжилттай ${paymentStatus === "paid" ? "төлсөн" : "төлөөгүй"} болж өөрчлөгдлөө`)
       setShowPaymentDialog(false)
       setSelectedRecord(null)
@@ -1478,7 +1276,6 @@ export default function ManagerPage() {
     }
     setPaymentLoading(false)
   }
-
   // Open payment dialog
   const openPaymentDialog = (record: any) => {
     setSelectedRecord(record)
@@ -1486,13 +1283,11 @@ export default function ManagerPage() {
     setPaymentMethod(record.paymentMethod || "cash")
     setShowPaymentDialog(true)
   }
-
   const handleLogout = async () => {
     if (confirm("Та гарахдаа итгэлтэй байна уу?")) {
       await signOut(auth)
     }
   }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1503,7 +1298,6 @@ export default function ManagerPage() {
       </div>
     )
   }
-
   if (!user || !userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1514,7 +1308,6 @@ export default function ManagerPage() {
       </div>
     )
   }
-
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -1531,15 +1324,12 @@ export default function ManagerPage() {
               <h1 className="text-2xl font-bold">{siteConfig.siteName || "Менежерийн систем"}</h1>
             </div>
           </div>
-
           {/* Right side header content remains the same */}
           <div className="flex items-center space-x-4">
             {/* Greeting text */}
             <span className="text-muted-foreground text-sm">Сайн байна уу!</span>
-
             {/* User name */}
             <span className="text-foreground font-medium">{userProfile.name}</span>
-
             {/* Profile image */}
             <Avatar className="w-8 h-8">
               {userProfile.profileImage ? (
@@ -1548,7 +1338,6 @@ export default function ManagerPage() {
                 <AvatarFallback>{userProfile.name?.charAt(0).toUpperCase() || "M"}</AvatarFallback>
               )}
             </Avatar>
-
             {/* Settings dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1585,7 +1374,6 @@ export default function ManagerPage() {
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="dashboard" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
@@ -1613,7 +1401,6 @@ export default function ManagerPage() {
               Тайлан
             </TabsTrigger>
           </TabsList>
-
           <TabsContent value="dashboard" className="space-y-6">
             {/* Dashboard Header with Gradient Background */}
             <div className="relative bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 rounded-2xl p-8 text-white overflow-hidden">
@@ -1623,7 +1410,6 @@ export default function ManagerPage() {
                 <div className="absolute bottom-4 right-12 w-16 h-16 bg-purple-400 rounded-full blur-xl"></div>
                 <div className="absolute top-1/2 right-1/4 w-12 h-12 bg-cyan-400 rounded-full blur-lg"></div>
               </div>
-
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-6">
                   <div>
@@ -1643,7 +1429,6 @@ export default function ManagerPage() {
                     Огноо сонгох
                   </Button>
                 </div>
-
                 {/* Date and Revenue Display */}
                 <div className="flex items-center space-x-4 text-lg">
                   <div className="flex items-center space-x-2">
@@ -1655,7 +1440,6 @@ export default function ManagerPage() {
                     <span>Нийт орлого: {dashboardStats.totalRevenue.toLocaleString()}₮</span>
                   </div>
                 </div>
-
                 {/* Reset button when custom range is active */}
                 {customDateRange.useCustomRange && (
                   <Button
@@ -1668,7 +1452,6 @@ export default function ManagerPage() {
                 )}
               </div>
             </div>
-
             {/* Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Total Customers Card */}
@@ -1677,14 +1460,12 @@ export default function ManagerPage() {
                   <Users className="w-6 h-6" />
                 </div>
                 <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
-
                 <div className="relative z-10">
                   <p className="text-blue-100 text-sm font-medium mb-1">Нийт үйлчлүүлэгч</p>
                   <p className="text-4xl font-bold mb-2">{dashboardStats.totalCustomers}</p>
                   <p className="text-blue-200 text-sm">Өнөөдөр: +{dashboardStats.todayCustomers}</p>
                 </div>
               </div>
-
               {/* Total Revenue Card */}
               <div className="relative bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white overflow-hidden">
                 <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
@@ -1698,35 +1479,30 @@ export default function ManagerPage() {
                   </svg>
                 </div>
                 <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
-
                 <div className="relative z-10">
                   <p className="text-emerald-100 text-sm font-medium mb-1">Нийт орлого</p>
                   <p className="text-4xl font-bold mb-2">{dashboardStats.totalRevenue.toLocaleString()}₮</p>
                   <p className="text-emerald-200 text-sm">Өнөөдөр: +{dashboardStats.todayRevenue.toLocaleString()}₮</p>
                 </div>
               </div>
-
               {/* Currently Parked Card */}
               <div className="relative bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white overflow-hidden">
                 <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                   <Car className="w-6 h-6" />
                 </div>
                 <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
-
                 <div className="relative z-10">
                   <p className="text-orange-100 text-sm font-medium mb-1">Зогсож байгаа</p>
                   <p className="text-4xl font-bold mb-2">{dashboardStats.activeRecords}</p>
                   <p className="text-orange-200 text-sm">Одоогийн байдлаар</p>
                 </div>
               </div>
-
               {/* Average Revenue Card */}
               <div className="relative bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white overflow-hidden">
                 <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                   <BarChart3 className="w-6 h-6" />
                 </div>
                 <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
-
                 <div className="relative z-10">
                   <p className="text-purple-100 text-sm font-medium mb-1">Дундаж орлого</p>
                   <p className="text-4xl font-bold mb-2">
@@ -1738,7 +1514,6 @@ export default function ManagerPage() {
                 </div>
               </div>
             </div>
-
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Monthly Revenue Chart */}
@@ -1776,7 +1551,6 @@ export default function ManagerPage() {
                   </div>
                 </CardContent>
               </Card>
-
               {/* Daily Activity Chart */}
               <Card>
                 <CardHeader>
@@ -1809,7 +1583,6 @@ export default function ManagerPage() {
                 </CardContent>
               </Card>
             </div>
-
             {/* Recent Activity */}
             <Card>
               <CardHeader>
@@ -1870,7 +1643,6 @@ export default function ManagerPage() {
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="employees">
             <div className="space-y-8">
               {/* Header */}
@@ -1884,7 +1656,6 @@ export default function ManagerPage() {
                   Ажилчин нэмэх
                 </Button>
               </div>
-
               {/* Statistics Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="border-l-4 border-l-blue-500">
@@ -1900,7 +1671,6 @@ export default function ManagerPage() {
                     </div>
                   </CardContent>
                 </Card>
-
                 <Card className="border-l-4 border-l-green-500">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -1914,7 +1684,6 @@ export default function ManagerPage() {
                     </div>
                   </CardContent>
                 </Card>
-
                 <Card className="border-l-4 border-l-orange-500">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -1929,7 +1698,6 @@ export default function ManagerPage() {
                   </CardContent>
                 </Card>
               </div>
-
               {/* Employees Section */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
@@ -1943,7 +1711,6 @@ export default function ManagerPage() {
                     </div>
                   </div>
                 </div>
-
                 {employees.length === 0 ? (
                   <Card>
                     <CardContent className="p-12 text-center">
@@ -2041,7 +1808,6 @@ export default function ManagerPage() {
                   </div>
                 )}
               </div>
-
               {/* Managers Section */}
               <div className="space-y-6">
                 <div className="flex items-center space-x-3">
@@ -2053,7 +1819,6 @@ export default function ManagerPage() {
                     <p className="text-sm text-muted-foreground">{managers.length} менежер бүртгэлтэй</p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {managers.map((manager) => (
                     <Card key={manager.id} className="hover:shadow-md transition-shadow">
@@ -2135,7 +1900,6 @@ export default function ManagerPage() {
                   ))}
                 </div>
               </div>
-
               {/* Drivers Section */}
               <div className="space-y-6">
                 <div className="flex items-center space-x-3">
@@ -2147,7 +1911,6 @@ export default function ManagerPage() {
                     <p className="text-sm text-muted-foreground">{drivers.length} Бүртгэлтэй байна.</p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {drivers.map((driver) => (
                     <Card key={driver.id} className="hover:shadow-md transition-shadow">
@@ -2231,7 +1994,6 @@ export default function ManagerPage() {
               </div>
             </div>
           </TabsContent>
-
           <TabsContent value="register">
             <div className="space-y-8">
               {/* Header */}
@@ -2239,7 +2001,6 @@ export default function ManagerPage() {
                 <h2 className="text-3xl font-bold tracking-tight">Хэрэглэгч бүртгэх</h2>
                 <p className="text-muted-foreground mt-2">Систем ашиглах шинэ хэрэглэгч бүртгэх</p>
               </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Registration Form */}
                 <div className="lg:col-span-2">
@@ -2269,7 +2030,6 @@ export default function ManagerPage() {
                             <option value="manager">Менежер</option>
                           </select>
                         </div>
-
                         {/* Employee Selection (Conditional) */}
                         {selectedRole === "employee" && (
                           <div className="space-y-3">
@@ -2290,7 +2050,6 @@ export default function ManagerPage() {
                             </select>
                           </div>
                         )}
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {/* Name Input */}
                           <div className="space-y-3">
@@ -2307,7 +2066,6 @@ export default function ManagerPage() {
                               required
                             />
                           </div>
-
                           {/* Phone Input */}
                           <div className="space-y-3">
                             <Label htmlFor="phone" className="text-base font-medium">
@@ -2323,7 +2081,6 @@ export default function ManagerPage() {
                             />
                           </div>
                         </div>
-
                         {/* Email Input */}
                         <div className="space-y-3">
                           <Label htmlFor="email" className="text-base font-medium">
@@ -2339,7 +2096,6 @@ export default function ManagerPage() {
                             required
                           />
                         </div>
-
                         {/* Password Input */}
                         <div className="space-y-3">
                           <Label htmlFor="password" className="text-base font-medium">
@@ -2356,7 +2112,6 @@ export default function ManagerPage() {
                           />
                           <p className="text-sm text-muted-foreground">Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой</p>
                         </div>
-
                         {/* Submit Button */}
                         <Button
                           type="submit"
@@ -2385,7 +2140,6 @@ export default function ManagerPage() {
                     </CardContent>
                   </Card>
                 </div>
-
                 {/* Information Panel */}
                 <div className="space-y-6">
                   {/* Role Information */}
@@ -2405,7 +2159,6 @@ export default function ManagerPage() {
                             <p className="text-sm text-blue-700">Бүх системийн удирдлага, тохиргоо, тайлан харах эрх</p>
                           </div>
                         </div>
-
                         <div className="flex items-start space-x-3 p-4 border rounded-lg bg-green-50/50">
                           <div className="p-2 bg-green-100 rounded-lg">
                             <Users className="w-5 h-5 text-green-600" />
@@ -2415,7 +2168,6 @@ export default function ManagerPage() {
                             <p className="text-sm text-green-700">Зогсоолын бүртгэл хийх, өөрийн түүх харах эрх</p>
                           </div>
                         </div>
-
                         <div className="flex items-start space-x-3 p-4 border rounded-lg bg-orange-50/50">
                           <div className="p-2 bg-orange-100 rounded-lg">
                             <Car className="w-5 h-5 text-orange-600" />
@@ -2428,7 +2180,6 @@ export default function ManagerPage() {
                       </div>
                     </CardContent>
                   </Card>
-
                   {/* Current Statistics */}
                   <Card>
                     <CardHeader>
@@ -2444,7 +2195,6 @@ export default function ManagerPage() {
                           </div>
                           <span className="text-2xl font-bold text-blue-600">{managers.length}</span>
                         </div>
-
                         <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                           <div className="flex items-center space-x-3">
                             <Users className="w-5 h-5 text-green-600" />
@@ -2452,7 +2202,6 @@ export default function ManagerPage() {
                           </div>
                           <span className="text-2xl font-bold text-green-600">{employees.length}</span>
                         </div>
-
                         <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                           <div className="flex items-center space-x-3">
                             <Car className="w-5 h-5 text-orange-600" />
@@ -2463,7 +2212,6 @@ export default function ManagerPage() {
                       </div>
                     </CardContent>
                   </Card>
-
                   {/* Important Notes */}
                   <Card className="border-amber-200 bg-amber-50/50">
                     <CardHeader>
@@ -2490,7 +2238,6 @@ export default function ManagerPage() {
               </div>
             </div>
           </TabsContent>
-
           <TabsContent value="report" className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
@@ -2508,7 +2255,6 @@ export default function ManagerPage() {
                 </Button>
               </div>
             </div>
-
             {/* Filters Card */}
             <Card>
               <CardHeader>
@@ -2585,7 +2331,6 @@ export default function ManagerPage() {
                 </div>
               </CardContent>
             </Card>
-
             {/* Report Table */}
             <Card>
               <CardHeader>
@@ -2627,33 +2372,33 @@ export default function ManagerPage() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left p-3 font-medium">№</th>
-                          <th className="text-left p-3 font-medium">Машины дугаар</th>
-                          <th className="text-left p-3 font-medium">Засварчин</th>
-                          <th className="text-left p-3 font-medium">Машины марк</th>
-                          <th className="text-left p-3 font-medium">Орсон цаг</th>
-                          <th className="text-left p-3 font-medium">Гарсан цаг</th>
-                          <th className="text-left p-3 font-medium">Зогссон хугацаа</th>
-                          <th className="text-left p-3 font-medium">Төлбөр</th>
-                          <th className="text-left p-3 font-medium">Төлбөрийн төлөв</th>
-                          <th className="text-left p-3 font-medium">Зураг</th>
-                          <th className="text-left p-3 font-medium">Үйлдэл</th>
+                          <th className="text-left p-2 font-medium">№</th>
+                          <th className="text-left p-2 font-medium">Машины дугаар</th>
+                          <th className="text-left p-2 font-medium">Засварчин</th>
+                          <th className="text-left p-2 font-medium">Машины марк</th>
+                          <th className="text-left p-2 font-medium">Орсон цаг</th>
+                          <th className="text-left p-2 font-medium">Гарсан цаг</th>
+                          <th className="text-left p-2 font-medium">Зогссон хугацаа</th>
+                          <th className="text-left p-2 font-medium">Төлбөр</th>
+                          <th className="text-left p-2 font-medium">Төлбөрийн төлөв</th>
+                          <th className="text-left p-2 font-medium">Зураг</th>
+                          <th className="text-left p-2 font-medium">Үйлдэл</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredReportRecords.map((record, index) => (
                           <tr key={record.id} className="border-b hover:bg-muted/50">
-                            <td className="p-3">{index + 1}</td>
-                            <td className="p-3 font-medium">{record.carNumber}</td>
-                            <td className="p-3">{record.mechanicName || record.driverName || "-"}</td>
-                            <td className="p-3">{record.carBrand || record.parkingArea || "-"}</td>
-                            <td className="p-3 text-sm">{record.entryTime || "-"}</td>
-                            <td className="p-3 text-sm">{record.exitTime || "-"}</td>
-                            <td className="p-3 text-sm">{record.parkingDuration || "-"}</td>
-                            <td className="p-3 font-medium">
+                            <td className="p-2">{index + 1}</td>
+                            <td className="p-2 font-medium">{record.carNumber}</td>
+                            <td className="p-2">{record.mechanicName || record.driverName || "-"}</td>
+                            <td className="p-2">{record.carBrand || record.parkingArea || "-"}</td>
+                            <td className="p-2 text-sm">{record.entryTime || "-"}</td>
+                            <td className="p-2 text-sm">{record.exitTime || "-"}</td>
+                            <td className="p-2 text-sm">{record.parkingDuration || "-"}</td>
+                            <td className="p-2 font-medium">
                               {calculateParkingFeeForReport(record).toLocaleString()}₮
                             </td>
-                            <td className="p-3">
+                            <td className="p-2">
                               <div className="flex items-center space-x-2">
                                 <Badge
                                   variant={record.paymentStatus === "paid" ? "default" : "secondary"}
@@ -2683,7 +2428,7 @@ export default function ManagerPage() {
                                 )}
                               </div>
                             </td>
-                            <td className="p-3">
+                            <td className="p-2">
                               {record.images && record.images.length > 0 ? (
                                 <Button
                                   variant="ghost"
@@ -2698,7 +2443,7 @@ export default function ManagerPage() {
                                 <span className="text-muted-foreground text-sm">Байхгүй</span>
                               )}
                             </td>
-                            <td className="p-3">
+                            <td className="p-2">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -2720,7 +2465,6 @@ export default function ManagerPage() {
           </TabsContent>
         </Tabs>
       </main>
-
       {/* Date Range Picker Dialog */}
       <Dialog open={showDateRangePicker} onOpenChange={setShowDateRangePicker}>
         <DialogContent className="dialog-content">
@@ -2758,7 +2502,6 @@ export default function ManagerPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Date Range Export Dialog */}
       <Dialog open={showDateRangeDialog} onOpenChange={setShowDateRangeDialog}>
         <DialogContent className="dialog-content date-range-dialog-content">
@@ -2810,7 +2553,6 @@ export default function ManagerPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Image Viewer Modal */}
       {showImageViewer && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
@@ -2820,7 +2562,6 @@ export default function ManagerPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-
             {currentImages.length > 1 && (
               <>
                 <button
@@ -2837,13 +2578,11 @@ export default function ManagerPage() {
                 </button>
               </>
             )}
-
             <img
               src={currentImages[currentImageIndex] || "/placeholder.svg"}
               alt={`Image ${currentImageIndex + 1}`}
               className="max-w-full max-h-full object-contain"
             />
-
             {currentImages.length > 1 && (
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
                 {currentImageIndex + 1} / {currentImages.length}
@@ -2852,7 +2591,6 @@ export default function ManagerPage() {
           </div>
         </div>
       )}
-
       {/* Employee Dialog */}
       <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
         <DialogContent className="dialog-content">
@@ -2923,7 +2661,6 @@ export default function ManagerPage() {
           </form>
         </DialogContent>
       </Dialog>
-
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="dialog-content">
@@ -2987,7 +2724,6 @@ export default function ManagerPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
         <DialogContent className="dialog-content">
@@ -3032,7 +2768,6 @@ export default function ManagerPage() {
                 />
               )}
             </div>
-
             {/* Password Change Section */}
             <div className="border-t pt-4 space-y-4">
               <h4 className="font-medium">Нууц үг өөрчлөх</h4>
@@ -3104,7 +2839,6 @@ export default function ManagerPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Site Configuration Dialog */}
       <Dialog open={showSiteDialog} onOpenChange={setShowSiteDialog}>
         <DialogContent className="dialog-content">
@@ -3161,7 +2895,6 @@ export default function ManagerPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Pricing Configuration Dialog */}
       <Dialog open={showPricingDialog} onOpenChange={setShowPricingDialog}>
         <DialogContent className="dialog-content">
@@ -3200,7 +2933,6 @@ export default function ManagerPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Payment Status Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="dialog-content payment-dialog-content">
@@ -3240,7 +2972,6 @@ export default function ManagerPage() {
                 </div>
               </div>
             </div>
-
             {paymentStatus === "paid" && (
               <div className="space-y-3">
                 <Label className="text-base font-medium">Төлбөрийн хэлбэр</Label>
@@ -3284,7 +3015,6 @@ export default function ManagerPage() {
                 </div>
               </div>
             )}
-
             <div className="bg-muted p-4 rounded-lg">
               <div className="flex justify-between items-center">
                 <span className="font-medium">Машины дугаар:</span>
