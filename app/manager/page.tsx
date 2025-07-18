@@ -2989,56 +2989,54 @@ export default function ManagerPage() {
           <div className="space-y-4">
             <div className="space-y-3">
               <Label className="text-base font-medium">Төлбөрийн хэлбэр</Label>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="cash">Бэлэн мөнгө</Label>
-                  <Input
-                    type="number"
-                    id="cash"
-                    min="0"
-                    value={cashAmountInput}
-                    onChange={(e) => setCashAmountInput(Number(e.target.value))}
-                    className="w-full"
-                    placeholder="0"
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="card">Карт</Label>
-                  <Input
-                    type="number"
-                    id="card"
-                    min="0"
-                    value={cardAmountInput}
-                    onChange={(e) => setCardAmountInput(Number(e.target.value))}
-                    className="w-full"
-                    placeholder="0"
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="transfer">Харилцах</Label>
-                  <Input
-                    type="number"
-                    id="transfer"
-                    min="0"
-                    value={transferAmountInput}
-                    onChange={(e) => setTransferAmountInput(Number(e.target.value))}
-                    className="w-full"
-                    placeholder="0"
-                  />
-                </div>
+              <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3">
+                <Label htmlFor="cash" className="text-right">
+                  Бэлэн мөнгө
+                </Label>
+                <Input
+                  type="number"
+                  id="cash"
+                  min="0"
+                  value={cashAmountInput}
+                  onChange={(e) => setCashAmountInput(Number(e.target.value))}
+                  className="w-full"
+                  placeholder="0"
+                />
+                <Label htmlFor="card" className="text-right">
+                  Карт
+                </Label>
+                <Input
+                  type="number"
+                  id="card"
+                  min="0"
+                  value={cardAmountInput}
+                  onChange={(e) => setCardAmountInput(Number(e.target.value))}
+                  className="w-full"
+                  placeholder="0"
+                />
+                <Label htmlFor="transfer" className="text-right">
+                  Харилцах
+                </Label>
+                <Input
+                  type="number"
+                  id="transfer"
+                  min="0"
+                  value={transferAmountInput}
+                  onChange={(e) => setTransferAmountInput(Number(e.target.value))}
+                  className="w-full"
+                  placeholder="0"
+                />
               </div>
             </div>
             <div className="bg-muted p-4 rounded-lg">
               <div className="flex justify-between items-center">
-                <span className="font-medium">Машины дугаар:</span>
-                <span>{selectedRecord?.carNumber}</span>
+                <span className="font-medium">Нийт төлбөр:</span>
+                <span className="font-bold">
+                  {selectedRecord ? calculateParkingFeeForReport(selectedRecord).toLocaleString() : 0}₮
+                </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="font-medium">Зогссон хугацаа:</span>
-                <span>{selectedRecord?.parkingDuration || "-"}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Төлбөр:</span>
+                <span className="font-medium">Төлөх төлбөр:</span>
                 <span className="font-bold">
                   {(cashAmountInput + cardAmountInput + transferAmountInput).toLocaleString()}₮
                 </span>
