@@ -38,9 +38,6 @@ import {
   Car,
   BarChart3,
   EyeOff,
-  CreditCard,
-  Banknote,
-  ArrowLeftRight,
 } from "lucide-react"
 import * as XLSX from "xlsx"
 export default function ManagerPage() {
@@ -60,6 +57,9 @@ export default function ManagerPage() {
   const [reportFilterMechanic, setReportFilterMechanic] = useState("")
   const [reportFilterPaymentStatus, setReportFilterPaymentStatus] = useState("") // New filter
   const [reportLoading, setReportLoading] = useState(false)
+  const [totalCashAmount, setTotalCashAmount] = useState(0)
+  const [totalCardAmount, setTotalCardAmount] = useState(0)
+  const [totalTransferAmount, setTotalTransferAmount] = useState(0)
   // Enhanced Dashboard states
   const [dashboardStats, setDashboardStats] = useState({
     totalCustomers: 0,
@@ -1036,6 +1036,21 @@ export default function ManagerPage() {
       })
     }
     setFilteredReportRecords(filtered)
+
+    // Calculate total amounts for each payment method
+    let cashSum = 0
+    let cardSum = 0
+    let transferSum = 0
+    filtered.forEach((record) => {
+      if (record.paymentStatus === "paid") {
+        cashSum += record.cashAmount || 0
+        cardSum += record.cardAmount || 0
+        transferSum += record.transferAmount || 0
+      }
+    })
+    setTotalCashAmount(cashSum)
+    setTotalCardAmount(cardSum)
+    setTotalTransferAmount(transferSum)
   }, [
     reportRecords,
     reportFilterYear,
@@ -2371,7 +2386,8 @@ export default function ManagerPage() {
                   {filteredReportRecords
                     .reduce((sum, record) => sum + calculateParkingFeeForReport(record), 0)
                     .toLocaleString()}
-                  ₮
+                  ₮ • Нийт бэлэн: {totalCashAmount.toLocaleString()}₮ • Нийт карт: {totalCardAmount.toLocaleString()}₮ •
+                  Нийт харилцах: {totalTransferAmount.toLocaleString()}₮
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -2444,30 +2460,19 @@ export default function ManagerPage() {
                                 {record.paymentStatus === "paid" &&
                                   (record.cashAmount > 0 || record.cardAmount > 0 || record.transferAmount > 0) && (
                                     <Badge variant="outline" className="text-xs">
-                                      {record.cashAmount > 0 &&
-                                      record.cardAmount === 0 &&
-                                      record.transferAmount === 0 ? (
-                                        <>
-                                          <Banknote className="w-3 h-3 mr-1" /> Бэлэн
-                                        </>
-                                      ) : record.cardAmount > 0 &&
-                                        record.cashAmount === 0 &&
-                                        record.transferAmount === 0 ? (
-                                        <>
-                                          <CreditCard className="w-3 h-3 mr-1" /> Карт
-                                        </>
-                                      ) : record.transferAmount > 0 &&
-                                        record.cashAmount === 0 &&
-                                        record.cardAmount === 0 ? (
-                                        <>
-                                          <ArrowLeftRight className="w-3 h-3 mr-1" /> Харилцах
-                                        </>
-                                      ) : (
-                                        // Mixed payment
-                                        <>
-                                          <ArrowLeftRight className="w-3 h-3 mr-1" /> Холимог
-                                        </>
-                                      )}
+                                      {(() => {
+                                        const paymentDetails = []
+                                        if (record.cashAmount > 0) {
+                                          paymentDetails.push(`Бэлэн: ${record.cashAmount.toLocaleString()}₮`)
+                                        }
+                                        if (record.cardAmount > 0) {
+                                          paymentDetails.push(`Карт: ${record.cardAmount.toLocaleString()}₮`)
+                                        }
+                                        if (record.transferAmount > 0) {
+                                          paymentDetails.push(`Харилцах: ${record.transferAmount.toLocaleString()}₮`)
+                                        }
+                                        return paymentDetails.join(", ") || "Төлсөн"
+                                      })()}
                                     </Badge>
                                   )}
                               </div>
