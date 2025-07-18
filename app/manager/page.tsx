@@ -162,9 +162,12 @@ export default function ManagerPage() {
   // Payment status dialog states
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<any>(null)
-  const [paymentStatus, setPaymentStatus] = useState<"paid" | "unpaid">("unpaid") // Keep state for internal logic if needed, but UI will always set to paid
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | "transfer">("cash")
+  // New states for split payment amounts
+  const [cashAmountInput, setCashAmountInput] = useState(0)
+  const [cardAmountInput, setCardAmountInput] = useState(0)
+  const [transferAmountInput, setTransferAmountInput] = useState(0)
   const [paymentLoading, setPaymentLoading] = useState(false)
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user)
@@ -763,6 +766,11 @@ export default function ManagerPage() {
     }
   }
   const calculateParkingFeeForReport = (record: any): number => {
+    // If individual payment amounts are stored, sum them up
+    if (record.cashAmount !== undefined || record.cardAmount !== undefined || record.transferAmount !== undefined) {
+      return (record.cashAmount || 0) + (record.cardAmount || 0) + (record.transferAmount || 0)
+    }
+    // Fallback to old logic if individual amounts are not present
     if (record.type === "exit" && record.entryTime) {
       return calculateParkingFee(record.entryTime, record.exitTime || "")
     }
@@ -1246,30 +1254,64 @@ export default function ManagerPage() {
   // Handle payment status update
   const handlePaymentStatusUpdate = async () => {
     if (!selectedRecord) return
+
+    const totalPaidAmount = cashAmountInput + cardAmountInput + transferAmountInput
+
+    if (totalPaidAmount <= 0) {
+      alert("Төлбөрийн дүнг оруулна уу.")
+      return
+    }
+
     setPaymentLoading(true)
     try {
       const updateData: any = {
-        paymentStatus: "paid", // Always set to paid
+        paymentStatus: "paid", // Always set to paid if amounts are entered
+        amount: totalPaidAmount, // Total amount paid
+        cashAmount: cashAmountInput,
+        cardAmount: cardAmountInput,
+        transferAmount: transferAmountInput,
+        paidAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         updatedBy: userProfile?.name || "Manager",
       }
-      updateData.paymentMethod = paymentMethod // Always save payment method
-      updateData.paidAt = new Date().toISOString()
+
+      // Determine payment method string for display/excel if needed
+      let paymentMethodString = ""
+      const methodsUsed = []
+      if (cashAmountInput > 0) methodsUsed.push("cash")
+      if (cardAmountInput > 0) methodsUsed.push("card")
+      if (transferAmountInput > 0) methodsUsed.push("transfer")
+
+      if (methodsUsed.length === 1) {
+        paymentMethodString = methodsUsed[0]
+      } else if (methodsUsed.length > 1) {
+        paymentMethodString = "split" // Or "mixed"
+      } else {
+        paymentMethodString = "none" // Should not happen if totalPaidAmount > 0
+      }
+      updateData.paymentMethod = paymentMethodString // Keep for backward compatibility/excel
+
       await update(ref(database, `parking_records/${selectedRecord.id}`), updateData)
-      alert(`Төлбөрийн төлөв амжилттай төлсөн болж өөрчлөгдлөө`)
+      alert(`Төлбөр амжилттай бүртгэгдлээ: ${totalPaidAmount.toLocaleString()}₮`)
       setShowPaymentDialog(false)
       setSelectedRecord(null)
+      // Reset input fields
+      setCashAmountInput(0)
+      setCardAmountInput(0)
+      setTransferAmountInput(0)
     } catch (error) {
       console.error("Error updating payment status:", error)
-      alert("Төлбөрийн төлөв өөрчлөхөд алдаа гарлаа")
+      alert("Төлбөр бүртгэхэд алдаа гарлаа")
     }
     setPaymentLoading(false)
   }
   // Open payment dialog
   const openPaymentDialog = (record: any) => {
     setSelectedRecord(record)
-    setPaymentStatus("paid") // Always set to paid when opening
-    setPaymentMethod(record.paymentMethod || "cash")
+    // Initialize amounts from record, or to 0
+    setCashAmountInput(record.cashAmount || 0)
+    setCardAmountInput(record.cardAmount || 0)
+    setTransferAmountInput(record.transferAmount || 0)
     setShowPaymentDialog(true)
   }
   const handleLogout = async () => {
@@ -1651,7 +1693,7 @@ export default function ManagerPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">��енежерүүд</p>
+                        <p className="text-sm font-medium text-muted-foreground">Менежерүүд</p>
                         <p className="text-3xl font-bold text-blue-600">{managers.length}</p>
                       </div>
                       <div className="p-3 bg-blue-100 rounded-full">
@@ -2399,22 +2441,35 @@ export default function ManagerPage() {
                                 >
                                   {record.paymentStatus === "paid" ? "Төлсөн" : "Төлөөгүй"}
                                 </Badge>
-                                {record.paymentStatus === "paid" && record.paymentMethod && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {record.paymentMethod === "card" ? (
-                                      <CreditCard className="w-3 h-3 mr-1" />
-                                    ) : record.paymentMethod === "cash" ? (
-                                      <Banknote className="w-3 h-3 mr-1" />
-                                    ) : (
-                                      <ArrowLeftRight className="w-3 h-3 mr-1" />
-                                    )}
-                                    {record.paymentMethod === "card"
-                                      ? "Карт"
-                                      : record.paymentMethod === "cash"
-                                        ? "Бэлэн"
-                                        : "Харилцах"}
-                                  </Badge>
-                                )}
+                                {record.paymentStatus === "paid" &&
+                                  (record.cashAmount > 0 || record.cardAmount > 0 || record.transferAmount > 0) && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {record.cashAmount > 0 &&
+                                      record.cardAmount === 0 &&
+                                      record.transferAmount === 0 ? (
+                                        <>
+                                          <Banknote className="w-3 h-3 mr-1" /> Бэлэн
+                                        </>
+                                      ) : record.cardAmount > 0 &&
+                                        record.cashAmount === 0 &&
+                                        record.transferAmount === 0 ? (
+                                        <>
+                                          <CreditCard className="w-3 h-3 mr-1" /> Карт
+                                        </>
+                                      ) : record.transferAmount > 0 &&
+                                        record.cashAmount === 0 &&
+                                        record.cardAmount === 0 ? (
+                                        <>
+                                          <ArrowLeftRight className="w-3 h-3 mr-1" /> Харилцах
+                                        </>
+                                      ) : (
+                                        // Mixed payment
+                                        <>
+                                          <ArrowLeftRight className="w-3 h-3 mr-1" /> Холимог
+                                        </>
+                                      )}
+                                    </Badge>
+                                  )}
                               </div>
                             </td>
                             <td className="px-1 py-0.5">
@@ -2932,45 +2987,44 @@ export default function ManagerPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Removed "Төлбөрийн төлөв" radio buttons */}
             <div className="space-y-3">
               <Label className="text-base font-medium">Төлбөрийн хэлбэр</Label>
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="cash"
-                    name="paymentMethod"
-                    value="cash"
-                    checked={paymentMethod === "cash"}
-                    onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
-                    className="w-4 h-4"
-                  />
                   <Label htmlFor="cash">Бэлэн мөнгө</Label>
+                  <Input
+                    type="number"
+                    id="cash"
+                    min="0"
+                    value={cashAmountInput}
+                    onChange={(e) => setCashAmountInput(Number(e.target.value))}
+                    className="w-full"
+                    placeholder="0"
+                  />
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="card"
-                    name="paymentMethod"
-                    value="card"
-                    checked={paymentMethod === "card"}
-                    onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
-                    className="w-4 h-4"
-                  />
                   <Label htmlFor="card">Карт</Label>
+                  <Input
+                    type="number"
+                    id="card"
+                    min="0"
+                    value={cardAmountInput}
+                    onChange={(e) => setCardAmountInput(Number(e.target.value))}
+                    className="w-full"
+                    placeholder="0"
+                  />
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id="transfer"
-                    name="paymentMethod"
-                    value="transfer"
-                    checked={paymentMethod === "transfer"}
-                    onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
-                    className="w-4 h-4"
-                  />
                   <Label htmlFor="transfer">Харилцах</Label>
+                  <Input
+                    type="number"
+                    id="transfer"
+                    min="0"
+                    value={transferAmountInput}
+                    onChange={(e) => setTransferAmountInput(Number(e.target.value))}
+                    className="w-full"
+                    placeholder="0"
+                  />
                 </div>
               </div>
             </div>
@@ -2986,7 +3040,7 @@ export default function ManagerPage() {
               <div className="flex justify-between items-center">
                 <span className="font-medium">Төлбөр:</span>
                 <span className="font-bold">
-                  {selectedRecord ? calculateParkingFeeForReport(selectedRecord).toLocaleString() : 0}₮
+                  {(cashAmountInput + cardAmountInput + transferAmountInput).toLocaleString()}₮
                 </span>
               </div>
             </div>
