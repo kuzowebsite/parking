@@ -120,6 +120,11 @@ export default function ParkingSystem() {
     existingRecord: null,
   })
 
+  // Image viewer states
+  const [showImageViewer, setShowImageViewer] = useState(false)
+  const [currentImages, setCurrentImages] = useState<string[]>([])
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
   useEffect(() => {
     // Splash screen loading animation
     if (showSplash) {
@@ -341,6 +346,27 @@ export default function ParkingSystem() {
         }
       }
     })
+  }
+
+  // Image viewer functions
+  const openImageViewer = (images: string[], startIndex = 0) => {
+    setCurrentImages(images)
+    setCurrentImageIndex(startIndex)
+    setShowImageViewer(true)
+  }
+
+  const closeImageViewer = () => {
+    setShowImageViewer(false)
+    setCurrentImages([])
+    setCurrentImageIndex(0)
+  }
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % currentImages.length)
+  }
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length)
   }
 
   // Update the loadProfile function to call record loading functions
@@ -983,6 +1009,27 @@ export default function ParkingSystem() {
     }
   }, [])
 
+  // Handle keyboard navigation for image viewer
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (showImageViewer) {
+        switch (event.key) {
+          case "Escape":
+            closeImageViewer()
+            break
+          case "ArrowLeft":
+            prevImage()
+            break
+          case "ArrowRight":
+            nextImage()
+            break
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [showImageViewer, currentImages.length])
+
   // Splash Screen
   if (showSplash) {
     return (
@@ -1603,15 +1650,7 @@ export default function ParkingSystem() {
                                   src={image || "/placeholder.svg"}
                                   alt={`Record image ${index + 1}`}
                                   className="w-16 h-16 object-cover rounded-lg border border-white/20 cursor-pointer hover:scale-110 transition-transform"
-                                  onClick={() => {
-                                    // Open image in new tab for full view
-                                    const newWindow = window.open()
-                                    if (newWindow) {
-                                      newWindow.document.write(
-                                        `<img src="${image}" style="max-width:100%;height:auto;">`,
-                                      )
-                                    }
-                                  }}
+                                  onClick={() => openImageViewer(record.images || [], index)}
                                 />
                               ))}
                             </div>
@@ -1757,15 +1796,7 @@ export default function ParkingSystem() {
                                   src={image || "/placeholder.svg"}
                                   alt={`Record image ${index + 1}`}
                                   className="w-16 h-16 object-cover rounded-lg border border-white/20 cursor-pointer hover:scale-110 transition-transform"
-                                  onClick={() => {
-                                    // Open image in new tab for full view
-                                    const newWindow = window.open()
-                                    if (newWindow) {
-                                      newWindow.document.write(
-                                        `<img src="${image}" style="max-width:100%;height:auto;">`,
-                                      )
-                                    }
-                                  }}
+                                  onClick={() => openImageViewer(record.images || [], index)}
                                 />
                               ))}
                             </div>
@@ -2195,6 +2226,62 @@ export default function ParkingSystem() {
                   Тийм
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Viewer Modal */}
+      {showImageViewer && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="relative max-w-4xl max-h-full">
+            {/* Close button */}
+            <button
+              onClick={closeImageViewer}
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Navigation buttons */}
+            {currentImages.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 w-12 h-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 w-12 h-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </>
+            )}
+
+            {/* Main image */}
+            <img
+              src={currentImages[currentImageIndex] || "/placeholder.svg"}
+              alt={`Image ${currentImageIndex + 1}`}
+              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+            />
+
+            {/* Image counter */}
+            {currentImages.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white text-sm">
+                {currentImageIndex + 1} / {currentImages.length}
+              </div>
+            )}
+
+            {/* Instructions */}
+            <div className="absolute bottom-4 right-4 text-white/70 text-xs">
+              <p>ESC - Хаах | ← → - Навигаци</p>
             </div>
           </div>
         </div>
