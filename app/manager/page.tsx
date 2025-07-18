@@ -638,12 +638,18 @@ export default function ManagerPage() {
         email: editDriverData.email.trim(),
         updatedAt: new Date().toISOString(),
       }
+      // Update both users and employees nodes for employees
       await update(ref(database, `users/${editingEmployee.id}`), updateData)
+      if (editingEmployee.role === "employee") {
+        await update(ref(database, `employees/${editingEmployee.id}`), updateData)
+      }
+
       alert("Ажилчны мэдээлэл амжилттай шинэчлэгдлээ")
       setShowEditDialog(false)
       setEditingEmployee(null)
     } catch (error) {
-      alert("Ажилчны мэдээлэл шинэчлэхэд алдаа гарлаа")
+      console.error("Error updating user/employee:", error)
+      alert("Мэдээлэл шинэчлэхэд алдаа гарлаа")
     }
     setEditLoading(false)
   }
@@ -653,9 +659,12 @@ export default function ManagerPage() {
       return
     }
     try {
+      // Delete from both users and employees nodes
       await remove(ref(database, `users/${employeeId}`))
+      await remove(ref(database, `employees/${employeeId}`)) // Also delete from employees node
       alert("Ажилчин амжилттай устгагдлаа")
     } catch (error) {
+      console.error("Error deleting employee:", error)
       alert("Ажилчин устгахад алдаа гарлаа")
     }
   }
@@ -667,12 +676,19 @@ export default function ManagerPage() {
       return
     }
     try {
+      // Update status in both users and employees nodes
       await update(ref(database, `users/${employeeId}`), {
+        active: newStatus,
+        updatedAt: new Date().toISOString(),
+      })
+      await update(ref(database, `employees/${employeeId}`), {
+        // Also update the employees node
         active: newStatus,
         updatedAt: new Date().toISOString(),
       })
       alert(`Ажилчин амжилттай ${newStatus ? "идэвхжлээ" : "идэвхгүй боллоо"}`)
     } catch (error) {
+      console.error("Error toggling employee status:", error)
       alert("Ажилчны төлөв өөрчлөхөд алдаа гарлаа")
     }
   }
