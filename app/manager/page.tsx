@@ -1,5 +1,7 @@
 "use client"
 import type React from "react"
+import { DialogFooter } from "@/components/ui/dialog"
+
 import { useState, useEffect } from "react"
 import { onAuthStateChanged, createUserWithEmailAndPassword, signOut, type User } from "firebase/auth"
 import { ref, onValue, set, remove, update, push } from "firebase/database"
@@ -14,14 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   Trash2,
   UserPlus,
@@ -151,8 +146,8 @@ export default function ManagerPage() {
   })
   const [siteLoading, setSiteLoading] = useState(false)
   // Profile image and password states
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showPassword, setShowConfirmPassword] = useState(false)
+  const [showConfirmPassword, setShowPassword] = useState(false)
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -167,7 +162,7 @@ export default function ManagerPage() {
   // Payment status dialog states
   const [showPaymentDialog, setShowPaymentDialog] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<any>(null)
-  const [paymentStatus, setPaymentStatus] = useState<"paid" | "unpaid">("unpaid")
+  const [paymentStatus, setPaymentStatus] = useState<"paid" | "unpaid">("unpaid") // Keep state for internal logic if needed, but UI will always set to paid
   const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | "transfer">("cash")
   const [paymentLoading, setPaymentLoading] = useState(false)
   useEffect(() => {
@@ -1254,16 +1249,14 @@ export default function ManagerPage() {
     setPaymentLoading(true)
     try {
       const updateData: any = {
-        paymentStatus: paymentStatus,
+        paymentStatus: "paid", // Always set to paid
         updatedAt: new Date().toISOString(),
         updatedBy: userProfile?.name || "Manager",
       }
-      if (paymentStatus === "paid") {
-        updateData.paymentMethod = paymentMethod
-        updateData.paidAt = new Date().toISOString()
-      }
+      updateData.paymentMethod = paymentMethod // Always save payment method
+      updateData.paidAt = new Date().toISOString()
       await update(ref(database, `parking_records/${selectedRecord.id}`), updateData)
-      alert(`Төлбөрийн төлөв амжилттай ${paymentStatus === "paid" ? "төлсөн" : "төлөөгүй"} болж өөрчлөгдлөө`)
+      alert(`Төлбөрийн төлөв амжилттай төлсөн болж өөрчлөгдлөө`)
       setShowPaymentDialog(false)
       setSelectedRecord(null)
     } catch (error) {
@@ -1275,7 +1268,7 @@ export default function ManagerPage() {
   // Open payment dialog
   const openPaymentDialog = (record: any) => {
     setSelectedRecord(record)
-    setPaymentStatus(record.paymentStatus === "paid" ? "paid" : "unpaid")
+    setPaymentStatus("paid") // Always set to paid when opening
     setPaymentMethod(record.paymentMethod || "cash")
     setShowPaymentDialog(true)
   }
@@ -1658,7 +1651,7 @@ export default function ManagerPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">Менежерүүд</p>
+                        <p className="text-sm font-medium text-muted-foreground">��енежерүүд</p>
                         <p className="text-3xl font-bold text-blue-600">{managers.length}</p>
                       </div>
                       <div className="p-3 bg-blue-100 rounded-full">
@@ -2939,78 +2932,48 @@ export default function ManagerPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Removed "Төлбөрийн төлөв" radio buttons */}
             <div className="space-y-3">
-              <Label className="text-base font-medium">Төлбөрийн төлөв</Label>
+              <Label className="text-base font-medium">Төлбөрийн хэлбэр</Label>
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <input
                     type="radio"
-                    id="unpaid"
-                    name="paymentStatus"
-                    value="unpaid"
-                    checked={paymentStatus === "unpaid"}
-                    onChange={(e) => setPaymentStatus(e.target.value as "paid" | "unpaid")}
+                    id="cash"
+                    name="paymentMethod"
+                    value="cash"
+                    checked={paymentMethod === "cash"}
+                    onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
                     className="w-4 h-4"
                   />
-                  <Label htmlFor="unpaid">Төлөөгүй</Label>
+                  <Label htmlFor="cash">Бэлэн мөнгө</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
                     type="radio"
-                    id="paid"
-                    name="paymentStatus"
-                    value="paid"
-                    checked={paymentStatus === "paid"}
-                    onChange={(e) => setPaymentStatus(e.target.value as "paid" | "unpaid")}
+                    id="card"
+                    name="paymentMethod"
+                    value="card"
+                    checked={paymentMethod === "card"}
+                    onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
                     className="w-4 h-4"
                   />
-                  <Label htmlFor="paid">Төлсөн</Label>
+                  <Label htmlFor="card">Карт</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="transfer"
+                    name="paymentMethod"
+                    value="transfer"
+                    checked={paymentMethod === "transfer"}
+                    onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor="transfer">Харилцах</Label>
                 </div>
               </div>
             </div>
-            {paymentStatus === "paid" && (
-              <div className="space-y-3">
-                <Label className="text-base font-medium">Төлбөрийн хэлбэр</Label>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="cash"
-                      name="paymentMethod"
-                      value="cash"
-                      checked={paymentMethod === "cash"}
-                      onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
-                      className="w-4 h-4"
-                    />
-                    <Label htmlFor="cash">Бэлэн мөнгө</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="card"
-                      name="paymentMethod"
-                      value="card"
-                      checked={paymentMethod === "card"}
-                      onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
-                      className="w-4 h-4"
-                    />
-                    <Label htmlFor="card">Карт</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="transfer"
-                      name="paymentMethod"
-                      value="transfer"
-                      checked={paymentMethod === "transfer"}
-                      onChange={(e) => setPaymentMethod(e.target.value as "card" | "cash" | "transfer")}
-                      className="w-4 h-4"
-                    />
-                    <Label htmlFor="transfer">Харилцах</Label>
-                  </div>
-                </div>
-              </div>
-            )}
             <div className="bg-muted p-4 rounded-lg">
               <div className="flex justify-between items-center">
                 <span className="font-medium">Машины дугаар:</span>
