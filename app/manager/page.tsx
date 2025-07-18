@@ -972,7 +972,7 @@ export default function ManagerPage() {
       if (deleteAfterExport) {
         const deletePromises = recordsToExport.map((record) => remove(ref(database, `parking_records/${record.id}`)))
         await Promise.all(deletePromises)
-        alert(`Excel файл амжилттай татагдлаа! ${recordsToExport.length} бүртгэл өгөгдлийн сангаас устгагдлаа.`)
+        alert(`Excel файл амжилттай татагдлаа! ${recordsToExport.length} бүртгэл өгөгдлийн сангаас устгагдла��.`)
       } else {
         alert(`Excel файл амжилттай татагдлаа! ${recordsToExport.length} бүртгэл татагдлаа.`)
       }
@@ -2372,40 +2372,40 @@ export default function ManagerPage() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left p-2 font-medium">№</th>
-                          <th className="text-left p-2 font-medium">Машины дугаар</th>
-                          <th className="text-left p-2 font-medium">Засварчин</th>
-                          <th className="text-left p-2 font-medium">Машины марк</th>
-                          <th className="text-left p-2 font-medium">Орсон цаг</th>
-                          <th className="text-left p-2 font-medium">Гарсан цаг</th>
-                          <th className="text-left p-2 font-medium">Зогссон хугацаа</th>
-                          <th className="text-left p-2 font-medium">Төлбөр</th>
-                          <th className="text-left p-2 font-medium">Төлбөрийн төлөв</th>
-                          <th className="text-left p-2 font-medium">Зураг</th>
-                          <th className="text-left p-2 font-medium">Үйлдэл</th>
+                          <th className="text-left p-1 text-sm">№</th>
+                          <th className="text-left p-1 text-sm">Машины дугаар</th>
+                          <th className="text-left p-1 text-sm">Засварчин</th>
+                          <th className="text-left p-1 text-sm">Машины марк</th>
+                          <th className="text-left p-1 text-sm">Орсон цаг</th>
+                          <th className="text-left p-1 text-sm">Гарсан цаг</th>
+                          <th className="text-left p-1 text-sm">Зогссон хугацаа</th>
+                          <th className="text-left p-1 text-sm">Төлбөр</th>
+                          <th className="text-left p-1 text-sm">Төлбөрийн төлөв</th>
+                          <th className="text-left p-1 text-sm">Зураг</th>
+                          <th className="text-left p-1 text-sm">Үйлдэл</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredReportRecords.map((record, index) => (
                           <tr key={record.id} className="border-b hover:bg-muted/50">
-                            <td className="p-2">{index + 1}</td>
-                            <td className="p-2 font-medium">{record.carNumber}</td>
-                            <td className="p-2">{record.mechanicName || record.driverName || "-"}</td>
-                            <td className="p-2">{record.carBrand || record.parkingArea || "-"}</td>
-                            <td className="p-2 text-sm">{record.entryTime || "-"}</td>
-                            <td className="p-2 text-sm">{record.exitTime || "-"}</td>
-                            <td className="p-2 text-sm">{record.parkingDuration || "-"}</td>
-                            <td className="p-2 font-medium">
+                            <td className="p-1 text-sm">{index + 1}</td>
+                            <td className="p-1 text-sm font-medium">{record.carNumber}</td>
+                            <td className="p-1 text-sm">{record.mechanicName || record.driverName || "-"}</td>
+                            <td className="p-1 text-sm">{record.carBrand || record.parkingArea || "-"}</td>
+                            <td className="p-1 text-sm">{record.entryTime || "-"}</td>
+                            <td className="p-1 text-sm">{record.exitTime || "-"}</td>
+                            <td className="p-1 text-sm">{record.parkingDuration || "-"}</td>
+                            <td className="p-1 text-sm font-medium">
                               {calculateParkingFeeForReport(record).toLocaleString()}₮
                             </td>
-                            <td className="p-2">
-                              <div className="flex items-center space-x-2">
+                            <td className="p-1">
+                              <div className="flex items-center space-x-1">
                                 <Badge
                                   variant={record.paymentStatus === "paid" ? "default" : "secondary"}
                                   className={
                                     record.paymentStatus === "paid"
-                                      ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                      : "bg-red-100 text-red-800 hover:bg-red-200"
+                                      ? "bg-green-100 text-green-800 hover:bg-green-200 text-xs"
+                                      : "bg-red-100 text-red-800 hover:bg-red-200 text-xs"
                                   }
                                 >
                                   {record.paymentStatus === "paid" ? "Төлсөн" : "Төлөөгүй"}
@@ -2428,22 +2428,22 @@ export default function ManagerPage() {
                                 )}
                               </div>
                             </td>
-                            <td className="p-2">
+                            <td className="p-1">
                               {record.images && record.images.length > 0 ? (
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => openImageViewer(record.images, 0)}
-                                  className="text-blue-600 hover:text-blue-800"
+                                  className="text-blue-600 hover:text-blue-800 text-xs"
                                 >
-                                  <Eye className="w-4 h-4 mr-1" />
+                                  <Eye className="w-3 h-3 mr-1" />
                                   {record.images.length}
                                 </Button>
                               ) : (
-                                <span className="text-muted-foreground text-sm">Байхгүй</span>
+                                <span className="text-muted-foreground text-xs">Байхгүй</span>
                               )}
                             </td>
-                            <td className="p-2">
+                            <td className="p-1">
                               <Button
                                 variant="outline"
                                 size="sm"
