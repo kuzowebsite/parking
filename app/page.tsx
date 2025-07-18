@@ -13,7 +13,7 @@ export default function ParkingSystem() {
   const [loading, setLoading] = useState(true)
   const [showSplash, setShowSplash] = useState(true)
   const [loadingProgress, setLoadingProgress] = useState(0)
-  const router = useRouter()
+  const [router] = useRouter()
 
   // Home states
   const [carNumber, setCarNumber] = useState("")
@@ -32,6 +32,8 @@ export default function ParkingSystem() {
 
   // Add camera facing state
   const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment")
+  // Add zoom state
+  const [cameraZoom, setCameraZoom] = useState(1)
 
   // History states
   const [allRecords, setAllRecords] = useState<ParkingRecord[]>([])
@@ -627,6 +629,18 @@ export default function ParkingSystem() {
     await startCamera(newFacing)
   }
 
+  const zoomIn = () => {
+    setCameraZoom((prev) => Math.min(prev + 0.2, 3)) // Max zoom 3x
+  }
+
+  const zoomOut = () => {
+    setCameraZoom((prev) => Math.max(prev - 0.2, 1)) // Min zoom 1x
+  }
+
+  const resetZoom = () => {
+    setCameraZoom(1)
+  }
+
   const captureImage = () => {
     if (!videoRef.current || !canvasRef.current) return
     const video = videoRef.current
@@ -653,6 +667,7 @@ export default function ParkingSystem() {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
+    setCameraZoom(1) // Reset zoom when stopping camera
     setShowCamera(false)
   }
 
@@ -2043,20 +2058,43 @@ export default function ParkingSystem() {
                   playsInline
                   muted
                   className="w-full h-64 object-cover"
-                  style={{ transform: cameraFacing === "user" ? "scaleX(-1)" : "none" }}
+                  style={{
+                    transform: `${cameraFacing === "user" ? "scaleX(-1)" : ""} scale(${cameraZoom})`,
+                    transformOrigin: "center center",
+                  }}
                 />
                 <canvas ref={canvasRef} className="hidden" />
               </div>
-              <div className="flex justify-center space-x-4">
+              <div className="flex justify-center space-x-2 flex-wrap gap-2">
                 <button
                   onClick={switchCamera}
-                  className="px-4 py-2 bg-blue-500/20 border border-blue-400/30 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
+                  className="px-3 py-2 bg-blue-500/20 border border-blue-400/30 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
                 >
                   Камер солих
                 </button>
                 <button
+                  onClick={zoomOut}
+                  disabled={cameraZoom <= 1}
+                  className="px-3 py-2 bg-purple-500/20 border border-purple-400/30 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Zoom -
+                </button>
+                <button
+                  onClick={resetZoom}
+                  className="px-3 py-2 bg-gray-500/20 border border-gray-400/30 text-gray-400 rounded-lg hover:bg-gray-500/30 transition-colors text-sm"
+                >
+                  {cameraZoom.toFixed(1)}x
+                </button>
+                <button
+                  onClick={zoomIn}
+                  disabled={cameraZoom >= 3}
+                  className="px-3 py-2 bg-purple-500/20 border border-purple-400/30 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Zoom +
+                </button>
+                <button
                   onClick={captureImage}
-                  className="px-6 py-2 bg-emerald-400 text-black font-semibold rounded-lg hover:bg-emerald-300 transition-colors text-sm"
+                  className="px-4 py-2 bg-emerald-400 text-black font-semibold rounded-lg hover:bg-emerald-300 transition-colors text-sm"
                 >
                   Зураг авах
                 </button>
