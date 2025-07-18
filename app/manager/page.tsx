@@ -521,13 +521,14 @@ export default function ManagerPage() {
       alert("Бүртгэл устгахад алдаа гарлаа")
     }
   }
+  // In handleEditDriver function:
   const handleEditDriver = (driver: UserProfile) => {
     setEditingDriver(driver)
     setEditDriverData({
       name: driver.name,
       phone: driver.phone,
       email: driver.email,
-      newPassword: "",
+      newPassword: "", // Ensure new password field is always empty on open
     })
     setShowEditDialog(true)
   }
@@ -613,18 +614,18 @@ export default function ManagerPage() {
     }
     setEmployeeLoading(false)
   }
-  // Edit employee
+  // In handleEditEmployee function:
   const handleEditEmployee = (employee: UserProfile) => {
     setEditingEmployee(employee)
     setEditDriverData({
       name: employee.name,
       phone: employee.phone,
       email: employee.email,
-      newPassword: "",
+      newPassword: "", // Ensure new password field is always empty on open
     })
     setShowEditDialog(true)
   }
-  // Save employee edit
+  // In handleSaveEmployeeEdit function:
   const handleSaveEmployeeEdit = async () => {
     if (!editingEmployee || !editDriverData.name.trim() || !editDriverData.email.trim()) {
       alert("Нэр болон и-мэйл хаягийг бөглөнө үү")
@@ -1136,6 +1137,7 @@ export default function ManagerPage() {
       })
     }
   }
+  // In handleSaveDriverEdit function:
   const handleSaveDriverEdit = async () => {
     if (!editingDriver || !editDriverData.name.trim() || !editDriverData.email.trim()) {
       alert("Нэр болон и-мэйл хаягийг бөглөнө үү")
@@ -1151,11 +1153,8 @@ export default function ManagerPage() {
         updatedAt: new Date().toISOString(),
       }
       await update(ref(database, `users/${editingDriver.id}`), updateData)
-      // If password is provided, update it
-      if (editDriverData.newPassword && editDriverData.newPassword.length >= 6) {
-        // Note: Password update would require re-authentication in production
-        alert("Нууц үг шинэчлэх функц нэмэгдэх ёстой")
-      }
+      // Note: Password update requires re-authentication in a production environment.
+      // This simplified example only updates profile data (name, phone, email).
       const userType =
         editingDriver.role === "manager" ? "Менежерийн" : editingDriver.role === "driver" ? "Бүртгэлийн" : "Ажилчны"
       alert(`${userType} мэдээлэл амжилттай шинэчлэгдлээ`)
