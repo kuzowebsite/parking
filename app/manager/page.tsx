@@ -3,7 +3,7 @@ import type React from "react"
 import { DialogFooter } from "@/components/ui/dialog"
 
 import { useState, useEffect } from "react"
-import { onAuthStateChanged, createUserWithEmailAndPassword, signOut, type User } from "firebase/auth"
+import { onAuthStateChanged, signOut, type User } from "firebase/auth"
 import { ref, onValue, set, remove, update, push } from "firebase/database"
 import { auth, database } from "@/lib/firebase"
 import type { UserProfile, DriverRegistration } from "@/types"
@@ -29,6 +29,8 @@ import {
   Globe,
   LogOut,
   Eye,
+  Calendar,
+  Download,
   ChevronLeft,
   ChevronRight,
   TrendingUp,
@@ -38,18 +40,6 @@ import {
   EyeOff,
 } from "lucide-react"
 import * as XLSX from "xlsx"
-import {
-  ResponsiveContainer,
-  LineChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  Line,
-  BarChart,
-  Bar,
-} from "recharts"
 export default function ManagerPage() {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -764,14 +754,6 @@ export default function ManagerPage() {
       return 0
     }
     try {
-    }
-    )
-  }
-  const calculateParkingFee = (entryTime: string, exitTime: string): number => {
-    if (!entryTime || !exitTime || pricingConfig.pricePerMinute === 0) {
-      return 0
-    }
-    try {
       // Parse the Mongolian formatted dates
       const parseMongoDate = (dateStr: string) => {
         // Format: "2024.01.15, 14:30" or similar
@@ -788,7 +770,6 @@ export default function ManagerPage() {
         return new Date(dateStr)
       }
       const entryDate = parseMongoDate(entryTime)
-      \
       const exitDate = parseMongoDate(exitTime)
       if (isNaN(entryDate.getTime()) || isNaN(exitDate.getTime())) {
         return 0
@@ -988,7 +969,7 @@ export default function ManagerPage() {
       ]
       ws["!cols"] = colWidths
       // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Зогсоолын тайлан")
+      XLSX.utils.book_append_sheet(wb, ws, "Зогсоолын тайл��н")
       // Generate filename with date range
       const startDateStr = dateRangeStart.replace(/-/g, ".")
       const endDateStr = dateRangeEnd.replace(/-/g, ".")
@@ -1107,22 +1088,12 @@ export default function ManagerPage() {
     }
     setRegistrationLoading(true)
     try {
-      // Одоогийн хэрэглэгчийн мэдээллийг хадгалах
-      const currentUser = auth.currentUser
+      // Create a temporary auth instance or use a different approach
+      // Since we can't create users without signing in with the current Firebase setup,
+      // we'll save the user data directly to the database with a generated ID
 
-      // Firebase Auth дээр хэрэглэгч үүсгэх
-      const userCredential = await createUserWithEmailAndPassword(auth, newDriver.email, newDriver.password)
-      const newUserId = userCredential.user.uid
-
-      // Шинэ хэрэглэгчээс гарах
-      await signOut(auth)
-
-      // Одоогийн менежерээр дахин нэвтрэх
-      if (currentUser) {
-        // Энэ хэсэг нь зөвхөн demonstration зорилготой
-        // Бодит системд энэ нь илүү нарийн шийдэл шаардана
-        console.log("Менежерийн сессийг сэргээж байна...")
-      }
+      // Generate a unique user ID
+      const newUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
       // Database дээр хэрэглэгчийн мэдээлэл хадгалах
       const userData: UserProfile = {
@@ -1133,11 +1104,16 @@ export default function ManagerPage() {
         active: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        // Add password for manual verification (in a real app, this should be hashed)
+        tempPassword: newDriver.password, // This is not secure - implement proper password hashing
+        needsPasswordSetup: true, // Flag to indicate user needs to set up their account
       }
+
+      // Save to users node
       await set(ref(database, `users/${newUserId}`), userData)
 
       alert(
-        `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Бүртгэл" : "Ажилчин"} амжилттай бүртгэгдлээ`,
+        `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Бүртгэл" : "Ажилчин"} амжилттай бүртгэгдлээ. Тэд эхний удаа нэвтрэхдээ бүртгэлээ идэвхжүүлэх шаардлагатай.`,
       )
 
       // Form цэвэрлэх
@@ -1149,18 +1125,9 @@ export default function ManagerPage() {
         role: "driver",
         createdAt: "",
       })
-
-      // Хуудсыг дахин ачаалах (менежерийн сессийг сэргээхийн тулд)
-      window.location.reload()
     } catch (error: any) {
-      console.error("Driver registration error:", error)
-      if (error.code === "auth/email-already-in-use") {
-        alert("Энэ и-мэйл хаяг аль хэдийн ашиглагдаж байна")
-      } else if (error.code === "auth/invalid-email") {
-        alert("И-мэйл хаяг буруу байна")
-      } else {
-        alert("Бүртгэхэд алдаа гарлаа")
-      }
+      console.error("User registration error:", error)
+      alert("Бүртгэхэд алдаа гарлаа")
     }
     setRegistrationLoading(false)
   }
@@ -1383,7 +1350,7 @@ export default function ManagerPage() {
     setShowPaymentDialog(true)
   }
   const handleLogout = async () => {
-    if (confirm("Та гарахдаа итгэлтэй байна у��?")) {
+    if (confirm("Та гарахдаа итгэлтэй байна уу?")) {
       await signOut(auth)
     }
   }
@@ -1494,1213 +1461,1626 @@ export default function ManagerPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0
-                  01.293.707H19a2 2 0 012 2v11a2 2 0 01-2 2z"
+                  d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
               Тайлан
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="dashboard" className="sm:p-8">
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Нийт үйлчлүүлэгч</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{dashboardStats.totalCustomers}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {customDateRange.useCustomRange
-                      ? `${customDateRange.startDate} - ${customDateRange.endDate} хооронд`
-                      : "Сүүлийн 6 сарын байдлаар"}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Нийт орлого</CardTitle>
-                  <Car className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{dashboardStats.totalRevenue.toLocaleString()}₮</div>
-                  <p className="text-xs text-muted-foreground">
-                    {customDateRange.useCustomRange
-                      ? `${customDateRange.startDate} - ${customDateRange.endDate} хооронд`
-                      : "Сүүлийн 6 сарын байдлаар"}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Идэвхтэй бүртгэл</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{dashboardStats.activeRecords}</div>
-                  <p className="text-xs text-muted-foreground">Яг одоо зогсож байгаа</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Өнөөдрийн орлого</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{dashboardStats.todayRevenue.toLocaleString()}₮</div>
-                  <p className="text-xs text-muted-foreground">Өнөөдрийн байдлаар</p>
-                </CardContent>
-              </Card>
-            </div>
-            <div className="flex justify-between items-center mt-4">
-              <h2 className="text-xl font-bold">Статистик</h2>
-              <div className="space-x-2">
-                <Button variant="outline" size="sm" onClick={() => setShowDateRangePicker(true)}>
-                  Огноо сонгох
-                </Button>
-                <Button variant="outline" size="sm" onClick={resetToDefaultRange}>
-                  Анхны байдалд оруулах
-                </Button>
+          <TabsContent value="dashboard" className="space-y-6">
+            {/* Dashboard Header with Gradient Background */}
+            <div className="relative bg-gradient-to-r from-slate-900 via-blue-900 to-purple-900 rounded-2xl p-8 text-white overflow-hidden">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-20">
+                <div className="absolute top-4 left-8 w-20 h-20 bg-blue-400 rounded-full blur-2xl"></div>
+                <div className="absolute bottom-4 right-12 w-16 h-16 bg-purple-400 rounded-full blur-xl"></div>
+                <div className="absolute top-1/2 right-1/4 w-12 h-12 bg-cyan-400 rounded-full blur-lg"></div>
+              </div>
+              <div className="relative z-10">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-4xl font-bold mb-2">Хяналтын самбар</h2>
+                    <p className="text-blue-200 text-lg">
+                      {customDateRange.useCustomRange
+                        ? `${customDateRange.startDate} - ${customDateRange.endDate}`
+                        : "Сүүлийн 6 сарын статистик"}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDateRangePicker(true)}
+                    className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Огноо сонгох
+                  </Button>
+                </div>
+                {/* Date and Revenue Display */}
+                <div className="flex items-center space-x-4 text-lg">
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-5 h-5 text-blue-300" />
+                    <span>{new Date().toLocaleDateString("mn-MN")}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <TrendingUp className="w-5 h-5 text-green-300" />
+                    <span>Нийт орлого: {dashboardStats.totalRevenue.toLocaleString()}₮</span>
+                  </div>
+                </div>
+                {/* Reset button when custom range is active */}
+                {customDateRange.useCustomRange && (
+                  <Button
+                    variant="ghost"
+                    onClick={resetToDefaultRange}
+                    className="mt-4 text-white/80 hover:text-white hover:bg-white/10"
+                  >
+                    Анхдагш харагдац
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Сарчилсан орлого</CardTitle>
-                  <CardDescription>Сүүлийн 6 сарын орлого</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {dashboardLoading ? (
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-                      <p className="mt-2 text-muted-foreground">Ачааллаж байна...</p>
-                    </div>
-                  ) : (
-                    <div className="h-[350px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={monthlyStats}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="period" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Line type="monotone" dataKey="revenue" stroke="#8884d8" name="Орлого" />
-                          <Line type="monotone" dataKey="customers" stroke="#82ca9d" name="Үйлчлүүлэгч" />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Өдөрчилсан орлого</CardTitle>
-                  <CardDescription>Сүүлийн 7 хоногийн орлого</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {dashboardLoading ? (
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-                      <p className="mt-2 text-muted-foreground">Ачааллаж байна...</p>
-                    </div>
-                  ) : (
-                    <div className="h-[350px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dailyStats}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="day" />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Bar dataKey="revenue" fill="#8884d8" name="Орлого" />
-                          <Bar dataKey="customers" fill="#82ca9d" name="Үйлчлүүлэгч" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-            <div className="mt-6">
-              <h2 className="text-xl font-bold mb-4">Сүүлийн идэвхтэй үйл ажиллагаа</h2>
-              {dashboardLoading ? (
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-2 text-muted-foreground">Ачааллаж байна...</p>
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Total Customers Card */}
+              <div className="relative bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white overflow-hidden">
+                <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <Users className="w-6 h-6" />
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Машины дугаар
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Төрөл
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Огноо
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Төлбөр
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {recentActivity.map((record) => (
-                        <tr key={record.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {record.carNumber}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.type}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(record.timestamp).toLocaleDateString("mn-MN", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "numeric",
-                            })}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {record.amount ? `${record.amount.toLocaleString()}₮` : "Байхгүй"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
+                <div className="relative z-10">
+                  <p className="text-blue-100 text-sm font-medium mb-1">Нийт үйлчлүүлэгч</p>
+                  <p className="text-4xl font-bold mb-2">{dashboardStats.totalCustomers}</p>
+                  <p className="text-blue-200 text-sm">Өнөөдөр: +{dashboardStats.todayCustomers}</p>
                 </div>
-              )}
+              </div>
+              {/* Total Revenue Card */}
+              <div className="relative bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white overflow-hidden">
+                <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                    />
+                  </svg>
+                </div>
+                <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
+                <div className="relative z-10">
+                  <p className="text-emerald-100 text-sm font-medium mb-1">Нийт орлого</p>
+                  <p className="text-4xl font-bold mb-2">{dashboardStats.totalRevenue.toLocaleString()}₮</p>
+                  <p className="text-emerald-200 text-sm">Өнөөдөр: +{dashboardStats.todayRevenue.toLocaleString()}₮</p>
+                </div>
+              </div>
+              {/* Currently Parked Card */}
+              <div className="relative bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white overflow-hidden">
+                <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <Car className="w-6 h-6" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
+                <div className="relative z-10">
+                  <p className="text-orange-100 text-sm font-medium mb-1">Зогсож байгаа</p>
+                  <p className="text-4xl font-bold mb-2">{dashboardStats.activeRecords}</p>
+                  <p className="text-orange-200 text-sm">Одоогийн байдлаар</p>
+                </div>
+              </div>
+              {/* Average Revenue Card */}
+              <div className="relative bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white overflow-hidden">
+                <div className="absolute top-4 right-4 w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <BarChart3 className="w-6 h-6" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-white/10 rounded-full blur-sm"></div>
+                <div className="relative z-10">
+                  <p className="text-purple-100 text-sm font-medium mb-1">Дундаж орлого</p>
+                  <p className="text-4xl font-bold mb-2">
+                    {Math.round(dashboardStats.averageRevenue).toLocaleString()}₮
+                  </p>
+                  <p className="text-purple-200 text-sm">
+                    Дундаж хугацаа: {dashboardStats.averageSessionTime.toFixed(1)}ц
+                  </p>
+                </div>
+              </div>
             </div>
-          </TabsContent>
-          <TabsContent value="employees">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Ажилчид</h2>
-              <Button onClick={() => setShowEmployeeDialog(true)}>Ажилчин нэмэх</Button>
-            </div>
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {employees.map((employee) => (
-                <Card key={employee.id}>
-                  <CardHeader>
-                    <div className="flex items-center space-x-4">
-                      <Avatar className="w-10 h-10">
-                        {employee.profileImage ? (
-                          <AvatarImage src={employee.profileImage || "/placeholder.svg"} alt={employee.name} />
-                        ) : (
-                          <AvatarFallback>{employee.name?.charAt(0).toUpperCase() || "А"}</AvatarFallback>
-                        )}
-                      </Avatar>
-                      <div>
-                        <CardTitle>{employee.name}</CardTitle>
-                        <CardDescription>{employee.position}</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">Утас: {employee.phone}</p>
-                    <p className="text-sm text-muted-foreground">И-мэйл: {employee.email}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Бүртгүүлсэн:{" "}
-                      {new Date(employee.createdAt).toLocaleDateString("mn-MN", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </p>
-                    <Badge variant={employee.active ? "default" : "destructive"}>
-                      {employee.active ? "Идэвхтэй" : "Идэвхгүй"}
-                    </Badge>
-                  </CardContent>
-                  <DialogFooter className="justify-between">
-                    <div className="space-x-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleEditEmployee(employee)}
-                        disabled={employeeLoading}
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Засах
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteEmployee(employee.id, employee.name)}
-                        disabled={employeeLoading}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Устгах
-                      </Button>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleEmployeeStatus(employee.id, employee.active, employee.name)}
-                      disabled={employeeLoading}
-                    >
-                      {employee.active ? (
-                        <>
-                          <PowerOff className="w-4 h-4 mr-2" />
-                          Идэвхгүй болгох
-                        </>
-                      ) : (
-                        <>
-                          <Power className="w-4 h-4 mr-2" />
-                          Идэвхжүүлэх
-                        </>
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-          <TabsContent value="register">
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Monthly Revenue Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Хэрэглэгч бүртгэх</CardTitle>
-                  <CardDescription>Менежер, ажилчин, бүртгэлийн ажилтан нэмэх</CardDescription>
+                  <CardTitle className="flex items-center">
+                    <BarChart3 className="w-5 h-5 mr-2" />
+                    Сарын орлого
+                  </CardTitle>
+                  <CardDescription>
+                    {customDateRange.useCustomRange
+                      ? `${customDateRange.startDate} - ${customDateRange.endDate}`
+                      : "Сүүлийн 6 сарын орлогын график"}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleRegisterDriver} className="space-y-4">
-                    <div>
-                      <Label htmlFor="role">Хэрэглэгчийн төрөл</Label>
-                      <select
-                        id="role"
-                        className="w-full border rounded-md px-3 py-2 mt-1"
-                        value={selectedRole}
-                        onChange={(e) => setSelectedRole(e.target.value as "manager" | "driver" | "employee")}
-                      >
-                        <option value="employee">Ажилчин</option>
-                        <option value="driver">Бүртгэлийн ажилтан</option>
-                        <option value="manager">Менежер</option>
-                      </select>
-                    </div>
-                    {selectedRole === "employee" && (
-                      <div>
-                        <Label htmlFor="employee">Ажилчин сонгох</Label>
-                        <select
-                          id="employee"
-                          className="w-full border rounded-md px-3 py-2 mt-1"
-                          onChange={(e) => handleEmployeeSelection(e.target.value)}
-                        >
-                          <option value="">Ажилчин сонгох</option>
-                          {availableEmployees.map((employee) => (
-                            <option key={employee.id} value={employee.id}>
-                              {employee.name}
-                            </option>
-                          ))}
-                        </select>
+                  <div className="space-y-3">
+                    {monthlyStats.length > 0 ? (
+                      monthlyStats.map((stat, index) => (
+                        <div key={index} className="flex items-center justify-between py-2">
+                          <div>
+                            <p className="font-medium">{stat.period}</p>
+                            <p className="text-sm text-muted-foreground">{stat.customers} үйлчлүүлэгч</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>Мэдээлэл байхгүй</p>
                       </div>
                     )}
-                    <div>
-                      <Label htmlFor="name">Нэр</Label>
-                      <Input
-                        type="text"
-                        id="name"
-                        value={newDriver.name}
-                        onChange={(e) => setNewDriver({ ...newDriver, name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone">Утас</Label>
-                      <Input
-                        type="tel"
-                        id="phone"
-                        value={newDriver.phone}
-                        onChange={(e) => setNewDriver({ ...newDriver, phone: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">И-мэйл</Label>
-                      <Input
-                        type="email"
-                        id="email"
-                        value={newDriver.email}
-                        onChange={(e) => setNewDriver({ ...newDriver, email: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="password">Нууц үг</Label>
-                      <Input
-                        type="password"
-                        id="password"
-                        value={newDriver.password}
-                        onChange={(e) => setNewDriver({ ...newDriver, password: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <Button disabled={registrationLoading}>
-                      {registrationLoading ? "Бүртгэж байна..." : "Бүртгэх"}
-                    </Button>
-                  </form>
+                  </div>
                 </CardContent>
               </Card>
+              {/* Daily Activity Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Менежерүүд</CardTitle>
-                  <CardDescription>Бүртгэлтэй менежерүүд</CardDescription>
+                  <CardTitle className="flex items-center">
+                    <TrendingUp className="w-5 h-5 mr-2" />7 хоногийн үйл ажиллагаа
+                  </CardTitle>
+                  <CardDescription>Сүүлийн 7 хоногийн өдөр тутмын статистик</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-4">
-                    {managers.map((manager) => (
-                      <Card key={manager.id}>
-                        <CardHeader>
-                          <div className="flex items-center space-x-4">
-                            <Avatar className="w-8 h-8">
+                  <div className="space-y-3">
+                    {dailyStats.length > 0 ? (
+                      dailyStats.map((stat, index) => (
+                        <div key={index} className="flex items-center justify-between py-2">
+                          <div>
+                            <p className="font-medium">{stat.day}</p>
+                            <p className="text-sm text-muted-foreground">{stat.date}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm">{stat.customers} үйлчлүүлэгч</p>
+                            <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p>Мэдээлэл байхгүй</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Сүүлийн үйл ажиллагаа</CardTitle>
+                <CardDescription>Сүүлийн 10 бүртгэл</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {recentActivity.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentActivity.map((activity, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              activity.type === "entry"
+                                ? "bg-emerald-500"
+                                : activity.type === "exit" || activity.exitTime
+                                  ? "bg-red-500"
+                                  : "bg-blue-500"
+                            }`}
+                          />
+                          <div>
+                            <p className="font-medium">{activity.carNumber}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {activity.driverName} • {new Date(activity.timestamp).toLocaleString("mn-MN")}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge
+                            variant={
+                              activity.type === "entry"
+                                ? "default"
+                                : activity.type === "exit" || activity.exitTime
+                                  ? "destructive"
+                                  : "secondary"
+                            }
+                          >
+                            {activity.type === "entry"
+                              ? "Орсон"
+                              : activity.type === "exit" || activity.exitTime
+                                ? "Гарсан"
+                                : "Бүртгэл"}
+                          </Badge>
+                          {activity.amount && (
+                            <p className="text-sm font-medium mt-1">{activity.amount.toLocaleString()}₮</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Car className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Сүүлийн үйл ажиллагаа байхгүй</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="employees">
+            <div className="space-y-8">
+              {/* Header */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-3xl font-bold tracking-tight">Ажилчид</h2>
+                  <p className="text-muted-foreground">Системийн хэрэглэгчдийг удирдах</p>
+                </div>
+                <Button onClick={() => setShowEmployeeDialog(true)} size="lg">
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Ажилчин нэмэх
+                </Button>
+              </div>
+              {/* Statistics Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Менежерүүд</p>
+                        <p className="text-3xl font-bold text-blue-600">{managers.length}</p>
+                      </div>
+                      <div className="p-3 bg-blue-100 rounded-full">
+                        <Shield className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-green-500">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Ажилчид</p>
+                        <p className="text-3xl font-bold text-green-600">{employees.length}</p>
+                      </div>
+                      <div className="p-3 bg-green-100 rounded-full">
+                        <Users className="w-6 h-6 text-green-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-orange-500">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Бүртгэл</p>
+                        <p className="text-3xl font-bold text-orange-600">{drivers.length}</p>
+                      </div>
+                      <div className="p-3 bg-orange-100 rounded-full">
+                        <Car className="w-6 h-6 text-orange-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              {/* Employees Section */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Users className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold">Ажилчид</h3>
+                      <p className="text-sm text-muted-foreground">{employees.length} ажилчин бүртгэлтэй</p>
+                    </div>
+                  </div>
+                </div>
+                {employees.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <h3 className="text-lg font-medium mb-2">Ажилчин байхгүй</h3>
+                      <p className="text-muted-foreground mb-4">Одоогоор ямар нэгэн ажилчин бүртгэгдээгүй байна</p>
+                      <Button onClick={() => setShowEmployeeDialog(true)}>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Эхний ажилчинаа нэмэх
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {employees.map((employee) => (
+                      <Card key={employee.id} className="hover:shadow-md transition-shadow">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <Avatar className="w-12 h-12">
+                                {employee.profileImage ? (
+                                  <AvatarImage src={employee.profileImage || "/placeholder.svg"} alt={employee.name} />
+                                ) : (
+                                  <AvatarFallback className="bg-green-100 text-green-600">
+                                    {employee.name?.charAt(0).toUpperCase() || "E"}
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+                              <div>
+                                <h4 className="font-semibold">{employee.name}</h4>
+                                <p className="text-sm text-muted-foreground">{employee.position || "Ажилчин"}</p>
+                              </div>
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <Settings className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditEmployee(employee)}>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Засах
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handleToggleEmployeeStatus(employee.id, employee.active, employee.name)
+                                  }
+                                >
+                                  {employee.active ? (
+                                    <>
+                                      <PowerOff className="w-4 h-4 mr-2" />
+                                      Идэвхгүй болгох
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Power className="w-4 h-4 mr-2" />
+                                      Идэвхжүүлэх
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteEmployee(employee.id, employee.name)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Устгах
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="space-y-2">
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                                />
+                              </svg>
+                              {employee.phone || "Утас бүртгэгдээгүй"}
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <Badge variant={employee.active ? "default" : "secondary"}>
+                                {employee.active ? "Идэвхтэй" : "Идэвхгүй"}
+                              </Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Managers Section */}
+              <div className="space-y-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Shield className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold">Менежерүүд</h3>
+                    <p className="text-sm text-muted-foreground">{managers.length} менежер бүртгэлтэй</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {managers.map((manager) => (
+                    <Card key={manager.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="w-12 h-12">
                               {manager.profileImage ? (
                                 <AvatarImage src={manager.profileImage || "/placeholder.svg"} alt={manager.name} />
                               ) : (
-                                <AvatarFallback>{manager.name?.charAt(0).toUpperCase() || "М"}</AvatarFallback>
+                                <AvatarFallback className="bg-blue-100 text-blue-600">
+                                  {manager.name?.charAt(0).toUpperCase() || "M"}
+                                </AvatarFallback>
                               )}
                             </Avatar>
                             <div>
-                              <CardTitle>{manager.name}</CardTitle>
-                              <CardDescription>Менежер</CardDescription>
+                              <h4 className="font-semibold">{manager.name}</h4>
+                              <p className="text-sm text-muted-foreground">Менежер</p>
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground">Утас: {manager.phone}</p>
-                          <p className="text-sm text-muted-foreground">И-мэйл: {manager.email}</p>
-                          <Badge variant={manager.active ? "default" : "destructive"}>
-                            {manager.active ? "Идэвхтэй" : "Идэвхгүй"}
-                          </Badge>
-                        </CardContent>
-                        <DialogFooter className="justify-between">
-                          <div className="space-x-2">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => handleEditManager(manager)}
-                              disabled={editLoading}
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Засах
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeleteManager(manager.id, manager.name)}
-                              disabled={editLoading}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Устгах
-                            </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditManager(manager)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Засах
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleToggleManagerStatus(manager.id, manager.active, manager.name)}
+                              >
+                                {manager.active ? (
+                                  <>
+                                    <PowerOff className="w-4 h-4 mr-2" />
+                                    Идэвхгүй болгох
+                                  </>
+                                ) : (
+                                  <>
+                                    <Power className="w-4 h-4 mr-2" />
+                                    Идэвхжүүлэх
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteManager(manager.id, manager.name)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Устгах
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-2">
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                              />
+                            </svg>
+                            {manager.phone || "Утас бүртгэгдээгүй"}
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleManagerStatus(manager.id, manager.active, manager.name)}
-                            disabled={editLoading}
-                          >
-                            {manager.active ? (
-                              <>
-                                <PowerOff className="w-4 h-4 mr-2" />
-                                Идэвхгүй болгох
-                              </>
-                            ) : (
-                              <>
-                                <Power className="w-4 h-4 mr-2" />
-                                Идэвхжүүлэх
-                              </>
-                            )}
-                          </Button>
-                        </DialogFooter>
-                      </Card>
-                    ))}
+                          <div className="flex items-center justify-between">
+                            <Badge variant={manager.active ? "default" : "secondary"}>
+                              {manager.active ? "Идэвхтэй" : "Идэвхгүй"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+              {/* Drivers Section */}
+              <div className="space-y-6">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Car className="w-5 h-5 text-orange-600" />
                   </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Бүртгэлийн ажилтнууд</CardTitle>
-                  <CardDescription>Бүртгэлтэй ажилтнууд</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4">
-                    {drivers.map((driver) => (
-                      <Card key={driver.id}>
-                        <CardHeader>
-                          <div className="flex items-center space-x-4">
-                            <Avatar className="w-8 h-8">
+                  <div>
+                    <h3 className="text-xl font-semibold">Бүртгэл</h3>
+                    <p className="text-sm text-muted-foreground">{drivers.length} Бүртгэлтэй байна.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {drivers.map((driver) => (
+                    <Card key={driver.id} className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="w-12 h-12">
                               {driver.profileImage ? (
                                 <AvatarImage src={driver.profileImage || "/placeholder.svg"} alt={driver.name} />
                               ) : (
-                                <AvatarFallback>{driver.name?.charAt(0).toUpperCase() || "D"}</AvatarFallback>
+                                <AvatarFallback className="bg-orange-100 text-orange-600">
+                                  {driver.name?.charAt(0).toUpperCase() || "D"}
+                                </AvatarFallback>
                               )}
                             </Avatar>
                             <div>
-                              <CardTitle>{driver.name}</CardTitle>
-                              <CardDescription>Бүртгэлийн ажилтан</CardDescription>
+                              <h4 className="font-semibold">{driver.name}</h4>
+                              <p className="text-sm text-muted-foreground">Бүртгэл</p>
                             </div>
                           </div>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground">Утас: {driver.phone}</p>
-                          <p className="text-sm text-muted-foreground">И-мэйл: {driver.email}</p>
-                          <Badge variant={driver.active ? "default" : "destructive"}>
-                            {driver.active ? "Идэвхтэй" : "Идэвхгүй"}
-                          </Badge>
-                        </CardContent>
-                        <DialogFooter className="justify-between">
-                          <div className="space-x-2">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={() => handleEditDriver(driver)}
-                              disabled={editLoading}
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Засах
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeleteDriver(driver.id, driver.name)}
-                              disabled={editLoading}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Устгах
-                            </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditDriver(driver)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Засах
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleToggleDriverStatus(driver.id, driver.active, driver.name)}
+                              >
+                                {driver.active ? (
+                                  <>
+                                    <PowerOff className="w-4 h-4 mr-2" />
+                                    Идэвхгүй болгох
+                                  </>
+                                ) : (
+                                  <>
+                                    <Power className="w-4 h-4 mr-2" />
+                                    Идэвхжүүлэх
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteDriver(driver.id, driver.name)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Устгах
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-2">
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                              />
+                            </svg>
+                            {driver.phone || "Утас бүртгэгдээгүй"}
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleDriverStatus(driver.id, driver.active, driver.name)}
-                            disabled={editLoading}
-                          >
-                            {driver.active ? (
-                              <>
-                                <PowerOff className="w-4 h-4 mr-2" />
-                                Идэвхгүй болгох
-                              </>
-                            ) : (
-                              <>
-                                <Power className="w-4 h-4 mr-2" />
-                                Идэвхжүүлэх
-                              </>
-                            )}
-                          </Button>
-                        </DialogFooter>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                          <div className="flex items-center justify-between">
+                            <Badge variant={driver.active ? "default" : "secondary"}>
+                              {driver.active ? "Идэвхтэй" : "Идэвхгүй"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
             </div>
           </TabsContent>
-          <TabsContent value="report">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold">Тайлан</h2>
-              <Button onClick={() => setShowDateRangeDialog(true)}>Огноогоор экспортлох</Button>
-            </div>
-            <div className="flex flex-wrap gap-4 mb-4">
-              <div>
-                <Label htmlFor="reportFilterYear">Жил</Label>
-                <select
-                  id="reportFilterYear"
-                  className="w-full border rounded-md px-3 py-2 mt-1"
-                  value={reportFilterYear}
-                  onChange={(e) => setReportFilterYear(e.target.value)}
-                >
-                  <option value="">Бүх жил</option>
-                  {getReportAvailableYears().map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
+          <TabsContent value="register">
+            <div className="space-y-8">
+              {/* Header */}
+              <div className="text-center">
+                <h2 className="text-3xl font-bold tracking-tight">Хэрэглэгч бүртгэх</h2>
+                <p className="text-muted-foreground mt-2">Систем ашиглах шинэ хэрэглэгч бүртгэх</p>
               </div>
-              <div>
-                <Label htmlFor="reportFilterMonth">Сар</Label>
-                <select
-                  id="reportFilterMonth"
-                  className="w-full border rounded-md px-3 py-2 mt-1"
-                  value={reportFilterMonth}
-                  onChange={(e) => setReportFilterMonth(e.target.value)}
-                >
-                  <option value="">Бүх сар</option>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                    <option key={month} value={month.toString().padStart(2, "0")}>
-                      {month.toString().padStart(2, "0")}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label htmlFor="reportFilterCarNumber">Машины дугаар</Label>
-                <Input
-                  type="text"
-                  id="reportFilterCarNumber"
-                  placeholder="Хайх..."
-                  value={reportFilterCarNumber}
-                  onChange={(e) => setReportFilterCarNumber(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="reportFilterMechanic">Засварчин</Label>
-                <select
-                  id="reportFilterMechanic"
-                  className="w-full border rounded-md px-3 py-2 mt-1"
-                  value={reportFilterMechanic}
-                  onChange={(e) => setReportFilterMechanic(e.target.value)}
-                >
-                  <option value="">Бүх засварчин</option>
-                  {getAvailableMechanicNames().map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <Label htmlFor="reportFilterPaymentStatus">Төлбөрийн төлөв</Label>
-                <select
-                  id="reportFilterPaymentStatus"
-                  className="w-full border rounded-md px-3 py-2 mt-1"
-                  value={reportFilterPaymentStatus}
-                  onChange={(e) => setReportFilterPaymentStatus(e.target.value)}
-                >
-                  <option value="">Бүх төлөв</option>
-                  <option value="paid">Төлсөн</option>
-                  <option value="unpaid">Төлөөгүй</option>
-                </select>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              {reportLoading ? (
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-                  <p className="mt-2 text-muted-foreground">Тайлан ачааллаж байна...</p>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Registration Form */}
+                <div className="lg:col-span-2">
+                  <Card className="shadow-lg">
+                    <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+                      <CardTitle className="flex items-center text-xl">
+                        <UserPlus className="w-6 h-6 mr-3 text-blue-600" />
+                        Шинэ хэрэглэгч бүртгэх
+                      </CardTitle>
+                      <CardDescription>Систем ашиглах эрх олгох</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-8">
+                      <form onSubmit={handleRegisterDriver} className="space-y-6">
+                        {/* Role Selection */}
+                        <div className="space-y-3">
+                          <Label htmlFor="role" className="text-base font-medium">
+                            Хэрэглэгчийн төрөл
+                          </Label>
+                          <select
+                            id="role"
+                            className="w-full px-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-all"
+                            value={selectedRole}
+                            onChange={(e) => setSelectedRole(e.target.value as "manager" | "driver" | "employee")}
+                          >
+                            <option value="employee">Ажилчин</option>
+                            <option value="driver">Бүртгэл</option>
+                            <option value="manager">Менежер</option>
+                          </select>
+                        </div>
+                        {/* Employee Selection (Conditional) */}
+                        {selectedRole === "employee" && (
+                          <div className="space-y-3">
+                            <Label htmlFor="employee" className="text-base font-medium">
+                              Ажилчин сонгох
+                            </Label>
+                            <select
+                              id="employee"
+                              className="w-full px-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-all"
+                              onChange={(e) => handleEmployeeSelection(e.target.value)}
+                            >
+                              <option value="">Ажилчин сонгох...</option>
+                              {availableEmployees.map((employee) => (
+                                <option key={employee.id} value={employee.id}>
+                                  {employee.name} {employee.position && `- ${employee.position}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Name Input */}
+                          <div className="space-y-3">
+                            <Label htmlFor="name" className="text-base font-medium">
+                              Овог нэр *
+                            </Label>
+                            <Input
+                              type="text"
+                              id="name"
+                              placeholder="Овог нэрээ оруулна уу"
+                              value={newDriver.name}
+                              onChange={(e) => setNewDriver({ ...newDriver, name: e.target.value })}
+                              className="px-4 py-3 text-base"
+                              required
+                            />
+                          </div>
+                          {/* Phone Input */}
+                          <div className="space-y-3">
+                            <Label htmlFor="phone" className="text-base font-medium">
+                              Утасны дугаар
+                            </Label>
+                            <Input
+                              type="tel"
+                              id="phone"
+                              placeholder="99112233"
+                              value={newDriver.phone}
+                              onChange={(e) => setNewDriver({ ...newDriver, phone: e.target.value })}
+                              className="px-4 py-3 text-base"
+                            />
+                          </div>
+                        </div>
+                        {/* Email Input */}
+                        <div className="space-y-3">
+                          <Label htmlFor="email" className="text-base font-medium">
+                            И-мэйл хаяг *
+                          </Label>
+                          <Input
+                            type="email"
+                            id="email"
+                            placeholder="example@email.com"
+                            value={newDriver.email}
+                            onChange={(e) => setNewDriver({ ...newDriver, email: e.target.value })}
+                            className="px-4 py-3 text-base"
+                            required
+                          />
+                        </div>
+                        {/* Password Input */}
+                        <div className="space-y-3">
+                          <Label htmlFor="password" className="text-base font-medium">
+                            Нууц үг *
+                          </Label>
+                          <Input
+                            type="password"
+                            id="password"
+                            placeholder="Хамгийн багадаа 6 тэмдэгт"
+                            value={newDriver.password}
+                            onChange={(e) => setNewDriver({ ...newDriver, password: e.target.value })}
+                            className="px-4 py-3 text-base"
+                            required
+                          />
+                          <p className="text-sm text-muted-foreground">Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой</p>
+                        </div>
+                        {/* Submit Button */}
+                        <Button
+                          type="submit"
+                          className="w-full py-3 text-base"
+                          size="lg"
+                          disabled={registrationLoading}
+                        >
+                          {registrationLoading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                              Бүртгэж байна...
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-5 h-5 mr-3" />
+                              {selectedRole === "manager"
+                                ? "Менежер"
+                                : selectedRole === "driver"
+                                  ? "Бүртгэл"
+                                  : "Ажилчин"}{" "}
+                              бүртгэх
+                            </>
+                          )}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
                 </div>
-              ) : (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        №
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Машины дугаар
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Засварчин
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Машины марк
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Орсон цаг
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Гарсан цаг
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Зогссон хугацаа
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Төлбөр
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Төлбөрийн төлөв
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Төлбөрийн хэлбэр
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Зураг
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Үйлдэл
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredReportRecords.map((record, index) => (
-                      <tr key={record.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.carNumber}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {record.mechanicName || record.driverName || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {record.carBrand || record.parkingArea || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.entryTime}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.exitTime}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{record.parkingDuration}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {calculateParkingFeeForReport(record).toLocaleString()}₮
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {record.paymentStatus === "paid" ? "Төлсөн" : "Төлөөгүй"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {record.paymentMethod === "card"
-                            ? "Карт"
-                            : record.paymentMethod === "cash"
-                              ? "Бэлэн"
-                              : record.paymentMethod === "transfer"
-                                ? "Харилцах"
-                                : "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {record.images && record.images.length > 0 ? (
-                            <Button variant="secondary" size="sm" onClick={() => openImageViewer(record.images)}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              Харах
-                            </Button>
-                          ) : (
-                            "Байхгүй"
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          {record.paymentStatus !== "paid" ? (
-                            <Button variant="outline" size="sm" onClick={() => openPaymentDialog(record)}>
-                              Төлбөр төлөх
-                            </Button>
-                          ) : (
-                            <Badge variant="outline">Төлөгдсөн</Badge>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            <div className="mt-4 flex justify-between items-center">
-              <div>
-                <p className="text-sm text-muted-foreground">Нийт: {filteredReportRecords.length} бүртгэл</p>
-                <p className="text-sm text-muted-foreground">
-                  Бэлнээр: {totalCashAmount.toLocaleString()}₮, Картаар: {totalCardAmount.toLocaleString()}₮, Дансаар:{" "}
-                  {totalTransferAmount.toLocaleString()}₮
-                </p>
+                {/* Information Panel */}
+                <div className="space-y-6">
+                  {/* Role Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Хэрэглэгчийн төрөл</CardTitle>
+                      <CardDescription>Эрхийн түвшин</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-4">
+                        <div className="flex items-start space-x-3 p-4 border rounded-lg bg-blue-50/50">
+                          <div className="p-2 bg-blue-100 rounded-lg">
+                            <Shield className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-blue-900">Менежер</h4>
+                            <p className="text-sm text-blue-700">Бүх системийн удирдлага, тохиргоо, тайлан харах эрх</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3 p-4 border rounded-lg bg-green-50/50">
+                          <div className="p-2 bg-green-100 rounded-lg">
+                            <Users className="w-5 h-5 text-green-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-green-900">Ажилчин</h4>
+                            <p className="text-sm text-green-700">Зогсоолын бүртгэл хийх, өөрийн түүх харах эрх</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3 p-4 border rounded-lg bg-orange-50/50">
+                          <div className="p-2 bg-orange-100 rounded-lg">
+                            <Car className="w-5 h-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-orange-900">Бүртгэл</h4>
+                            <p className="text-sm text-orange-700">Зогсоолын бүртгэл хийх, бүх түүх харах эрх</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  {/* Current Statistics */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Одоогийн статистик</CardTitle>
+                      <CardDescription>Бүртгэлтэй хэрэглэгчид</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Shield className="w-5 h-5 text-blue-600" />
+                            <span className="font-medium">Менежер</span>
+                          </div>
+                          <span className="text-2xl font-bold text-blue-600">{managers.length}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Users className="w-5 h-5 text-green-600" />
+                            <span className="font-medium">Ажилчин</span>
+                          </div>
+                          <span className="text-2xl font-bold text-green-600">{employees.length}</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Car className="w-5 h-5 text-orange-600" />
+                            <span className="font-medium">Бүртгэл</span>
+                          </div>
+                          <span className="text-2xl font-bold text-orange-600">{drivers.length}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  {/* Important Notes */}
+                  <Card className="border-amber-200 bg-amber-50/50">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-amber-800">Анхааруулга</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="text-sm text-amber-700 space-y-2">
+                        <li className="flex items-start space-x-2">
+                          <span className="text-amber-600 mt-1">•</span>
+                          <span>И-мэйл хаяг давхардах боломжгүй</span>
+                        </li>
+                        <li className="flex items-start space-x-2">
+                          <span className="text-amber-600 mt-1">•</span>
+                          <span>Нууц үг хамгийн багадаа 6 тэмдэгт</span>
+                        </li>
+                        <li className="flex items-start space-x-2">
+                          <span className="text-amber-600 mt-1">•</span>
+                          <span>Ажилчин сонгосон тохиолдолд системд нэвтрэх эрх олгогдоно</span>
+                        </li>
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
-              <Button onClick={exportToExcel}>Excel файл татах</Button>
             </div>
+          </TabsContent>
+          <TabsContent value="report" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold tracking-tight">Тайлан</h2>
+                <p className="text-muted-foreground">Зогсоолын бүртгэлийн тайлан харах болон татах</p>
+              </div>
+              <div className="flex space-x-3">
+                <Button onClick={() => setShowDateRangeDialog(true)} variant="outline">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Огноогоор татах
+                </Button>
+                <Button onClick={exportToExcel}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Excel татах
+                </Button>
+              </div>
+            </div>
+            {/* Filters Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Шүүлтүүр</CardTitle>
+                <CardDescription>Тайлангийг шүүж харах</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div className="space-y-2">
+                    <Label>Жил</Label>
+                    <select
+                      value={reportFilterYear}
+                      onChange={(e) => setReportFilterYear(e.target.value)}
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                    >
+                      <option value="">Бүх жил</option>
+                      {getReportAvailableYears().map((year) => (
+                        <option key={year} value={year.toString()}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Сар</Label>
+                    <select
+                      value={reportFilterMonth}
+                      onChange={(e) => setReportFilterMonth(e.target.value)}
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                    >
+                      <option value="">Бүх сар</option>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                        <option key={month} value={month.toString().padStart(2, "0")}>
+                          {month}-р сар
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Машины дугаар</Label>
+                    <Input
+                      placeholder="Машины дугаар..."
+                      value={reportFilterCarNumber}
+                      onChange={(e) => setReportFilterCarNumber(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Засварчин</Label>
+                    <select
+                      value={reportFilterMechanic}
+                      onChange={(e) => setReportFilterMechanic(e.target.value)}
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                    >
+                      <option value="">Бүх засварчин</option>
+                      {getAvailableMechanicNames().map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Төлбөрийн төлөв</Label>
+                    <select
+                      value={reportFilterPaymentStatus}
+                      onChange={(e) => setReportFilterPaymentStatus(e.target.value)}
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                    >
+                      <option value="">Бүх төлөв</option>
+                      <option value="paid">Төлсөн</option>
+                      <option value="unpaid">Төлөөгүй</option>
+                    </select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            {/* Report Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Зогсоолын бүртгэл</CardTitle>
+                <CardDescription>
+                  Нийт {filteredReportRecords.length} бүртгэл • Нийт төлбөр:{" "}
+                  {filteredReportRecords
+                    .reduce((sum, record) => sum + calculateParkingFeeForReport(record), 0)
+                    .toLocaleString()}
+                  ₮ • Нийт бэлэн: {totalCashAmount.toLocaleString()}₮ • Нийт карт: {totalCardAmount.toLocaleString()}₮ •
+                  Нийт харилцах: {totalTransferAmount.toLocaleString()}₮
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {reportLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-4 text-muted-foreground">Тайлан ачааллаж байна...</p>
+                  </div>
+                ) : filteredReportRecords.length === 0 ? (
+                  <div className="text-center py-12">
+                    <svg
+                      className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <h3 className="text-lg font-medium mb-2">Тайлан байхгүй</h3>
+                    <p className="text-muted-foreground">Одоогоор ямар нэгэн бүртгэл олдсонгүй</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left px-1 py-0.5 text-xs">№</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Машины дугаар</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Засварчин</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Машины марк</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Орсон цаг</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Гарсан цаг</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Зогссон хугацаа</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Төлбөр</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Төлбөрийн төлөв</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Зураг</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Үйлдэл</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredReportRecords.map((record, index) => (
+                          <tr key={record.id} className="border-b hover:bg-muted/50">
+                            <td className="px-1 py-0.5 text-xs">{index + 1}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.carNumber}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.mechanicName || record.driverName || "-"}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.carBrand || record.parkingArea || "-"}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.entryTime || "-"}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.exitTime || "-"}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.parkingDuration || "-"}</td>
+                            <td className="px-1 py-0.5 text-xs">
+                              {calculateParkingFeeForReport(record).toLocaleString()}₮
+                            </td>
+                            <td className="px-1 py-0.5">
+                              <div className="flex items-center space-x-1">
+                                <Badge
+                                  variant={record.paymentStatus === "paid" ? "default" : "secondary"}
+                                  className={
+                                    record.paymentStatus === "paid"
+                                      ? "bg-green-100 text-green-800 hover:bg-green-200 text-xs"
+                                      : "bg-red-100 text-red-800 hover:bg-red-200 text-xs"
+                                  }
+                                >
+                                  {record.paymentStatus === "paid" ? "Төлсөн" : "Төлөөгүй"}
+                                </Badge>
+                                {record.paymentStatus === "paid" &&
+                                  (record.cashAmount > 0 || record.cardAmount > 0 || record.transferAmount > 0) && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {(() => {
+                                        const paymentDetails = []
+                                        if (record.cashAmount > 0) {
+                                          paymentDetails.push(`Бэлэн: ${record.cashAmount.toLocaleString()}₮`)
+                                        }
+                                        if (record.cardAmount > 0) {
+                                          paymentDetails.push(`Карт: ${record.cardAmount.toLocaleString()}₮`)
+                                        }
+                                        if (record.transferAmount > 0) {
+                                          paymentDetails.push(`Харилцах: ${record.transferAmount.toLocaleString()}₮`)
+                                        }
+                                        return paymentDetails.join(", ") || "Төлсөн"
+                                      })()}
+                                    </Badge>
+                                  )}
+                              </div>
+                            </td>
+                            <td className="px-1 py-0.5">
+                              {record.images && record.images.length > 0 ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openImageViewer(record.images, 0)}
+                                  className="text-blue-600 hover:text-blue-800 text-xs"
+                                >
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  {record.images.length}
+                                </Button>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">Байхгүй</span>
+                              )}
+                            </td>
+                            <td className="px-1 py-0.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openPaymentDialog(record)}
+                                className="text-xs"
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Засах
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
-      {/* Date Range Picker Modal */}
+      {/* Date Range Picker Dialog */}
       <Dialog open={showDateRangePicker} onOpenChange={setShowDateRangePicker}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Огноо сонгох</DialogTitle>
-            <DialogDescription>Хугацаа сонгож тайлан харах</DialogDescription>
+        <DialogContent className="dialog-content">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title">Огнооны хязгаар сонгох</DialogTitle>
+            <DialogDescription className="dialog-description">
+              Хяналтын самбарт харуулах огнооны хязгаарыг сонгоно уу
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="startDate" className="text-right">
-                Эхлэх огноо
-              </Label>
-              <Input
-                type="date"
-                id="startDate"
-                className="col-span-3"
-                value={customDateRange.startDate}
-                onChange={(e) => setCustomDateRange({ ...customDateRange, startDate: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="endDate" className="text-right">
-                Дуусах огноо
-              </Label>
-              <Input
-                type="date"
-                id="endDate"
-                className="col-span-3"
-                value={customDateRange.endDate}
-                onChange={(e) => setCustomDateRange({ ...customDateRange, endDate: e.target.value })}
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Эхлэх огноо</Label>
+                <Input
+                  type="date"
+                  value={customDateRange.startDate}
+                  onChange={(e) => setCustomDateRange({ ...customDateRange, startDate: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Дуусах огноо</Label>
+                <Input
+                  type="date"
+                  value={customDateRange.endDate}
+                  onChange={(e) => setCustomDateRange({ ...customDateRange, endDate: e.target.value })}
+                />
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" onClick={applyCustomDateRange}>
-              Хэрэглэх
+          <DialogFooter className="dialog-footer">
+            <Button variant="outline" onClick={() => setShowDateRangePicker(false)}>
+              Цуцлах
             </Button>
+            <Button onClick={applyCustomDateRange}>Хэрэглэх</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Date Range Export Modal */}
+      {/* Date Range Export Dialog */}
       <Dialog open={showDateRangeDialog} onOpenChange={setShowDateRangeDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Огноогоор экспортлох</DialogTitle>
-            <DialogDescription>Хугацаа сонгож Excel файл татах</DialogDescription>
+        <DialogContent className="dialog-content date-range-dialog-content">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title">Огноогоор Excel татах</DialogTitle>
+            <DialogDescription className="dialog-description">
+              Тодорхой хугацааны бүртгэлийг Excel файлаар татах
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dateRangeStart" className="text-right">
-                Эхлэх огноо
-              </Label>
-              <Input
-                type="date"
-                id="dateRangeStart"
-                className="col-span-3"
-                value={dateRangeStart}
-                onChange={(e) => setDateRangeStart(e.target.value)}
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Эхлэх огноо</Label>
+                <Input type="date" value={dateRangeStart} onChange={(e) => setDateRangeStart(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Дуусах огноо</Label>
+                <Input type="date" value={dateRangeEnd} onChange={(e) => setDateRangeEnd(e.target.value)} />
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="dateRangeEnd" className="text-right">
-                Дуусах огноо
-              </Label>
-              <Input
-                type="date"
-                id="dateRangeEnd"
-                className="col-span-3"
-                value={dateRangeEnd}
-                onChange={(e) => setDateRangeEnd(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
               <Checkbox
                 id="deleteAfterExport"
                 checked={deleteAfterExport}
-                onCheckedChange={(checked) => setDeleteAfterExport(checked || false)}
+                onCheckedChange={(checked) => setDeleteAfterExport(checked as boolean)}
               />
-              <label
-                htmlFor="deleteAfterExport"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed"
-              >
-                Экспортын дараа устгах
-              </label>
+              <Label htmlFor="deleteAfterExport" className="text-destructive font-medium">
+                Татсаны дараа бүртгэлийг өгөгдлийн сангаас устгах
+              </Label>
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" onClick={handleDateRangeExport} disabled={exportLoading}>
-              {exportLoading ? "Экспортлож байна..." : "Экспортлох"}
+          <DialogFooter className="dialog-footer">
+            <Button variant="outline" onClick={() => setShowDateRangeDialog(false)}>
+              Цуцлах
+            </Button>
+            <Button onClick={handleDateRangeExport} disabled={exportLoading}>
+              {exportLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Татаж байна...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Excel татах
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       {/* Image Viewer Modal */}
-      <Dialog open={showImageViewer} onOpenChange={setShowImageViewer}>
-        <DialogContent className="sm:max-w-[90%] sm:max-h-[90%] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Зураг харах</DialogTitle>
-            <DialogDescription>Зургийг томруулан харах</DialogDescription>
-          </DialogHeader>
-          <div className="flex-grow relative">
-            {currentImages.length > 0 && (
-              <img
-                src={currentImages[currentImageIndex] || "/placeholder.svg"}
-                alt={`Зураг ${currentImageIndex + 1}`}
-                className="max-w-full max-h-full object-contain mx-auto"
-              />
+      {showImageViewer && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+          <div className="relative max-w-4xl max-h-full p-4">
+            <button onClick={closeImageViewer} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            {currentImages.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10"
+                >
+                  <ChevronLeft className="w-8 h-8" />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10"
+                >
+                  <ChevronRight className="w-8 h-8" />
+                </button>
+              </>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute left-2 top-1/2 transform -translate-y-1/2"
-              onClick={prevImage}
-            >
-              <ChevronLeft className="h-6 w-6" />
-              <span className="sr-only">Өмнөх зураг</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2"
-              onClick={nextImage}
-            >
-              <ChevronRight className="h-6 w-6" />
-              <span className="sr-only">Дараагийн зураг</span>
-            </Button>
+            <img
+              src={currentImages[currentImageIndex] || "/placeholder.svg"}
+              alt={`Image ${currentImageIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+            />
+            {currentImages.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
+                {currentImageIndex + 1} / {currentImages.length}
+              </div>
+            )}
           </div>
-          <DialogFooter>
-            <Button type="button" onClick={closeImageViewer}>
-              Хаах
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Employee Add Modal */}
+        </div>
+      )}
+      {/* Employee Dialog */}
       <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Ажилчин нэмэх</DialogTitle>
-            <DialogDescription>Шинэ ажилчин бүртгэх</DialogDescription>
+        <DialogContent className="dialog-content">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title">Ажилчин нэмэх</DialogTitle>
+            <DialogDescription className="dialog-description">Шинэ ажилчны мэдээлэл оруулна уу</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <form onSubmit={handleAddEmployee} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Нэр</Label>
-                <Input
-                  type="text"
-                  id="name"
-                  value={newEmployee.name}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                  required
+          <form onSubmit={handleAddEmployee} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Овог нэр *</Label>
+              <Input
+                value={newEmployee.name}
+                onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                placeholder="Овог нэрээ оруулна уу"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Албан тушаал</Label>
+              <Input
+                value={newEmployee.position}
+                onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
+                placeholder="Албан тушаал"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Утасны дугаар</Label>
+              <Input
+                value={newEmployee.phone}
+                onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                placeholder="99112233"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Ажилд орсон огноо</Label>
+              <Input
+                type="date"
+                value={newEmployee.startDate}
+                onChange={(e) => setNewEmployee({ ...newEmployee, startDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Профайл зураг</Label>
+              <Input type="file" accept="image/*" onChange={handleEmployeeImageUpload} />
+              {newEmployee.profileImage && (
+                <img
+                  src={newEmployee.profileImage || "/placeholder.svg"}
+                  alt="Preview"
+                  className="w-20 h-20 object-cover rounded-lg"
                 />
-              </div>
-              <div>
-                <Label htmlFor="position">Албан тушаал</Label>
-                <Input
-                  type="text"
-                  id="position"
-                  value={newEmployee.position}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Утас</Label>
-                <Input
-                  type="tel"
-                  id="phone"
-                  value={newEmployee.phone}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="startDate">Эхлэх огноо</Label>
-                <Input
-                  type="date"
-                  id="startDate"
-                  value={newEmployee.startDate}
-                  onChange={(e) => setNewEmployee({ ...newEmployee, startDate: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="profileImage">Зураг оруулах</Label>
-                <Input type="file" id="profileImage" accept="image/*" onChange={handleEmployeeImageUpload} />
-                {newEmployee.profileImage && (
-                  <div className="mt-2">
-                    <img
-                      src={newEmployee.profileImage || "/placeholder.svg"}
-                      alt="Ажилчны зураг"
-                      className="w-20 h-20 object-cover rounded-full"
-                    />
-                  </div>
+              )}
+            </div>
+            <DialogFooter className="dialog-footer">
+              <Button type="button" variant="outline" onClick={() => setShowEmployeeDialog(false)}>
+                Цуцлах
+              </Button>
+              <Button type="submit" disabled={employeeLoading}>
+                {employeeLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Нэмж байна...
+                  </>
+                ) : (
+                  "Ажилчин нэмэх"
                 )}
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={employeeLoading}>
-                  {employeeLoading ? "Нэмж байна..." : "Нэмэх"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </div>
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
-      {/* Employee Edit Modal */}
+      {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Хэрэглэгч засах</DialogTitle>
-            <DialogDescription>Хэрэглэгчийн мэдээллийг засах</DialogDescription>
+        <DialogContent className="dialog-content">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title">
+              {editingDriver?.role === "manager" ? "Менежер" : editingDriver?.role === "driver" ? "Бүртгэл" : "Ажилчин"}{" "}
+              засах
+            </DialogTitle>
+            <DialogDescription className="dialog-description">Хэрэглэгчийн мэдээллийг шинэчлэх</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Нэр
-              </Label>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Овог нэр</Label>
               <Input
-                type="text"
-                id="name"
-                className="col-span-3"
                 value={editDriverData.name}
                 onChange={(e) => setEditDriverData({ ...editDriverData, name: e.target.value })}
+                placeholder="Овог нэр"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
-                Утас
-              </Label>
+            <div className="space-y-2">
+              <Label>Утасны дугаар</Label>
               <Input
-                type="tel"
-                id="phone"
-                className="col-span-3"
                 value={editDriverData.phone}
                 onChange={(e) => setEditDriverData({ ...editDriverData, phone: e.target.value })}
+                placeholder="Утасны дугаар"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                И-мэйл
-              </Label>
+            <div className="space-y-2">
+              <Label>И-мэйл хаяг</Label>
               <Input
                 type="email"
-                id="email"
-                className="col-span-3"
                 value={editDriverData.email}
                 onChange={(e) => setEditDriverData({ ...editDriverData, email: e.target.value })}
+                placeholder="И-мэйл хаяг"
               />
             </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" onClick={handleSaveEmployeeEdit} disabled={editLoading}>
-              {editLoading ? "Хадгалж байна..." : "Хадгалах"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Profile Edit Modal */}
-      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Профайл засах</DialogTitle>
-            <DialogDescription>Профайлын мэдээллийг засах</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Нэр
-              </Label>
-              <Input
-                type="text"
-                id="name"
-                className="col-span-3"
-                value={profileData.name}
-                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
-                Утас
-              </Label>
-              <Input
-                type="tel"
-                id="phone"
-                className="col-span-3"
-                value={profileData.phone}
-                onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                И-мэйл
-              </Label>
-              <Input
-                type="email"
-                id="email"
-                className="col-span-3"
-                value={profileData.email}
-                onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="profileImage" className="text-right">
-                Зураг
-              </Label>
-              <Input
-                type="file"
-                id="profileImage"
-                className="col-span-3"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, "profile")}
-              />
-              {profileData.profileImage && (
-                <div className="col-span-4 flex justify-center">
-                  <Avatar className="w-24 h-24">
-                    <AvatarImage src={profileData.profileImage || "/placeholder.svg"} alt="Profile" />
-                    <AvatarFallback>{profileData.name?.charAt(0).toUpperCase() || "M"}</AvatarFallback>
-                  </Avatar>
-                </div>
-              )}
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="currentPassword" className="text-right">
-                Одоогийн нууц үг
-              </Label>
-              <Input
-                type={showPassword ? "text" : "password"}
-                id="currentPassword"
-                className="col-span-3"
-                value={passwordData.currentPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-              />
-              <Button variant="ghost" size="sm" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="newPassword" className="text-right">
-                Шинэ нууц үг
-              </Label>
-              <Input
-                type={showConfirmPassword ? "text" : "password"}
-                id="newPassword"
-                className="col-span-3"
-                value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-              />
-              <Button variant="ghost" size="sm" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="confirmPassword" className="text-right">
-                Нууц үг баталгаажуулах
-              </Label>
+            <div className="space-y-2">
+              <Label>Шинэ нууц үг (хоосон үлдээвэл өөрчлөгдөхгүй)</Label>
               <Input
                 type="password"
-                id="confirmPassword"
-                className="col-span-3"
-                value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                value={editDriverData.newPassword}
+                onChange={(e) => setEditDriverData({ ...editDriverData, newPassword: e.target.value })}
+                placeholder="Шинэ нууц үг"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" onClick={handleSaveProfile} disabled={profileLoading}>
-              {profileLoading ? "Хадгалж байна..." : "Хадгалах"}
+          <DialogFooter className="dialog-footer">
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Цуцлах
+            </Button>
+            <Button onClick={editingEmployee ? handleSaveEmployeeEdit : handleSaveDriverEdit} disabled={editLoading}>
+              {editLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Хадгалж байна...
+                </>
+              ) : (
+                "Хадгалах"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Site Configuration Modal */}
-      <Dialog open={showSiteDialog} onOpenChange={setShowSiteDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Сайт бүртгэл засах</DialogTitle>
-            <DialogDescription>Сайтын мэдээллийг засах</DialogDescription>
+      {/* Profile Dialog */}
+      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <DialogContent className="dialog-content">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title">Профайл засах</DialogTitle>
+            <DialogDescription className="dialog-description">Өөрийн мэдээллийг шинэчлэх</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="siteName" className="text-right">
-                Сайтын нэр
-              </Label>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Овог нэр</Label>
               <Input
-                type="text"
-                id="siteName"
-                className="col-span-3"
+                value={profileData.name}
+                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                placeholder="Овог нэр"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Утасны дугаар</Label>
+              <Input
+                value={profileData.phone}
+                onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                placeholder="Утасны дугаар"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>И-мэйл хаяг</Label>
+              <Input
+                type="email"
+                value={profileData.email}
+                onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                placeholder="И-мэйл хаяг"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Профайл зураг</Label>
+              <Input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "profile")} />
+              {profileData.profileImage && (
+                <img
+                  src={profileData.profileImage || "/placeholder.svg"}
+                  alt="Profile Preview"
+                  className="w-20 h-20 object-cover rounded-lg"
+                />
+              )}
+            </div>
+            {/* Password Change Section */}
+            <div className="border-t pt-4 space-y-4">
+              <h4 className="font-medium">Нууц үг өөрчлөх</h4>
+              <div className="space-y-2">
+                <Label>Одоогийн нууц үг</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                    placeholder="Одоогийн нууц үг"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Шинэ нууц үг</Label>
+                <Input
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  placeholder="Шинэ нууц үг"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Шинэ нууц үг давтах</Label>
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    placeholder="Шинэ нууц үг давтах"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="dialog-footer">
+            <Button variant="outline" onClick={() => setShowProfileDialog(false)}>
+              Цуцлах
+            </Button>
+            <Button onClick={handleSaveProfile} disabled={profileLoading}>
+              {profileLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Хадгалж байна...
+                </>
+              ) : (
+                "Хадгалах"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Site Configuration Dialog */}
+      <Dialog open={showSiteDialog} onOpenChange={setShowSiteDialog}>
+        <DialogContent className="dialog-content">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title">Сайт тохиргоо</DialogTitle>
+            <DialogDescription className="dialog-description">Сайтын ерөнхий тохиргоог өөрчлөх</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Сайтын нэр</Label>
+              <Input
                 value={siteConfig.siteName}
                 onChange={(e) => setSiteConfig({ ...siteConfig, siteName: e.target.value })}
+                placeholder="Сайтын нэр"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="siteLogo" className="text-right">
-                Сайтын лого
-              </Label>
-              <Input
-                type="file"
-                id="siteLogo"
-                className="col-span-3"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, "logo")}
-              />
+            <div className="space-y-2">
+              <Label>Сайтын лого</Label>
+              <Input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "logo")} />
               {siteConfig.siteLogo && (
-                <div className="col-span-4 flex justify-center">
-                  <img
-                    src={siteConfig.siteLogo || "/placeholder.svg"}
-                    alt="Site Logo"
-                    className="w-24 h-24 object-contain"
-                  />
-                </div>
+                <img
+                  src={siteConfig.siteLogo || "/placeholder.svg"}
+                  alt="Logo Preview"
+                  className="w-20 h-20 object-contain border rounded-lg"
+                />
               )}
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="siteBackground" className="text-right">
-                Сайтын фон
-              </Label>
-              <Input
-                type="file"
-                id="siteBackground"
-                className="col-span-3"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, "background")}
-              />
+            <div className="space-y-2">
+              <Label>Арын дэвсгэр зураг</Label>
+              <Input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "background")} />
               {siteConfig.siteBackground && (
-                <div className="col-span-4 flex justify-center">
-                  <img
-                    src={siteConfig.siteBackground || "/placeholder.svg"}
-                    alt="Site Background"
-                    className="w-full h-24 object-cover"
-                  />
-                </div>
+                <img
+                  src={siteConfig.siteBackground || "/placeholder.svg"}
+                  alt="Background Preview"
+                  className="w-full h-32 object-cover border rounded-lg"
+                />
               )}
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" onClick={handleSaveSiteConfig} disabled={siteLoading}>
-              {siteLoading ? "Хадгалж байна..." : "Хадгалах"}
+          <DialogFooter className="dialog-footer">
+            <Button variant="outline" onClick={() => setShowSiteDialog(false)}>
+              Цуцлах
+            </Button>
+            <Button onClick={handleSaveSiteConfig} disabled={siteLoading}>
+              {siteLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Хадгалж байна...
+                </>
+              ) : (
+                "Хадгалах"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Pricing Configuration Modal */}
+      {/* Pricing Configuration Dialog */}
       <Dialog open={showPricingDialog} onOpenChange={setShowPricingDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Үнэ засах</DialogTitle>
-            <DialogDescription>Зогсоолын үнийг засах</DialogDescription>
+        <DialogContent className="dialog-content">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title">Үнийн тохиргоо</DialogTitle>
+            <DialogDescription className="dialog-description">Зогсоолын үнийг тохируулах</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="pricePerMinute" className="text-right">
-                Минут тутамд (₮)
-              </Label>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Минут тутмын үнэ (₮)</Label>
               <Input
                 type="number"
-                id="pricePerMinute"
-                className="col-span-3"
+                min="0"
+                step="1"
                 value={pricingConfig.pricePerMinute}
                 onChange={(e) => setPricingConfig({ ...pricingConfig, pricePerMinute: Number(e.target.value) })}
+                placeholder="Минут тутмын үнэ"
               />
+              <p className="text-sm text-muted-foreground">Одоогийн тохиргоо: {pricingConfig.pricePerMinute}₮/минут</p>
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" onClick={handleSavePricingConfig} disabled={pricingLoading}>
-              {pricingLoading ? "Хадгалж байна..." : "Хадгалах"}
+          <DialogFooter className="dialog-footer">
+            <Button variant="outline" onClick={() => setShowPricingDialog(false)}>
+              Цуцлах
+            </Button>
+            <Button onClick={handleSavePricingConfig} disabled={pricingLoading}>
+              {pricingLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Хадгалж байна...
+                </>
+              ) : (
+                "Хадгалах"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Payment Status Modal */}
+      {/* Payment Status Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Төлбөр төлөх</DialogTitle>
-            <DialogDescription>Төлбөрийн мэдээллийг оруулах</DialogDescription>
+        <DialogContent className="dialog-content payment-dialog-content">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title">Төлбөрийн төлөв</DialogTitle>
+            <DialogDescription className="dialog-description">
+              Машины дугаар: {selectedRecord?.carNumber}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="cashAmount" className="text-right">
-                Бэлэн (₮)
-              </Label>
-              <Input
-                type="number"
-                id="cashAmount"
-                className="col-span-3"
-                value={cashAmountInput}
-                onChange={(e) => setCashAmountInput(Number(e.target.value))}
-              />
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Төлбөрийн хэлбэр</Label>
+              <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3">
+                <Label htmlFor="cash" className="text-right">
+                  Бэлэн мөнгө
+                </Label>
+                <Input
+                  type="number"
+                  id="cash"
+                  min="0"
+                  value={cashAmountInput}
+                  onChange={(e) => setCashAmountInput(Number(e.target.value))}
+                  className="w-full"
+                  placeholder="0"
+                />
+                <Label htmlFor="card" className="text-right">
+                  Карт
+                </Label>
+                <Input
+                  type="number"
+                  id="card"
+                  min="0"
+                  value={cardAmountInput}
+                  onChange={(e) => setCardAmountInput(Number(e.target.value))}
+                  className="w-full"
+                  placeholder="0"
+                />
+                <Label htmlFor="transfer" className="text-right">
+                  Харилцах
+                </Label>
+                <Input
+                  type="number"
+                  id="transfer"
+                  min="0"
+                  value={transferAmountInput}
+                  onChange={(e) => setTransferAmountInput(Number(e.target.value))}
+                  className="w-full"
+                  placeholder="0"
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="cardAmount" className="text-right">
-                Карт (₮)
-              </Label>
-              <Input
-                type="number"
-                id="cardAmount"
-                className="col-span-3"
-                value={cardAmountInput}
-                onChange={(e) => setCardAmountInput(Number(e.target.value))}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="transferAmount" className="text-right">
-                Дансаар (₮)
-              </Label>
-              <Input
-                type="number"
-                id="transferAmount"
-                className="col-span-3"
-                value={transferAmountInput}
-                onChange={(e) => setTransferAmountInput(Number(e.target.value))}
-              />
+            <div className="bg-muted p-4 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Нийт төлбөр:</span>
+                <span className="font-bold">
+                  {selectedRecord ? calculateParkingFeeForReport(selectedRecord).toLocaleString() : 0}₮
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Төлөх төлбөр:</span>
+                <span className="font-bold">
+                  {(cashAmountInput + cardAmountInput + transferAmountInput).toLocaleString()}₮
+                </span>
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button type="button" onClick={handlePaymentStatusUpdate} disabled={paymentLoading}>
-              {paymentLoading ? "Төлж байна..." : "Төлөх"}
+          <DialogFooter className="dialog-footer">
+            <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+              Цуцлах
+            </Button>
+            <Button onClick={handlePaymentStatusUpdate} disabled={paymentLoading}>
+              {paymentLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Хадгалж байна...
+                </>
+              ) : (
+                "Хадгалах"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
