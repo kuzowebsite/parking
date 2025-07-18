@@ -118,8 +118,6 @@ export default function ManagerPage() {
     phone: "",
     role: "driver",
     createdAt: "",
-    createdBy: "",
-    active: true,
   })
   const [registrationLoading, setRegistrationLoading] = useState(false)
   const [selectedRole, setSelectedRole] = useState<"manager" | "driver" | "employee">("employee")
@@ -143,7 +141,7 @@ export default function ManagerPage() {
     email: "",
     profileImage: "",
   })
-  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileLoading, setLoadingProfile] = useState(false)
   // Site configuration states
   const [showSiteDialog, setShowSiteDialog] = useState(false)
   const [siteConfig, setSiteConfig] = useState({
@@ -972,7 +970,7 @@ export default function ManagerPage() {
       if (deleteAfterExport) {
         const deletePromises = recordsToExport.map((record) => remove(ref(database, `parking_records/${record.id}`)))
         await Promise.all(deletePromises)
-        alert(`Excel файл амжилттай татагдлаа! ${recordsToExport.length} бүртгэл өгөгдлийн сангаас устгагдла��.`)
+        alert(`Excel файл амжилттай татагдлаа! ${recordsToExport.length} бүртгэл өгөгдлийн сангаас устгагдлаа.`)
       } else {
         alert(`Excel файл амжилттай татагдлаа! ${recordsToExport.length} бүртгэл татагдлаа.`)
       }
@@ -1080,8 +1078,6 @@ export default function ManagerPage() {
         phone: "",
         role: "driver",
         createdAt: "",
-        createdBy: "",
-        active: true,
       })
     } catch (error: any) {
       console.error("Driver registration error:", error)
@@ -1181,7 +1177,7 @@ export default function ManagerPage() {
         return
       }
     }
-    setProfileLoading(true)
+    setLoadingProfile(true)
     try {
       const userId = auth.currentUser?.uid
       if (userId) {
@@ -1210,7 +1206,7 @@ export default function ManagerPage() {
     } catch (error) {
       alert("Профайл шинэчлэхэд алдаа гарлаа")
     }
-    setProfileLoading(false)
+    setLoadingProfile(false)
   }
   const handleSaveSiteConfig = async () => {
     if (!siteConfig.siteName.trim()) {
@@ -2372,33 +2368,33 @@ export default function ManagerPage() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left p-1 text-sm">№</th>
-                          <th className="text-left p-1 text-sm">Машины дугаар</th>
-                          <th className="text-left p-1 text-sm">Засварчин</th>
-                          <th className="text-left p-1 text-sm">Машины марк</th>
-                          <th className="text-left p-1 text-sm">Орсон цаг</th>
-                          <th className="text-left p-1 text-sm">Гарсан цаг</th>
-                          <th className="text-left p-1 text-sm">Зогссон хугацаа</th>
-                          <th className="text-left p-1 text-sm">Төлбөр</th>
-                          <th className="text-left p-1 text-sm">Төлбөрийн төлөв</th>
-                          <th className="text-left p-1 text-sm">Зураг</th>
-                          <th className="text-left p-1 text-sm">Үйлдэл</th>
+                          <th className="text-left px-1 py-0.5 text-xs">№</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Машины дугаар</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Засварчин</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Машины марк</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Орсон цаг</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Гарсан цаг</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Зогссон хугацаа</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Төлбөр</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Төлбөрийн төлөв</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Зураг</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Үйлдэл</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredReportRecords.map((record, index) => (
                           <tr key={record.id} className="border-b hover:bg-muted/50">
-                            <td className="p-1 text-sm">{index + 1}</td>
-                            <td className="p-1 text-sm font-medium">{record.carNumber}</td>
-                            <td className="p-1 text-sm">{record.mechanicName || record.driverName || "-"}</td>
-                            <td className="p-1 text-sm">{record.carBrand || record.parkingArea || "-"}</td>
-                            <td className="p-1 text-sm">{record.entryTime || "-"}</td>
-                            <td className="p-1 text-sm">{record.exitTime || "-"}</td>
-                            <td className="p-1 text-sm">{record.parkingDuration || "-"}</td>
-                            <td className="p-1 text-sm font-medium">
+                            <td className="px-1 py-0.5 text-xs">{index + 1}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.carNumber}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.mechanicName || record.driverName || "-"}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.carBrand || record.parkingArea || "-"}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.entryTime || "-"}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.exitTime || "-"}</td>
+                            <td className="px-1 py-0.5 text-xs">{record.parkingDuration || "-"}</td>
+                            <td className="px-1 py-0.5 text-xs">
                               {calculateParkingFeeForReport(record).toLocaleString()}₮
                             </td>
-                            <td className="p-1">
+                            <td className="px-1 py-0.5">
                               <div className="flex items-center space-x-1">
                                 <Badge
                                   variant={record.paymentStatus === "paid" ? "default" : "secondary"}
@@ -2428,7 +2424,7 @@ export default function ManagerPage() {
                                 )}
                               </div>
                             </td>
-                            <td className="p-1">
+                            <td className="px-1 py-0.5">
                               {record.images && record.images.length > 0 ? (
                                 <Button
                                   variant="ghost"
@@ -2443,7 +2439,7 @@ export default function ManagerPage() {
                                 <span className="text-muted-foreground text-xs">Байхгүй</span>
                               )}
                             </td>
-                            <td className="p-1">
+                            <td className="px-1 py-0.5">
                               <Button
                                 variant="outline"
                                 size="sm"
