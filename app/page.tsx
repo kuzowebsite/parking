@@ -531,6 +531,7 @@ export default function ParkingSystem() {
       const diffInMs = currentTime.getTime() - entryDate.getTime()
       const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60))
 
+      // Always charge at least the first hour fee, even if less than 1 hour has passed
       if (diffInHours <= 1) {
         return areaConfig.firstHour
       } else {
@@ -538,7 +539,7 @@ export default function ParkingSystem() {
       }
     } catch (error) {
       console.error("Error calculating current parking fee:", error)
-      return 0
+      return areaConfig.firstHour // Return first hour fee as fallback
     }
   }
 
@@ -1760,7 +1761,7 @@ export default function ParkingSystem() {
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-10">
                 <div className="mb-6 md:mb-8">
                   <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-2">Бүртгэлийн түүх</h2>
-                  <p className="text-white/70 text-sm md:text-base">Дууссан бүртгэлүүдийн жагса��лт</p>
+                  <p className="text-white/70 text-sm md:text-base">Дууссан бүртгэлүүдийн жагсаалт</p>
                 </div>
                 {/* Filters */}
                 <div className="mb-6">
