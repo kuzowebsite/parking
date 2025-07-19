@@ -29,7 +29,6 @@ export interface UserProfile {
   startDate?: string
   tempPassword?: string
   needsPasswordSetup?: boolean
-  createdBy?: string
 }
 
 export interface DriverRegistration {
@@ -42,43 +41,33 @@ export interface DriverRegistration {
 }
 
 export interface ParkingRecord {
-  id?: string
-  carNumber: string
-  driverName?: string
-  mechanicName?: string
-  parkingArea?: string
-  carBrand?: string
-  entryTime?: string
+  id: string
+  plateNumber: string
+  entryTime: string
   exitTime?: string
-  timestamp: string
-  type: "entry" | "exit" | "completed"
+  status: "parked" | "completed"
+  duration?: number
   amount?: number
-  parkingDuration?: number | string
-  images?: string[]
-  paymentStatus?: "paid" | "unpaid"
-  paymentMethod?: "cash" | "card" | "transfer" | "split"
-  cashAmount?: number
-  cardAmount?: number
-  transferAmount?: number
-  paidAt?: string
-  updatedAt?: string
-  updatedBy?: string
-  employeeId?: string
-  driverId?: string
+  employeeId: string
+  employeeName: string
 }
 
 export interface SiteConfig {
   siteName: string
   siteLogo: string
-  siteBackground?: string
-  updatedAt?: string
-  updatedBy?: string
+  backgroundColor: string
+  primaryColor: string
+  secondaryColor: string
+  parkingRate: number
+  additionalRate: number
 }
 
 export interface PricingConfig {
-  pricePerMinute: number
-  updatedAt?: string
-  updatedBy?: string
+  firstHourRate: number
+  additionalHourRate: number
+  dailyMaxRate?: number
+  weeklyRate?: number
+  monthlyRate?: number
 }
 
 export interface ReportFilter {
@@ -102,19 +91,4 @@ export interface ChartData {
   name: string
   value: number
   date?: string
-}
-
-// Employee interface for the employees node in database
-export interface Employee {
-  id: string
-  name: string
-  position?: string
-  phone?: string
-  email?: string
-  startDate?: string
-  profileImage?: string
-  active: boolean
-  createdAt: string
-  updatedAt?: string
-  createdBy?: string
 }
