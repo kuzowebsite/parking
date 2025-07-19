@@ -969,7 +969,7 @@ export default function ManagerPage() {
       ]
       ws["!cols"] = colWidths
       // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Зогсоолын тайл��н")
+      XLSX.utils.book_append_sheet(wb, ws, "Зогсоолын тайлан")
       // Generate filename with date range
       const startDateStr = dateRangeStart.replace(/-/g, ".")
       const endDateStr = dateRangeEnd.replace(/-/g, ".")
@@ -1104,16 +1104,14 @@ export default function ManagerPage() {
         active: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        // Add password for manual verification (in a real app, this should be hashed)
-        tempPassword: newDriver.password, // This is not secure - implement proper password hashing
-        needsPasswordSetup: true, // Flag to indicate user needs to set up their account
+        // Remove tempPassword and needsPasswordSetup - users are ready for direct login
       }
 
       // Save to users node
       await set(ref(database, `users/${newUserId}`), userData)
 
       alert(
-        `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Бүртгэл" : "Ажилчин"} амжилттай бүртгэгдлээ. Тэд эхний удаа нэвтрэхдээ бүртгэлээ идэвхжүүлэх шаардлагатай.`,
+        `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Бүртгэл" : "Ажилчин"} амжилттай бүртгэгдлээ. Тэд одоо системд нэвтрэх боломжтой.`,
       )
 
       // Form цэвэрлэх
