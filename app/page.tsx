@@ -19,6 +19,7 @@ export default function ParkingSystem() {
 
   // Home states
   const [carNumber, setCarNumber] = useState("")
+  const [carBrand, setCarBrand] = useState("")
   const [recentRecords, setRecentRecords] = useState<ParkingRecord[]>([])
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -732,6 +733,7 @@ export default function ParkingSystem() {
     const currentTime = new Date()
     const record: Omit<ParkingRecord, "id"> = {
       carNumber: carNumber.trim().toUpperCase(),
+      carBrand: carBrand.trim(), // Add this line
       driverName: selectedEmployees.join(", "),
       parkingArea: selectedArea, // Changed from parkingArea.trim().toUpperCase()
       entryTime: currentTime.toLocaleString("mn-MN", {
@@ -758,6 +760,7 @@ export default function ParkingSystem() {
       }, 500)
       // Clear form after successful entry
       setCarNumber("")
+      setCarBrand("")
       setSelectedArea("") // Changed from setParkingArea("")
       setSelectedEmployees([])
       setCapturedImages([]) // Clear captured images
@@ -772,6 +775,10 @@ export default function ParkingSystem() {
   const handleEntry = async () => {
     if (!carNumber.trim()) {
       alert("Машины дугаарыг оруулна уу")
+      return
+    }
+    if (!carBrand.trim()) {
+      alert("Машины маркыг оруулна уу")
       return
     }
     if (!selectedArea) {
@@ -1341,6 +1348,15 @@ export default function ParkingSystem() {
                         />
                       </div>
                       <div className="space-y-2">
+                        <label className="text-white/70 text-sm md:text-base">Машины марк</label>
+                        <input
+                          value={carBrand}
+                          onChange={(e) => setCarBrand(e.target.value)}
+                          placeholder="Toyota Camry"
+                          className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm md:text-base"
+                        />
+                      </div>
+                      <div className="space-y-2">
                         <label className="text-white/70 text-sm md:text-base">Бүс сонгох</label>
                         <select
                           value={selectedArea}
@@ -1683,7 +1699,7 @@ export default function ParkingSystem() {
                                 <span className="text-white/50">Жолооч:</span> {record.driverName}
                               </p>
                               <p className="text-white/70">
-                                <span className="text-white/50">Машины марк:</span> {record.parkingArea}
+                                <span className="text-white/50">Машины марк:</span> {record.carBrand}
                               </p>
                               <p className="text-white/70">
                                 <span className="text-white/50">Орсон цаг:</span>{" "}
@@ -1744,7 +1760,7 @@ export default function ParkingSystem() {
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-10">
                 <div className="mb-6 md:mb-8">
                   <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-2">Бүртгэлийн түүх</h2>
-                  <p className="text-white/70 text-sm md:text-base">Дууссан бүртгэлүүдийн жагсаалт</p>
+                  <p className="text-white/70 text-sm md:text-base">Дууссан бүртгэлүүдийн жагса��лт</p>
                 </div>
                 {/* Filters */}
                 <div className="mb-6">
@@ -1838,7 +1854,7 @@ export default function ParkingSystem() {
                                 <span className="text-white/50">Жолооч:</span> {record.driverName}
                               </p>
                               <p className="text-white/70">
-                                <span className="text-white/50">Машины марк:</span> {record.parkingArea}
+                                <span className="text-white/50">Машины марк:</span> {record.carBrand}
                               </p>
                               <p className="text-white/70">
                                 <span className="text-white/50">Орсон:</span>{" "}
@@ -2216,7 +2232,7 @@ export default function ParkingSystem() {
                   </div>
                   <div>
                     <p className="text-white/50">Машины марк:</p>
-                    <p className="text-white">{exitingRecord.parkingArea}</p>
+                    <p className="text-white">{exitingRecord.carBrand}</p>
                   </div>
                   <div>
                     <p className="text-white/50">Жолооч:</p>
@@ -2292,7 +2308,7 @@ export default function ParkingSystem() {
                     </div>
                     <div>
                       <p className="text-white/50">Машины марк:</p>
-                      <p className="text-white">{duplicateCarData.existingRecord.parkingArea}</p>
+                      <p className="text-white">{duplicateCarData.existingRecord.carBrand}</p>
                     </div>
                     <div className="col-span-2">
                       <p className="text-white/50">Орсон цаг:</p>
