@@ -1406,7 +1406,7 @@ export default function ManagerPage() {
                   <Settings className="w-5 h-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-purple-600/90 backdrop-blur-md border-purple-500/50">
+              <DropdownMenuContent align="end" className="w-48 bg-purple-600/90 backdrop-white-md border-purple-500/50">
                 <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
                   <UserIcon className="w-4 h-4 mr-2" />
                   Профайл
