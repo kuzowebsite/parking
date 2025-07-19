@@ -251,6 +251,7 @@ export default function ManagerPage() {
           },
           general: {
             firstHour: data.general?.firstHour || 0,
+            subsequentHour: data.general?.firstHour || 0,
             subsequentHour: data.general?.subsequentHour || 0,
           },
         })
@@ -1709,7 +1710,7 @@ export default function ManagerPage() {
                         <div key={index} className="flex items-center justify-between py-2">
                           <div>
                             <p className="font-medium">{stat.period}</p>
-                            <p className="text-sm text-muted-foreground">{stat.customers} ү��лчлүүлэгч</p>
+                            <p className="text-sm text-muted-foreground">{stat.customers} үйлчлүүлэгч</p>
                           </div>
                           <div className="text-right">
                             <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
