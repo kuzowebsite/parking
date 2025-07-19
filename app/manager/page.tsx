@@ -1406,16 +1406,16 @@ export default function ManagerPage() {
                   <Settings className="w-5 h-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
+              <DropdownMenuContent align="end" className="w-48 bg-purple-600/90 backdrop-blur-md border-purple-500/50">
+                <DropdownMenuItem onClick={() => setShowProfileDialog(true)} className="text-white hover:bg-purple-500/50">
                   <UserIcon className="w-4 h-4 mr-2" />
                   Профайл
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowSiteDialog(true)}>
+                <DropdownMenuItem onClick={() => setShowSiteDialog(true)} className="text-white hover:bg-purple-500/50">
                   <Globe className="w-4 h-4 mr-2" />
                   Сайт бүртгэл
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowPricingDialog(true)}>
+                <DropdownMenuItem onClick={() => setShowPricingDialog(true)} className="text-white hover:bg-purple-500/50">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
@@ -1426,7 +1426,7 @@ export default function ManagerPage() {
                   </svg>
                   Үнэ
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                <DropdownMenuItem onClick={handleLogout} className="text-red-300 hover:bg-red-500/30 hover:text-red-200">
                   <LogOut className="w-4 h-4 mr-2" />
                   Гарах
                 </DropdownMenuItem>
@@ -1946,21 +1946,21 @@ export default function ManagerPage() {
                                 strokeLinejoin="round"
                                 strokeWidth={2}
                                 d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                              />
-                            </svg>
-                            {manager.phone || "Утас бүртгэгдээгүй"}
+                                />
+                              </svg>
+                              {manager.phone || "Утас бүртгэгдээгүй"}
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <Badge variant={manager.active ? "default" : "secondary"}>
+                                {manager.active ? "Идэвхтэй" : "Идэвхгүй"}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <Badge variant={manager.active ? "default" : "secondary"}>
-                              {manager.active ? "Идэвхтэй" : "Идэвхгүй"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-              </div>
               {/* Drivers Section */}
               <div className="space-y-6">
                 <div className="flex items-center space-x-3">
@@ -2038,19 +2038,20 @@ export default function ManagerPage() {
                                 strokeLinejoin="round"
                                 strokeWidth={2}
                                 d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                              />
-                            </svg>
-                            {driver.phone || "Утас бүртгэгдээгүй"}
+                                />
+                              </svg>
+                              {driver.phone || "Утас бүртгэгдээгүй"}
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <Badge variant={driver.active ? "default" : "secondary"}>
+                                {driver.active ? "Идэвхтэй" : "Идэвхгүй"}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <Badge variant={driver.active ? "default" : "secondary"}>
-                              {driver.active ? "Идэвхтэй" : "Идэвхгүй"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2529,108 +2530,106 @@ export default function ManagerPage() {
           </TabsContent>
         </Tabs>
       </main>
-      {/* Date Range Picker Dialog */}
-      <Dialog open={showDateRangePicker} onOpenChange={setShowDateRangePicker}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Огнооны хязгаар сонгох</DialogTitle>
-            <DialogDescription className="dialog-description">
-              Хяналтын самбарт харуулах огнооны хязгаарыг сонгоно уу
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Эхлэх огноо</Label>
-                <Input
-                  type="date"
-                  value={customDateRange.startDate}
-                  onChange={(e) => setCustomDateRange({ ...customDateRange, startDate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Дуусах огноо</Label>
-                <Input
-                  type="date"
-                  value={customDateRange.endDate}
-                  onChange={(e) => setCustomDateRange({ ...customDateRange, endDate: e.target.value })}
-                />
-              </div>
-            </div>
+  ;<Dialog open={showDateRangePicker} onOpenChange={setShowDateRangePicker}>
+    <DialogContent className="dialog-content">
+      <DialogHeader className="dialog-header">
+        <DialogTitle className="dialog-title">Огнооны хязгаар сонгох</DialogTitle>
+        <DialogDescription className="dialog-description">
+          Хяналтын самбарт харуулах огнооны хязгаарыг сонгоно уу
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Эхлэх огноо</Label>
+            <Input
+              type="date"
+              value={customDateRange.startDate}
+              onChange={(e) => setCustomDateRange({ ...customDateRange, startDate: e.target.value })}
+            />
           </div>
-          <DialogFooter className="dialog-footer">
-            <Button variant="outline" onClick={() => setShowDateRangePicker(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={applyCustomDateRange}>Хэрэглэх</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Date Range Export Dialog */}
-      <Dialog open={showDateRangeDialog} onOpenChange={setShowDateRangeDialog}>
-        <DialogContent className="dialog-content date-range-dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Огноогоор Excel татах</DialogTitle>
-            <DialogDescription className="dialog-description">
-              Тодорхой хугацааны бүртгэлийг Excel файлаар татах
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Эхлэх огноо</Label>
-                <Input type="date" value={dateRangeStart} onChange={(e) => setDateRangeStart(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Дуусах огноо</Label>
-                <Input type="date" value={dateRangeEnd} onChange={(e) => setDateRangeEnd(e.target.value)} />
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <Checkbox
-                id="deleteAfterExport"
-                checked={deleteAfterExport}
-                onCheckedChange={(checked) => setDeleteAfterExport(checked as boolean)}
-              />
-              <Label htmlFor="deleteAfterExport" className="text-destructive font-medium">
-                Татсаны дараа бүртгэлийг өгөгдлийн сангаас устгах
-              </Label>
-            </div>
+          <div className="space-y-2">
+            <Label>Дуусах огноо</Label>
+            <Input
+              type="date"
+              value={customDateRange.endDate}
+              onChange={(e) => setCustomDateRange({ ...customDateRange, endDate: e.target.value })}
+            />
           </div>
-          <DialogFooter className="dialog-footer">
-            <Button variant="outline" onClick={() => setShowDateRangeDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={handleDateRangeExport} disabled={exportLoading}>
-              {exportLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Татаж байна...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4 mr-2" />
-                  Excel татах
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Image Viewer Modal */}
-      {showImageViewer && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
-          <div className="relative max-w-4xl max-h-full p-4">
-            <button onClick={closeImageViewer} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            {currentImages.length > 1 && (
-              <>
+        </div>
+      </div>
+      <DialogFooter className="dialog-footer">
+        <Button variant="outline" onClick={() => setShowDateRangePicker(false)}>
+          Цуцлах
+        </Button>
+        <Button onClick={applyCustomDateRange}>Хэрэглэх</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  ;<Dialog open={showDateRangeDialog} onOpenChange={setShowDateRangeDialog}>
+    <DialogContent className="dialog-content date-range-dialog-content">
+      <DialogHeader className="dialog-header">
+        <DialogTitle className="dialog-title">Огноогоор Excel татах</DialogTitle>
+        <DialogDescription className="dialog-description">
+          Тодорхой хугацааны бүртгэлийг Excel файлаар татах
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Эхлэх огноо</Label>
+            <Input type="date" value={dateRangeStart} onChange={(e) => setDateRangeStart(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Дуусах огноо</Label>
+            <Input type="date" value={dateRangeEnd} onChange={(e) => setDateRangeEnd(e.target.value)} />
+          </div>
+        </div>
+        <div className="flex items-center space-x-2 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <Checkbox
+            id="deleteAfterExport"
+            checked={deleteAfterExport}
+            onCheckedChange={(checked) => setDeleteAfterExport(checked as boolean)}
+          />
+          <Label htmlFor="deleteAfterExport" className="text-destructive font-medium">
+            Татсаны дараа бүртгэлийг өгөгдлийн сангаас устгах
+          </Label>
+        </div>
+      </div>
+      <DialogFooter className="dialog-footer">
+        <Button variant="outline" onClick={() => setShowDateRangeDialog(false)}>
+          Цуцлах
+        </Button>
+        <Button onClick={handleDateRangeExport} disabled={exportLoading}>
+          {exportLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Татаж байна...
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4 mr-2" />
+              Excel татах
+            </>
+          )}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  showImageViewer && (
+    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+      <div className="relative max-w-4xl max-h-full p-4">
+        <button onClick={closeImageViewer} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        {currentImages.length > 1 &&
+          (
+            <>
                 <button
                   onClick={prevImage}
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10"
+                  className=\"absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10"
                 >
                   <ChevronLeft className="w-8 h-8" />
                 </button>
@@ -2641,445 +2640,437 @@ export default function ManagerPage() {
                   <ChevronRight className="w-8 h-8" />
                 </button>
               </>
-            )}
+          )}
+        <img
+          src={currentImages[currentImageIndex] || "/placeholder.svg"}
+          alt={`Image ${currentImageIndex + 1}`}
+          className="max-w-full max-h-full object-contain"
+        />
+        {currentImages.length > 1 && (
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
+            {currentImageIndex + 1} / {currentImages.length}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+  ;<Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
+    <DialogContent className="dialog-content">
+      <DialogHeader className="dialog-header">
+        <DialogTitle className="dialog-title">Ажилчин нэмэх</DialogTitle>
+        <DialogDescription className="dialog-description">Шинэ ажилчны мэдээлэл оруулна уу</DialogDescription>
+      </DialogHeader>
+      <form onSubmit={handleAddEmployee} className="space-y-4">
+        <div className="space-y-2">
+          <Label>Овог нэр *</Label>
+          <Input
+            value={newEmployee.name}
+            onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+            placeholder="Овог нэрээ оруулна уу"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Албан тушаал</Label>
+          <Input
+            value={newEmployee.position}
+            onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
+            placeholder="Албан тушаал"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Утасны дугаар</Label>
+          <Input
+            value={newEmployee.phone}
+            onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+            placeholder="99112233"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Ажилд орсон огноо</Label>
+          <Input
+            type="date"
+            value={newEmployee.startDate}
+            onChange={(e) => setNewEmployee({ ...newEmployee, startDate: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Профайл зураг</Label>
+          <Input type="file" accept="image/*" onChange={handleEmployeeImageUpload} />
+          {newEmployee.profileImage && (
             <img
-              src={currentImages[currentImageIndex] || "/placeholder.svg"}
-              alt={`Image ${currentImageIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
+              src={newEmployee.profileImage || "/placeholder.svg"}
+              alt="Preview"
+              className="w-20 h-20 object-cover rounded-lg"
             />
-            {currentImages.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
-                {currentImageIndex + 1} / {currentImages.length}
-              </div>
+          )}
+        </div>
+        <DialogFooter className="dialog-footer">
+          <Button type="button" variant="outline" onClick={() => setShowEmployeeDialog(false)}>
+            Цуцлах
+          </Button>
+          <Button type="submit" disabled={employeeLoading}>
+            {employeeLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Нэмж байна...
+              </>
+            ) : (
+              "Ажилчин нэмэх"
             )}
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
+  ;<Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+    <DialogContent className="dialog-content">
+      <DialogHeader className="dialog-header">
+        <DialogTitle className="dialog-title">
+          {editingDriver?.role === "manager" ? "Менежер" : editingDriver?.role === "driver" ? "Бүртгэл" : "Ажилчин"}{" "}
+          засах
+        </DialogTitle>
+        <DialogDescription className="dialog-description">Хэрэглэгчийн мэдээллийг шинэчлэх</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>Овог нэр</Label>
+          <Input
+            value={editDriverData.name}
+            onChange={(e) => setEditDriverData({ ...editDriverData, name: e.target.value })}
+            placeholder="Овог нэр"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Утасны дугаар</Label>
+          <Input
+            value={editDriverData.phone}
+            onChange={(e) => setEditDriverData({ ...editDriverData, phone: e.target.value })}
+            placeholder="Утасны дугаар"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>И-мэйл хаяг</Label>
+          <Input
+            type="email"
+            value={editDriverData.email}
+            onChange={(e) => setEditDriverData({ ...editDriverData, email: e.target.value })}
+            placeholder="И-мэйл хаяг"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Шинэ нууц үг (хоосон үлдээвэл өөрчлөгдөхгүй)</Label>
+          <Input
+            type="password"
+            value={editDriverData.newPassword}
+            onChange={(e) => setEditDriverData({ ...editDriverData, newPassword: e.target.value })}
+            placeholder="Шинэ нууц үг"
+          />
+        </div>
+      </div>
+      <DialogFooter className="dialog-footer">
+        <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+          Цуцлах
+        </Button>
+        <Button onClick={editingEmployee ? handleSaveEmployeeEdit : handleSaveDriverEdit} disabled={editLoading}>
+          {editLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Хадгалж байна...
+            </>
+          ) : (
+            "Хадгалах"
+          )}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  ;<Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+    <DialogContent className="dialog-content">
+      <DialogHeader className="dialog-header">
+        <DialogTitle className="dialog-title">Профайл засах</DialogTitle>
+        <DialogDescription className="dialog-description">Өөрийн мэдээллийг шинэчлэх</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>Овог нэр</Label>
+          <Input
+            value={profileData.name}
+            onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+            placeholder="Овог нэр"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Утасны дугаар</Label>
+          <Input
+            value={profileData.phone}
+            onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+            placeholder="Утасны дугаар"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>И-мэйл хаяг</Label>
+          <Input
+            type="email"
+            value={profileData.email}
+            onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+            placeholder="И-мэйл хаяг"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Профайл зураг</Label>
+          <Input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "profile")} />
+          {profileData.profileImage && (
+            <img
+              src={profileData.profileImage || "/placeholder.svg"}
+              alt="Profile Preview"
+              className="w-20 h-20 object-cover rounded-lg"
+            />
+          )}
+        </div>
+        {/* Password Change Section */}
+        <div className="border-t pt-4 space-y-4">
+          <h4 className="font-medium">Нууц үг өөрчлөх</h4>
+          <div className="space-y-2">
+            <Label>Одоогийн нууц үг</Label>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                placeholder="Одоогийн нууц үг"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Шинэ нууц үг</Label>
+            <Input
+              type="password"
+              value={passwordData.newPassword}
+              onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+              placeholder="Шинэ нууц үг"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Шинэ нууц үг давтах</Label>
+            <div className="relative">
+              <Input
+                type={showConfirmPassword ? "text" : "password"}
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                placeholder="Шинэ нууц үг давтах"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
         </div>
-      )}
-      {/* Employee Dialog */}
-      <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Ажилчин нэмэх</DialogTitle>
-            <DialogDescription className="dialog-description">Шинэ ажилчны мэдээлэл оруулна уу</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleAddEmployee} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Овог нэр *</Label>
-              <Input
-                value={newEmployee.name}
-                onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                placeholder="Овог нэрээ оруулна уу"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Албан тушаал</Label>
-              <Input
-                value={newEmployee.position}
-                onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
-                placeholder="Албан тушаал"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Утасны дугаар</Label>
-              <Input
-                value={newEmployee.phone}
-                onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                placeholder="99112233"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Ажилд орсон огноо</Label>
-              <Input
-                type="date"
-                value={newEmployee.startDate}
-                onChange={(e) => setNewEmployee({ ...newEmployee, startDate: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Профайл зураг</Label>
-              <Input type="file" accept="image/*" onChange={handleEmployeeImageUpload} />
-              {newEmployee.profileImage && (
-                <img
-                  src={newEmployee.profileImage || "/placeholder.svg"}
-                  alt="Preview"
-                  className="w-20 h-20 object-cover rounded-lg"
-                />
-              )}
-            </div>
-            <DialogFooter className="dialog-footer">
-              <Button type="button" variant="outline" onClick={() => setShowEmployeeDialog(false)}>
-                Цуцлах
-              </Button>
-              <Button type="submit" disabled={employeeLoading}>
-                {employeeLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Нэмж байна...
-                  </>
-                ) : (
-                  "Ажилчин нэмэх"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">
-              {editingDriver?.role === "manager" ? "Менежер" : editingDriver?.role === "driver" ? "Бүртгэл" : "Ажилчин"}{" "}
-              засах
-            </DialogTitle>
-            <DialogDescription className="dialog-description">Хэрэглэгчийн мэдээллийг шинэчлэх</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Овог нэр</Label>
-              <Input
-                value={editDriverData.name}
-                onChange={(e) => setEditDriverData({ ...editDriverData, name: e.target.value })}
-                placeholder="Овог нэр"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Утасны дугаар</Label>
-              <Input
-                value={editDriverData.phone}
-                onChange={(e) => setEditDriverData({ ...editDriverData, phone: e.target.value })}
-                placeholder="Утасны дугаар"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>И-мэйл хаяг</Label>
-              <Input
-                type="email"
-                value={editDriverData.email}
-                onChange={(e) => setEditDriverData({ ...editDriverData, email: e.target.value })}
-                placeholder="И-мэйл хаяг"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Шинэ нууц үг (хоосон үлдээвэл өөрчлөгдөхгүй)</Label>
-              <Input
-                type="password"
-                value={editDriverData.newPassword}
-                onChange={(e) => setEditDriverData({ ...editDriverData, newPassword: e.target.value })}
-                placeholder="Шинэ нууц үг"
-              />
-            </div>
+      </div>
+      <DialogFooter className="dialog-footer">
+        <Button variant="outline" onClick={() => setShowProfileDialog(false)}>
+          Цуцлах
+        </Button>
+        <Button onClick={handleSaveProfile} disabled={profileLoading}>
+          {profileLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Хадгалж байна...
+            </>
+          ) : (
+            "Хадгалах"
+          )}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  ;<Dialog open={showSiteDialog} onOpenChange={setShowSiteDialog}>
+    <DialogContent className="dialog-content">
+      <DialogHeader className="dialog-header">
+        <DialogTitle className="dialog-title">Сайт тохиргоо</DialogTitle>
+        <DialogDescription className="dialog-description">Сайтын ерөнхий тохиргоог өөрчлөх</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>Сайтын нэр</Label>
+          <Input
+            value={siteConfig.siteName}
+            onChange={(e) => setSiteConfig({ ...siteConfig, siteName: e.target.value })}
+            placeholder="Сайтын нэр"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Сайтын лого</Label>
+          <Input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "logo")} />
+          {siteConfig.siteLogo && (
+            <img
+              src={siteConfig.siteLogo || "/placeholder.svg"}
+              alt="Logo Preview"
+              className="w-20 h-20 object-contain border rounded-lg"
+            />
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label>Арын дэвсгэр зураг</Label>
+          <Input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "background")} />
+          {siteConfig.siteBackground && (
+            <img
+              src={siteConfig.siteBackground || "/placeholder.svg"}
+              alt="Background Preview"
+              className="w-full h-32 object-cover border rounded-lg"
+            />
+          )}
+        </div>
+      </div>
+      <DialogFooter className="dialog-footer">
+        <Button variant="outline" onClick={() => setShowSiteDialog(false)}>
+          Цуцлах
+        </Button>
+        <Button onClick={handleSaveSiteConfig} disabled={siteLoading}>
+          {siteLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Хадгалж байна...
+            </>
+          ) : (
+            "Хадгалах"
+          )}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  ;<Dialog open={showPricingDialog} onOpenChange={setShowPricingDialog}>
+    <DialogContent className="dialog-content">
+      <DialogHeader className="dialog-header">
+        <DialogTitle className="dialog-title">Үнийн тохиргоо</DialogTitle>
+        <DialogDescription className="dialog-description">Зогсоолын үнийг тохируулах</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>Минут тутмын үнэ (₮)</Label>
+          <Input
+            type="number"
+            min="0"
+            step="1"
+            value={pricingConfig.pricePerMinute}
+            onChange={(e) => setPricingConfig({ ...pricingConfig, pricePerMinute: Number(e.target.value) })}
+            placeholder="Минут тутмын үнэ"
+          />
+          <p className="text-sm text-muted-foreground">Одоогийн тохиргоо: {pricingConfig.pricePerMinute}₮/минут</p>
+        </div>
+      </div>
+      <DialogFooter className="dialog-footer">
+        <Button variant="outline" onClick={() => setShowPricingDialog(false)}>
+          Цуцлах
+        </Button>
+        <Button onClick={handleSavePricingConfig} disabled={pricingLoading}>
+          {pricingLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Хадгалж байна...
+            </>
+          ) : (
+            "Хадгалах"
+          )}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  ;<Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+    <DialogContent className="dialog-content payment-dialog-content">
+      <DialogHeader className="dialog-header">
+        <DialogTitle className="dialog-title">Төлбөрийн төлөв</DialogTitle>
+        <DialogDescription className="dialog-description">Машины дугаар: {selectedRecord?.carNumber}</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div className="space-y-3">
+          <Label className="text-base font-medium">Төлбөрийн хэлбэр</Label>
+          <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3">
+            <Label htmlFor="cash" className="text-right">
+              Бэлэн мөнгө
+            </Label>
+            <Input
+              type="number"
+              id="cash"
+              min="0"
+              value={cashAmountInput}
+              onChange={(e) => setCashAmountInput(Number(e.target.value))}
+              className="w-full"
+              placeholder="0"
+            />
+            <Label htmlFor="card" className="text-right">
+              Карт
+            </Label>
+            <Input
+              type="number"
+              id="card"
+              min="0"
+              value={cardAmountInput}
+              onChange={(e) => setCardAmountInput(Number(e.target.value))}
+              className="w-full"
+              placeholder="0"
+            />
+            <Label htmlFor="transfer" className="text-right">
+              Харилцах
+            </Label>
+            <Input
+              type="number"
+              id="transfer"
+              min="0"
+              value={transferAmountInput}
+              onChange={(e) => setTransferAmountInput(Number(e.target.value))}
+              className="w-full"
+              placeholder="0"
+            />
           </div>
-          <DialogFooter className="dialog-footer">
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={editingEmployee ? handleSaveEmployeeEdit : handleSaveDriverEdit} disabled={editLoading}>
-              {editLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Profile Dialog */}
-      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Профайл засах</DialogTitle>
-            <DialogDescription className="dialog-description">Өөрийн мэдээллийг шинэчлэх</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Овог нэр</Label>
-              <Input
-                value={profileData.name}
-                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                placeholder="Овог нэр"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Утасны дугаар</Label>
-              <Input
-                value={profileData.phone}
-                onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                placeholder="Утасны дугаар"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>И-мэйл хаяг</Label>
-              <Input
-                type="email"
-                value={profileData.email}
-                onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                placeholder="И-мэйл хаяг"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Профайл зураг</Label>
-              <Input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "profile")} />
-              {profileData.profileImage && (
-                <img
-                  src={profileData.profileImage || "/placeholder.svg"}
-                  alt="Profile Preview"
-                  className="w-20 h-20 object-cover rounded-lg"
-                />
-              )}
-            </div>
-            {/* Password Change Section */}
-            <div className="border-t pt-4 space-y-4">
-              <h4 className="font-medium">Нууц үг өөрчлөх</h4>
-              <div className="space-y-2">
-                <Label>Одоогийн нууц үг</Label>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                    placeholder="Одоогийн нууц үг"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Шинэ нууц үг</Label>
-                <Input
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  placeholder="Шинэ нууц үг"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Шинэ нууц үг давтах</Label>
-                <div className="relative">
-                  <Input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                    placeholder="Шинэ нууц үг давтах"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
+        </div>
+        <div className="bg-muted p-4 rounded-lg">
+          <div className="flex justify-between items-center">
+            <span className="font-medium">Нийт төлбөр:</span>
+            <span className="font-bold">
+              {selectedRecord ? calculateParkingFeeForReport(selectedRecord).toLocaleString() : 0}₮
+            </span>
           </div>
-          <DialogFooter className="dialog-footer">
-            <Button variant="outline" onClick={() => setShowProfileDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={handleSaveProfile} disabled={profileLoading}>
-              {profileLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Site Configuration Dialog */}
-      <Dialog open={showSiteDialog} onOpenChange={setShowSiteDialog}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Сайт тохиргоо</DialogTitle>
-            <DialogDescription className="dialog-description">Сайтын ерөнхий тохиргоог өөрчлөх</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Сайтын нэр</Label>
-              <Input
-                value={siteConfig.siteName}
-                onChange={(e) => setSiteConfig({ ...siteConfig, siteName: e.target.value })}
-                placeholder="Сайтын нэр"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Сайтын лого</Label>
-              <Input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "logo")} />
-              {siteConfig.siteLogo && (
-                <img
-                  src={siteConfig.siteLogo || "/placeholder.svg"}
-                  alt="Logo Preview"
-                  className="w-20 h-20 object-contain border rounded-lg"
-                />
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Арын дэвсгэр зураг</Label>
-              <Input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "background")} />
-              {siteConfig.siteBackground && (
-                <img
-                  src={siteConfig.siteBackground || "/placeholder.svg"}
-                  alt="Background Preview"
-                  className="w-full h-32 object-cover border rounded-lg"
-                />
-              )}
-            </div>
+          <div className="flex justify-between items-center">
+            <span className="font-medium">Төлөх төлбөр:</span>
+            <span className="font-bold">
+              {(cashAmountInput + cardAmountInput + transferAmountInput).toLocaleString()}₮
+            </span>
           </div>
-          <DialogFooter className="dialog-footer">
-            <Button variant="outline" onClick={() => setShowSiteDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={handleSaveSiteConfig} disabled={siteLoading}>
-              {siteLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Pricing Configuration Dialog */}
-      <Dialog open={showPricingDialog} onOpenChange={setShowPricingDialog}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Үнийн тохиргоо</DialogTitle>
-            <DialogDescription className="dialog-description">Зогсоолын үнийг тохируулах</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Минут тутмын үнэ (₮)</Label>
-              <Input
-                type="number"
-                min="0"
-                step="1"
-                value={pricingConfig.pricePerMinute}
-                onChange={(e) => setPricingConfig({ ...pricingConfig, pricePerMinute: Number(e.target.value) })}
-                placeholder="Минут тутмын үнэ"
-              />
-              <p className="text-sm text-muted-foreground">Одоогийн тохиргоо: {pricingConfig.pricePerMinute}₮/минут</p>
-            </div>
-          </div>
-          <DialogFooter className="dialog-footer">
-            <Button variant="outline" onClick={() => setShowPricingDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={handleSavePricingConfig} disabled={pricingLoading}>
-              {pricingLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Payment Status Dialog */}
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="dialog-content payment-dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Төлбөрийн төлөв</DialogTitle>
-            <DialogDescription className="dialog-description">
-              Машины дугаар: {selectedRecord?.carNumber}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <Label className="text-base font-medium">Төлбөрийн хэлбэр</Label>
-              <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3">
-                <Label htmlFor="cash" className="text-right">
-                  Бэлэн мөнгө
-                </Label>
-                <Input
-                  type="number"
-                  id="cash"
-                  min="0"
-                  value={cashAmountInput}
-                  onChange={(e) => setCashAmountInput(Number(e.target.value))}
-                  className="w-full"
-                  placeholder="0"
-                />
-                <Label htmlFor="card" className="text-right">
-                  Карт
-                </Label>
-                <Input
-                  type="number"
-                  id="card"
-                  min="0"
-                  value={cardAmountInput}
-                  onChange={(e) => setCardAmountInput(Number(e.target.value))}
-                  className="w-full"
-                  placeholder="0"
-                />
-                <Label htmlFor="transfer" className="text-right">
-                  Харилцах
-                </Label>
-                <Input
-                  type="number"
-                  id="transfer"
-                  min="0"
-                  value={transferAmountInput}
-                  onChange={(e) => setTransferAmountInput(Number(e.target.value))}
-                  className="w-full"
-                  placeholder="0"
-                />
-              </div>
-            </div>
-            <div className="bg-muted p-4 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Нийт төлбөр:</span>
-                <span className="font-bold">
-                  {selectedRecord ? calculateParkingFeeForReport(selectedRecord).toLocaleString() : 0}₮
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Төлөх төлбөр:</span>
-                <span className="font-bold">
-                  {(cashAmountInput + cardAmountInput + transferAmountInput).toLocaleString()}₮
-                </span>
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="dialog-footer">
-            <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={handlePaymentStatusUpdate} disabled={paymentLoading}>
-              {paymentLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Хадгалж байна...
-                </>
-              ) : (
-                "Хадгалах"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        </div>
+      </div>
+      <DialogFooter className="dialog-footer">
+        <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+          Цуцлах
+        </Button>
+        <Button onClick={handlePaymentStatusUpdate} disabled={paymentLoading}>
+          {paymentLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Хадгалж байна...
+            </>
+          ) : (
+            "Хадгалах"
+          )}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  </div>
   )
 }
