@@ -178,6 +178,19 @@ export default function ManagerPage() {
   const [cardAmountInput, setCardAmountInput] = useState(0)
   const [transferAmountInput, setTransferAmountInput] = useState(0)
   const [paymentLoading, setPaymentLoading] = useState(false)
+  // Edit record dialog states
+  const [showEditRecordDialog, setShowEditRecordDialog] = useState(false)
+  const [editingRecord, setEditingRecord] = useState<any>(null)
+  const [editRecordData, setEditRecordData] = useState({
+    carNumber: "",
+    mechanicName: "",
+    carBrand: "",
+    entryTime: "",
+    exitTime: "",
+    parkingDuration: "",
+    notes: "",
+  })
+  const [editRecordLoading, setEditRecordLoading] = useState(false)
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -1393,6 +1406,54 @@ export default function ManagerPage() {
     setTransferAmountInput(record.transferAmount || 0)
     setShowPaymentDialog(true)
   }
+  // Open edit record dialog
+  const openEditRecordDialog = (record: any) => {
+    setEditingRecord(record)
+    setEditRecordData({
+      carNumber: record.carNumber || "",
+      mechanicName: record.mechanicName || record.driverName || "",
+      carBrand: record.carBrand || record.parkingArea || "",
+      entryTime: record.entryTime || "",
+      exitTime: record.exitTime || "",
+      parkingDuration: record.parkingDuration || "",
+      notes: record.notes || "",
+    })
+    setShowEditRecordDialog(true)
+  }
+
+  // Handle save record edit
+  const handleSaveRecordEdit = async () => {
+    if (!editingRecord || !editRecordData.carNumber.trim()) {
+      alert("Машины дугаарыг оруулна уу")
+      return
+    }
+
+    setEditRecordLoading(true)
+    try {
+      const updateData: any = {
+        carNumber: editRecordData.carNumber.trim(),
+        mechanicName: editRecordData.mechanicName.trim(),
+        driverName: editRecordData.mechanicName.trim(), // Keep both for compatibility
+        carBrand: editRecordData.carBrand.trim(),
+        parkingArea: editRecordData.carBrand.trim(), // Keep both for compatibility
+        entryTime: editRecordData.entryTime,
+        exitTime: editRecordData.exitTime,
+        parkingDuration: editRecordData.parkingDuration,
+        notes: editRecordData.notes.trim(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: userProfile?.name || "Manager",
+      }
+
+      await update(ref(database, `parking_records/${editingRecord.id}`), updateData)
+      alert("Бүртгэл амжилттай шинэчлэгдлээ")
+      setShowEditRecordDialog(false)
+      setEditingRecord(null)
+    } catch (error) {
+      console.error("Error updating record:", error)
+      alert("Бүртгэл шинэчлэхэд алдаа гарлаа")
+    }
+    setEditRecordLoading(false)
+  }
   const handleLogout = async () => {
     if (confirm("Та гарахдаа итгэлтэй байна уу?")) {
       await signOut(auth)
@@ -2493,7 +2554,8 @@ export default function ManagerPage() {
                           <th className="text-left px-1 py-0.5 text-xs">Төлбөр</th>
                           <th className="text-left px-1 py-0.5 text-xs">Төлбөрийн төлөв</th>
                           <th className="text-left px-1 py-0.5 text-xs">Зураг</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Үйлдэл</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Төлбөр</th>
+                          <th className="text-left px-1 py-0.5 text-xs">Засах</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2557,10 +2619,34 @@ export default function ManagerPage() {
                               )}
                             </td>
                             <td className="px-1 py-0.5">
+                              {record.paymentStatus === "paid" ? (
+                                <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                                  Төлсөн
+                                </Badge>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openPaymentDialog(record)}
+                                  className="text-xs"
+                                >
+                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                                    />
+                                  </svg>
+                                  Төлбөр
+                                </Button>
+                              )}
+                            </td>
+                            <td className="px-1 py-0.5">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => openPaymentDialog(record)}
+                                onClick={() => openEditRecordDialog(record)}
                                 className="text-xs"
                               >
                                 <Edit className="w-3 h-3 mr-1" />
@@ -3245,6 +3331,96 @@ export default function ManagerPage() {
             </Button>
             <Button onClick={handlePaymentStatusUpdate} disabled={paymentLoading}>
               {paymentLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Хадгалж байна...
+                </>
+              ) : (
+                "Хадгалах"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Edit Record Dialog */}
+      <Dialog open={showEditRecordDialog} onOpenChange={setShowEditRecordDialog}>
+        <DialogContent className="dialog-content max-w-2xl">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title">Бүртгэл засах</DialogTitle>
+            <DialogDescription className="dialog-description">
+              Зогсоолын бүртгэлийн мэдээллийг шинэчлэх
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Машины дугаар *</Label>
+                <Input
+                  value={editRecordData.carNumber}
+                  onChange={(e) => setEditRecordData({ ...editRecordData, carNumber: e.target.value })}
+                  placeholder="Машины дугаар"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Засварчин</Label>
+                <Input
+                  value={editRecordData.mechanicName}
+                  onChange={(e) => setEditRecordData({ ...editRecordData, mechanicName: e.target.value })}
+                  placeholder="Засварчны нэр"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Машины марк</Label>
+                <Input
+                  value={editRecordData.carBrand}
+                  onChange={(e) => setEditRecordData({ ...editRecordData, carBrand: e.target.value })}
+                  placeholder="Машины марк"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Зогссон хугацаа</Label>
+                <Input
+                  value={editRecordData.parkingDuration}
+                  onChange={(e) => setEditRecordData({ ...editRecordData, parkingDuration: e.target.value })}
+                  placeholder="Жишээ: 2 цаг 30 минут"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Орсон цаг</Label>
+                <Input
+                  value={editRecordData.entryTime}
+                  onChange={(e) => setEditRecordData({ ...editRecordData, entryTime: e.target.value })}
+                  placeholder="Орсон цаг"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Гарсан цаг</Label>
+                <Input
+                  value={editRecordData.exitTime}
+                  onChange={(e) => setEditRecordData({ ...editRecordData, exitTime: e.target.value })}
+                  placeholder="Гарсан цаг"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Тэмдэглэл</Label>
+              <Input
+                value={editRecordData.notes}
+                onChange={(e) => setEditRecordData({ ...editRecordData, notes: e.target.value })}
+                placeholder="Нэмэлт тэмдэглэл"
+              />
+            </div>
+          </div>
+          <DialogFooter className="dialog-footer">
+            <Button variant="outline" onClick={() => setShowEditRecordDialog(false)}>
+              Цуцлах
+            </Button>
+            <Button onClick={handleSaveRecordEdit} disabled={editRecordLoading}>
+              {editRecordLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Хадгалж байна...
