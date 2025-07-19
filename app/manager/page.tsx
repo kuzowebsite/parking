@@ -40,6 +40,7 @@ import {
   EyeOff,
 } from "lucide-react"
 import * as XLSX from "xlsx"
+
 export default function ManagerPage() {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -179,6 +180,7 @@ export default function ManagerPage() {
     })
     return unsubscribe
   }, [])
+
   const loadUserProfile = async (userId: string) => {
     const profileRef = ref(database, `users/${userId}`)
     onValue(profileRef, (snapshot) => {
@@ -233,6 +235,7 @@ export default function ManagerPage() {
     // In the loadUserProfile function, after the existing load calls around line 200, add:
     loadAvailableEmployees()
   }
+
   // Load drivers from database
   const loadDrivers = () => {
     const usersRef = ref(database, "users")
@@ -249,6 +252,7 @@ export default function ManagerPage() {
       }
     })
   }
+
   // Enhanced dashboard data loading with better analytics
   const loadDashboardData = (startDate?: string, endDate?: string) => {
     setDashboardLoading(true)
@@ -403,6 +407,7 @@ export default function ManagerPage() {
       setDashboardLoading(false)
     })
   }
+
   // Apply custom date range
   const applyCustomDateRange = () => {
     if (!customDateRange.startDate || !customDateRange.endDate) {
@@ -419,6 +424,7 @@ export default function ManagerPage() {
     loadDashboardData(customDateRange.startDate, customDateRange.endDate)
     setShowDateRangePicker(false)
   }
+
   // Reset to default (last 6 months)
   const resetToDefaultRange = () => {
     setCustomDateRange({
@@ -429,6 +435,7 @@ export default function ManagerPage() {
     loadDashboardData()
     setShowDateRangePicker(false)
   }
+
   // Load employees from users table where role is 'employee'
   const loadEmployees = () => {
     // Load from employees node
@@ -462,6 +469,7 @@ export default function ManagerPage() {
       })
     })
   }
+
   // Load employees with login access (role = 'employee' from users table)
   const loadLoginEmployees = () => {
     const usersRef = ref(database, "users")
@@ -478,6 +486,7 @@ export default function ManagerPage() {
       }
     })
   }
+
   // Load managers from database
   const loadManagers = () => {
     const usersRef = ref(database, "users")
@@ -494,6 +503,7 @@ export default function ManagerPage() {
       }
     })
   }
+
   // Add this function after the loadManagers function, around line 300
   const loadAvailableEmployees = () => {
     const employeesRef = ref(database, "employees")
@@ -509,6 +519,7 @@ export default function ManagerPage() {
       }
     })
   }
+
   // Handle driver operations
   const handleDeleteDriver = async (driverId: string, driverName: string) => {
     if (!confirm(`${driverName} бүртгэлийг устгахдаа итгэлтэй байна уу?`)) {
@@ -521,6 +532,7 @@ export default function ManagerPage() {
       alert("Бүртгэл устгахад алдаа гарлаа")
     }
   }
+
   // In handleEditDriver function:
   const handleEditDriver = (driver: UserProfile) => {
     setEditingDriver(driver)
@@ -532,6 +544,7 @@ export default function ManagerPage() {
     })
     setShowEditDialog(true)
   }
+
   const handleToggleDriverStatus = async (driverId: string, currentStatus: boolean, driverName: string) => {
     const newStatus = !currentStatus
     const statusText = newStatus ? "идэвхжүүлэх" : "идэвхгүй болгох"
@@ -548,6 +561,7 @@ export default function ManagerPage() {
       alert("Бүргэлийн төлөв өөрчлөхөд алдаа гарлаа")
     }
   }
+
   // Handle employee image upload
   const handleEmployeeImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -565,6 +579,7 @@ export default function ManagerPage() {
       reader.readAsDataURL(file)
     }
   }
+
   // Add employee
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -614,6 +629,7 @@ export default function ManagerPage() {
     }
     setEmployeeLoading(false)
   }
+
   // In handleEditEmployee function:
   const handleEditEmployee = (employee: UserProfile) => {
     setEditingEmployee(employee)
@@ -625,6 +641,7 @@ export default function ManagerPage() {
     })
     setShowEditDialog(true)
   }
+
   // In handleSaveEmployeeEdit function:
   const handleSaveEmployeeEdit = async () => {
     if (!editingEmployee || !editDriverData.name.trim() || !editDriverData.email.trim()) {
@@ -654,6 +671,7 @@ export default function ManagerPage() {
     }
     setEditLoading(false)
   }
+
   // Delete employee
   const handleDeleteEmployee = async (employeeId: string, employeeName: string) => {
     if (!confirm(`${employeeName} ажилчныг устгахдаа итгэлтэй байна уу?`)) {
@@ -669,6 +687,7 @@ export default function ManagerPage() {
       alert("Ажилчин устгахад алдаа гарлаа")
     }
   }
+
   // Toggle employee status
   const handleToggleEmployeeStatus = async (employeeId: string, currentStatus: boolean, employeeName: string) => {
     const newStatus = !currentStatus
@@ -693,6 +712,7 @@ export default function ManagerPage() {
       alert("Ажилчны төлөв өөрчлөхөд алдаа гарлаа")
     }
   }
+
   // Handle manager operations
   const handleDeleteManager = async (managerId: string, managerName: string) => {
     if (!confirm(`${managerName} менежерийг устгахдаа итгэлтэй байна уу?`)) {
@@ -705,6 +725,7 @@ export default function ManagerPage() {
       alert("Менежер устгахад алдаа гарлаа")
     }
   }
+
   const handleEditManager = (manager: UserProfile) => {
     setEditingDriver(manager)
     setEditDriverData({
@@ -715,6 +736,7 @@ export default function ManagerPage() {
     })
     setShowEditDialog(true)
   }
+
   const handleToggleManagerStatus = async (managerId: string, currentStatus: boolean, managerName: string) => {
     const newStatus = !currentStatus
     const statusText = newStatus ? "идэвхжүүлэх" : "идэвхгүй болгох"
@@ -731,6 +753,7 @@ export default function ManagerPage() {
       alert("Менежерийн төлөв өөрчлөхөд алдаа гарлаа")
     }
   }
+
   const loadReportRecords = () => {
     setReportLoading(true)
     const recordsRef = ref(database, "parking_records")
@@ -749,6 +772,7 @@ export default function ManagerPage() {
       setReportLoading(false)
     })
   }
+
   const calculateParkingFee = (entryTime: string, exitTime: string): number => {
     if (!entryTime || !exitTime || pricingConfig.pricePerMinute === 0) {
       return 0
@@ -782,6 +806,7 @@ export default function ManagerPage() {
       return 0
     }
   }
+
   const calculateParkingFeeForReport = (record: any): number => {
     // If individual payment amounts are stored, sum them up
     if (record.cashAmount !== undefined || record.cardAmount !== undefined || record.transferAmount !== undefined) {
@@ -793,6 +818,7 @@ export default function ManagerPage() {
     }
     return record.amount || 0
   }
+
   // Filter records by date range
   const getDateRangeFilteredRecords = () => {
     if (!dateRangeStart || !dateRangeEnd) {
@@ -806,23 +832,28 @@ export default function ManagerPage() {
       return recordDate >= startDate && recordDate <= endDate
     })
   }
+
   // Image viewer functions
   const openImageViewer = (images: string[], startIndex = 0) => {
     setCurrentImages(images)
     setCurrentImageIndex(startIndex)
     setShowImageViewer(true)
   }
+
   const closeImageViewer = () => {
     setShowImageViewer(false)
     setCurrentImages([])
     setCurrentImageIndex(0)
   }
+
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % currentImages.length)
   }
+
   const prevImage = () => {
     setCurrentImageIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length)
   }
+
   // Handle keyboard navigation for image viewer
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -843,6 +874,7 @@ export default function ManagerPage() {
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [showImageViewer, currentImages.length])
+
   const exportToExcel = () => {
     try {
       // Create workbook and worksheet
@@ -908,6 +940,7 @@ export default function ManagerPage() {
       alert("Excel файл татахад алдаа гарлаа")
     }
   }
+
   // Export with date range and optional deletion
   const handleDateRangeExport = async () => {
     if (!dateRangeStart || !dateRangeEnd) {
@@ -969,7 +1002,7 @@ export default function ManagerPage() {
       ]
       ws["!cols"] = colWidths
       // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Зогсоолын тайл��н")
+      XLSX.utils.book_append_sheet(wb, ws, "Зогсоолын тайлан")
       // Generate filename with date range
       const startDateStr = dateRangeStart.replace(/-/g, ".")
       const endDateStr = dateRangeEnd.replace(/-/g, ".")
@@ -1005,16 +1038,19 @@ export default function ManagerPage() {
     }
     setExportLoading(false)
   }
+
   // Get unique mechanic names for filter
   const getAvailableMechanicNames = () => {
     const names = reportRecords.map((record) => record.mechanicName || record.driverName)
     return [...new Set(names)].filter((name) => name).sort()
   }
+
   // Get unique years for report filter
   const getReportAvailableYears = () => {
     const years = reportRecords.map((record) => new Date(record.timestamp).getFullYear())
     return [...new Set(years)].sort((a, b) => b - a)
   }
+
   // Filter report records
   useEffect(() => {
     let filtered = [...reportRecords]
@@ -1076,6 +1112,7 @@ export default function ManagerPage() {
     reportFilterMechanic,
     reportFilterPaymentStatus,
   ])
+
   const handleRegisterDriver = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newDriver.email || !newDriver.password || !newDriver.name) {
@@ -1097,6 +1134,7 @@ export default function ManagerPage() {
 
       // Database дээр хэрэглэгчийн мэдээлэл хадгалах
       const userData: UserProfile = {
+        id: newUserId,
         name: newDriver.name.trim(),
         phone: newDriver.phone.trim(),
         email: newDriver.email,
@@ -1131,6 +1169,7 @@ export default function ManagerPage() {
     }
     setRegistrationLoading(false)
   }
+
   // Add this function after the handleRegisterDriver function, around line 1000
   const handleEmployeeSelection = (employeeId: string) => {
     const selectedEmployee = availableEmployees.find((emp) => emp.id === employeeId)
@@ -1142,6 +1181,7 @@ export default function ManagerPage() {
       })
     }
   }
+
   // In handleSaveDriverEdit function:
   const handleSaveDriverEdit = async () => {
     if (!editingDriver || !editDriverData.name.trim() || !editDriverData.email.trim()) {
@@ -1173,6 +1213,7 @@ export default function ManagerPage() {
     }
     setEditLoading(false)
   }
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, type: "profile" | "logo" | "background") => {
     const file = e.target.files?.[0]
     if (file) {
@@ -1195,6 +1236,7 @@ export default function ManagerPage() {
       reader.readAsDataURL(file)
     }
   }
+
   const handleSaveProfile = async () => {
     if (!profileData.name.trim()) {
       alert("Нэрээ оруулна уу")
@@ -1246,6 +1288,7 @@ export default function ManagerPage() {
     }
     setLoadingProfile(false)
   }
+
   const handleSaveSiteConfig = async () => {
     if (!siteConfig.siteName.trim()) {
       alert("Сайтын нэрийг оруулна уу")
@@ -1267,6 +1310,7 @@ export default function ManagerPage() {
     }
     setSiteLoading(false)
   }
+
   const handleSavePricingConfig = async () => {
     if (pricingConfig.pricePerMinute < 0) {
       alert("Үнэ сөрөг тоо байж болохгүй")
@@ -1286,6 +1330,7 @@ export default function ManagerPage() {
     }
     setPricingLoading(false)
   }
+
   // Handle payment status update
   const handlePaymentStatusUpdate = async () => {
     if (!selectedRecord) return
@@ -1340,6 +1385,7 @@ export default function ManagerPage() {
     }
     setPaymentLoading(false)
   }
+
   // Open payment dialog
   const openPaymentDialog = (record: any) => {
     setSelectedRecord(record)
@@ -1349,11 +1395,13 @@ export default function ManagerPage() {
     setTransferAmountInput(record.transferAmount || 0)
     setShowPaymentDialog(true)
   }
+
   const handleLogout = async () => {
     if (confirm("Та гарахдаа итгэлтэй байна уу?")) {
       await signOut(auth)
     }
   }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1364,6 +1412,7 @@ export default function ManagerPage() {
       </div>
     )
   }
+
   if (!user || !userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1374,6 +1423,7 @@ export default function ManagerPage() {
       </div>
     )
   }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -2418,110 +2468,69 @@ export default function ManagerPage() {
                   </div>
                 ) : filteredReportRecords.length === 0 ? (
                   <div className="text-center py-12">
-                    <svg
-                      className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <h3 className="text-lg font-medium mb-2">Тайлан байхгүй</h3>
-                    <p className="text-muted-foreground">Одоогоор ямар нэгэн бүртгэл олдсонгүй</p>
+                    <Car className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <h3 className="text-lg font-medium mb-2">Бүртгэл олдсонгүй</h3>
+                    <p className="text-muted-foreground">Шүүлтүүрийг өөрчилж дахин оролдоно уу</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left px-1 py-0.5 text-xs">№</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Машины дугаар</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Засварчин</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Машины марк</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Орсон цаг</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Гарсан цаг</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Зогссон хугацаа</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Төлбөр</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Төлбөрийн төлөв</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Зураг</th>
-                          <th className="text-left px-1 py-0.5 text-xs">Үйлдэл</th>
+                          <th className="text-left p-3 font-medium">№</th>
+                          <th className="text-left p-3 font-medium">Машины дугаар</th>
+                          <th className="text-left p-3 font-medium">Засварчин</th>
+                          <th className="text-left p-3 font-medium">Машины марк</th>
+                          <th className="text-left p-3 font-medium">Орсон цаг</th>
+                          <th className="text-left p-3 font-medium">Гарсан цаг</th>
+                          <th className="text-left p-3 font-medium">Зогссон хугацаа</th>
+                          <th className="text-left p-3 font-medium">Төлбөр</th>
+                          <th className="text-left p-3 font-medium">Төлбөрийн төлөв</th>
+                          <th className="text-left p-3 font-medium">Зураг</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredReportRecords.map((record, index) => (
                           <tr key={record.id} className="border-b hover:bg-muted/50">
-                            <td className="px-1 py-0.5 text-xs">{index + 1}</td>
-                            <td className="px-1 py-0.5 text-xs">{record.carNumber}</td>
-                            <td className="px-1 py-0.5 text-xs">{record.mechanicName || record.driverName || "-"}</td>
-                            <td className="px-1 py-0.5 text-xs">{record.carBrand || record.parkingArea || "-"}</td>
-                            <td className="px-1 py-0.5 text-xs">{record.entryTime || "-"}</td>
-                            <td className="px-1 py-0.5 text-xs">{record.exitTime || "-"}</td>
-                            <td className="px-1 py-0.5 text-xs">{record.parkingDuration || "-"}</td>
-                            <td className="px-1 py-0.5 text-xs">
+                            <td className="p-3">{index + 1}</td>
+                            <td className="p-3 font-medium">{record.carNumber}</td>
+                            <td className="p-3">{record.mechanicName || record.driverName || "-"}</td>
+                            <td className="p-3">{record.carBrand || record.parkingArea || "-"}</td>
+                            <td className="p-3 text-sm">{record.entryTime || "-"}</td>
+                            <td className="p-3 text-sm">{record.exitTime || "-"}</td>
+                            <td className="p-3 text-sm">{record.parkingDuration || "-"}</td>
+                            <td className="p-3 font-medium">
                               {calculateParkingFeeForReport(record).toLocaleString()}₮
                             </td>
-                            <td className="px-1 py-0.5">
-                              <div className="flex items-center space-x-1">
+                            <td className="p-3">
+                              <div className="flex items-center space-x-2">
                                 <Badge
                                   variant={record.paymentStatus === "paid" ? "default" : "secondary"}
-                                  className={
-                                    record.paymentStatus === "paid"
-                                      ? "bg-green-100 text-green-800 hover:bg-green-200 text-xs"
-                                      : "bg-red-100 text-red-800 hover:bg-red-200 text-xs"
-                                  }
+                                  className="cursor-pointer"
+                                  onClick={() => openPaymentDialog(record)}
                                 >
                                   {record.paymentStatus === "paid" ? "Төлсөн" : "Төлөөгүй"}
                                 </Badge>
-                                {record.paymentStatus === "paid" &&
-                                  (record.cashAmount > 0 || record.cardAmount > 0 || record.transferAmount > 0) && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {(() => {
-                                        const paymentDetails = []
-                                        if (record.cashAmount > 0) {
-                                          paymentDetails.push(`Бэлэн: ${record.cashAmount.toLocaleString()}₮`)
-                                        }
-                                        if (record.cardAmount > 0) {
-                                          paymentDetails.push(`Карт: ${record.cardAmount.toLocaleString()}₮`)
-                                        }
-                                        if (record.transferAmount > 0) {
-                                          paymentDetails.push(`Харилцах: ${record.transferAmount.toLocaleString()}₮`)
-                                        }
-                                        return paymentDetails.join(", ") || "Төлсөн"
-                                      })()}
-                                    </Badge>
-                                  )}
+                                {record.paymentStatus === "paid" && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {record.cashAmount > 0 && <div>Бэлэн: {record.cashAmount.toLocaleString()}₮</div>}
+                                    {record.cardAmount > 0 && <div>Карт: {record.cardAmount.toLocaleString()}₮</div>}
+                                    {record.transferAmount > 0 && (
+                                      <div>Харилцах: {record.transferAmount.toLocaleString()}₮</div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </td>
-                            <td className="px-1 py-0.5">
+                            <td className="p-3">
                               {record.images && record.images.length > 0 ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openImageViewer(record.images, 0)}
-                                  className="text-blue-600 hover:text-blue-800 text-xs"
-                                >
-                                  <Eye className="w-3 h-3 mr-1" />
+                                <Button variant="outline" size="sm" onClick={() => openImageViewer(record.images, 0)}>
+                                  <Eye className="w-4 h-4 mr-1" />
                                   {record.images.length}
                                 </Button>
                               ) : (
-                                <span className="text-muted-foreground text-xs">Байхгүй</span>
+                                <span className="text-muted-foreground text-sm">Байхгүй</span>
                               )}
-                            </td>
-                            <td className="px-1 py-0.5">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openPaymentDialog(record)}
-                                className="text-xs"
-                              >
-                                <Edit className="w-3 h-3 mr-1" />
-                                Засах
-                              </Button>
                             </td>
                           </tr>
                         ))}
@@ -2536,12 +2545,10 @@ export default function ManagerPage() {
       </main>
       {/* Date Range Picker Dialog */}
       <Dialog open={showDateRangePicker} onOpenChange={setShowDateRangePicker}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Огнооны хязгаар сонгох</DialogTitle>
-            <DialogDescription className="dialog-description">
-              Хяналтын самбарт харуулах огнооны хязгаарыг сонгоно уу
-            </DialogDescription>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Огноо сонгох</DialogTitle>
+            <DialogDescription>Хяналтын самбарт харуулах огнооны хязгаарыг сонгоно уу</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -2562,98 +2569,111 @@ export default function ManagerPage() {
                 />
               </div>
             </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowDateRangePicker(false)}>
+                Цуцлах
+              </Button>
+              <Button onClick={applyCustomDateRange}>Хэрэглэх</Button>
+            </div>
           </div>
-          <DialogFooter className="dialog-footer">
-            <Button variant="outline" onClick={() => setShowDateRangePicker(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={applyCustomDateRange}>Хэрэглэх</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
       {/* Date Range Export Dialog */}
       <Dialog open={showDateRangeDialog} onOpenChange={setShowDateRangeDialog}>
-        <DialogContent className="dialog-content date-range-dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Огноогоор Excel татах</DialogTitle>
-            <DialogDescription className="dialog-description">
-              Тодорхой хугацааны бүртгэлийг Excel файлаар татах
-            </DialogDescription>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Огноогоор Excel татах</DialogTitle>
+            <DialogDescription>Тодорхой хугацааны бүртгэлийг Excel файлаар татах</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Эхлэх огноо</Label>
-                <Input type="date" value={dateRangeStart} onChange={(e) => setDateRangeStart(e.target.value)} />
+                <Input
+                  type="date"
+                  value={dateRangeStart}
+                  onChange={(e) => setDateRangeStart(e.target.value)}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label>Дуусах огноо</Label>
-                <Input type="date" value={dateRangeEnd} onChange={(e) => setDateRangeEnd(e.target.value)} />
+                <Input type="date" value={dateRangeEnd} onChange={(e) => setDateRangeEnd(e.target.value)} required />
               </div>
             </div>
-            <div className="flex items-center space-x-2 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <div className="flex items-center space-x-2">
               <Checkbox
                 id="deleteAfterExport"
                 checked={deleteAfterExport}
                 onCheckedChange={(checked) => setDeleteAfterExport(checked as boolean)}
               />
-              <Label htmlFor="deleteAfterExport" className="text-destructive font-medium">
-                Татсаны дараа бүртгэлийг өгөгдлийн сангаас устгах
+              <Label htmlFor="deleteAfterExport" className="text-sm">
+                Татсаны дараа өгөгдлийг устгах
               </Label>
             </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowDateRangeDialog(false)}>
+                Цуцлах
+              </Button>
+              <Button onClick={handleDateRangeExport} disabled={exportLoading}>
+                {exportLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Татаж байна...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Excel татах
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-          <DialogFooter className="dialog-footer">
-            <Button variant="outline" onClick={() => setShowDateRangeDialog(false)}>
-              Цуцлах
-            </Button>
-            <Button onClick={handleDateRangeExport} disabled={exportLoading}>
-              {exportLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Татаж байна...
-                </>
-              ) : (
-                <>
-                  <Download className="w-4 h-4 mr-2" />
-                  Excel татах
-                </>
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
       {/* Image Viewer Modal */}
       {showImageViewer && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="relative max-w-4xl max-h-full p-4">
-            <button onClick={closeImageViewer} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            {currentImages.length > 1 && (
-              <>
-                <button
-                  onClick={prevImage}
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10"
-                >
-                  <ChevronLeft className="w-8 h-8" />
-                </button>
-                <button
-                  onClick={nextImage}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10"
-                >
-                  <ChevronRight className="w-8 h-8" />
-                </button>
-              </>
-            )}
             <img
               src={currentImages[currentImageIndex] || "/placeholder.svg"}
-              alt={`Image ${currentImageIndex + 1}`}
+              alt={`Зураг ${currentImageIndex + 1}`}
               className="max-w-full max-h-full object-contain"
             />
+            {/* Navigation buttons */}
             {currentImages.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white">
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                  onClick={prevImage}
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/20 border-white/30 text-white hover:bg-white/30"
+                  onClick={nextImage}
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </Button>
+              </>
+            )}
+            {/* Close button */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute top-4 right-4 bg-white/20 border-white/30 text-white hover:bg-white/30"
+              onClick={closeImageViewer}
+            >
+              ✕
+            </Button>
+            {/* Image counter */}
+            {currentImages.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
                 {currentImageIndex + 1} / {currentImages.length}
               </div>
             )}
@@ -2662,48 +2682,52 @@ export default function ManagerPage() {
       )}
       {/* Employee Dialog */}
       <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Ажилчин нэмэх</DialogTitle>
-            <DialogDescription className="dialog-description">Шинэ ажилчны мэдээлэл оруулна уу</DialogDescription>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Шинэ ажилчин нэмэх</DialogTitle>
+            <DialogDescription>Ажилчны мэдээллийг оруулна уу</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddEmployee} className="space-y-4">
             <div className="space-y-2">
-              <Label>Овог нэр *</Label>
+              <Label htmlFor="employeeName">Овог нэр *</Label>
               <Input
+                id="employeeName"
+                placeholder="Овог нэрээ оруулна уу"
                 value={newEmployee.name}
                 onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
-                placeholder="Овог нэрээ оруулна уу"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label>Албан тушаал</Label>
+              <Label htmlFor="employeePosition">Албан тушаал</Label>
               <Input
+                id="employeePosition"
+                placeholder="Албан тушаал"
                 value={newEmployee.position}
                 onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
-                placeholder="Албан тушаал"
               />
             </div>
             <div className="space-y-2">
-              <Label>Утасны дугаар</Label>
+              <Label htmlFor="employeePhone">Утасны дугаар</Label>
               <Input
+                id="employeePhone"
+                placeholder="99112233"
                 value={newEmployee.phone}
                 onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
-                placeholder="99112233"
               />
             </div>
             <div className="space-y-2">
-              <Label>Ажилд орсон огноо</Label>
+              <Label htmlFor="employeeStartDate">Ажилд орсон огноо</Label>
               <Input
+                id="employeeStartDate"
                 type="date"
                 value={newEmployee.startDate}
                 onChange={(e) => setNewEmployee({ ...newEmployee, startDate: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label>Профайл зураг</Label>
-              <Input type="file" accept="image/*" onChange={handleEmployeeImageUpload} />
+              <Label htmlFor="employeeImage">Зураг</Label>
+              <Input id="employeeImage" type="file" accept="image/*" onChange={handleEmployeeImageUpload} />
               {newEmployee.profileImage && (
                 <img
                   src={newEmployee.profileImage || "/placeholder.svg"}
@@ -2712,7 +2736,7 @@ export default function ManagerPage() {
                 />
               )}
             </div>
-            <DialogFooter className="dialog-footer">
+            <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => setShowEmployeeDialog(false)}>
                 Цуцлах
               </Button>
@@ -2723,22 +2747,22 @@ export default function ManagerPage() {
                     Нэмж байна...
                   </>
                 ) : (
-                  "Ажилчин нэмэх"
+                  "Нэмэх"
                 )}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
               {editingDriver?.role === "manager" ? "Менежер" : editingDriver?.role === "driver" ? "Бүртгэл" : "Ажилчин"}{" "}
               засах
             </DialogTitle>
-            <DialogDescription className="dialog-description">Хэрэглэгчийн мэдээллийг шинэчлэх</DialogDescription>
+            <DialogDescription>Хэрэглэгчийн мэдээллийг шинэчлэх</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -2766,17 +2790,8 @@ export default function ManagerPage() {
                 placeholder="И-мэйл хаяг"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Шинэ нууц үг (хоосон үлдээвэл өөрчлөгдөхгүй)</Label>
-              <Input
-                type="password"
-                value={editDriverData.newPassword}
-                onChange={(e) => setEditDriverData({ ...editDriverData, newPassword: e.target.value })}
-                placeholder="Шинэ нууц үг"
-              />
-            </div>
           </div>
-          <DialogFooter className="dialog-footer">
+          <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               Цуцлах
             </Button>
@@ -2790,15 +2805,15 @@ export default function ManagerPage() {
                 "Хадгалах"
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
       {/* Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Профайл засах</DialogTitle>
-            <DialogDescription className="dialog-description">Өөрийн мэдээллийг шинэчлэх</DialogDescription>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Профайл засах</DialogTitle>
+            <DialogDescription>Өөрийн мэдээллийг шинэчлэх</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -2837,7 +2852,7 @@ export default function ManagerPage() {
                 />
               )}
             </div>
-            {/* Password Change Section */}
+            {/* Password Section */}
             <div className="border-t pt-4 space-y-4">
               <h4 className="font-medium">Нууц үг өөрчлөх</h4>
               <div className="space-y-2">
@@ -2853,7 +2868,7 @@ export default function ManagerPage() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -2882,7 +2897,7 @@ export default function ManagerPage() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -2891,7 +2906,7 @@ export default function ManagerPage() {
               </div>
             </div>
           </div>
-          <DialogFooter className="dialog-footer">
+          <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => setShowProfileDialog(false)}>
               Цуцлах
             </Button>
@@ -2905,15 +2920,15 @@ export default function ManagerPage() {
                 "Хадгалах"
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
       {/* Site Configuration Dialog */}
       <Dialog open={showSiteDialog} onOpenChange={setShowSiteDialog}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Сайт тохиргоо</DialogTitle>
-            <DialogDescription className="dialog-description">Сайтын ерөнхий тохиргоог өөрчлөх</DialogDescription>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Сайт тохиргоо</DialogTitle>
+            <DialogDescription>Сайтын ерөнхий тохиргоог өөрчлөх</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -2942,12 +2957,12 @@ export default function ManagerPage() {
                 <img
                   src={siteConfig.siteBackground || "/placeholder.svg"}
                   alt="Background Preview"
-                  className="w-full h-32 object-cover border rounded-lg"
+                  className="w-full h-20 object-cover border rounded-lg"
                 />
               )}
             </div>
           </div>
-          <DialogFooter className="dialog-footer">
+          <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => setShowSiteDialog(false)}>
               Цуцлах
             </Button>
@@ -2961,15 +2976,15 @@ export default function ManagerPage() {
                 "Хадгалах"
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
       {/* Pricing Configuration Dialog */}
       <Dialog open={showPricingDialog} onOpenChange={setShowPricingDialog}>
-        <DialogContent className="dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Үнийн тохиргоо</DialogTitle>
-            <DialogDescription className="dialog-description">Зогсоолын үнийг тохируулах</DialogDescription>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Үнийн тохиргоо</DialogTitle>
+            <DialogDescription>Зогсоолын үнийн тохиргоог өөрчлөх</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -2985,7 +3000,7 @@ export default function ManagerPage() {
               <p className="text-sm text-muted-foreground">Одоогийн тохиргоо: {pricingConfig.pricePerMinute}₮/минут</p>
             </div>
           </div>
-          <DialogFooter className="dialog-footer">
+          <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={() => setShowPricingDialog(false)}>
               Цуцлах
             </Button>
@@ -2999,76 +3014,54 @@ export default function ManagerPage() {
                 "Хадгалах"
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
       {/* Payment Status Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="dialog-content payment-dialog-content">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">Төлбөрийн төлөв</DialogTitle>
-            <DialogDescription className="dialog-description">
-              Машины дугаар: {selectedRecord?.carNumber}
-            </DialogDescription>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Төлбөр бүртгэх</DialogTitle>
+            <DialogDescription>{selectedRecord?.carNumber} - Төлбөрийн мэдээллийг оруулна уу</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-3">
-              <Label className="text-base font-medium">Төлбөрийн хэлбэр</Label>
-              <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3">
-                <Label htmlFor="cash" className="text-right">
-                  Бэлэн мөнгө
-                </Label>
-                <Input
-                  type="number"
-                  id="cash"
-                  min="0"
-                  value={cashAmountInput}
-                  onChange={(e) => setCashAmountInput(Number(e.target.value))}
-                  className="w-full"
-                  placeholder="0"
-                />
-                <Label htmlFor="card" className="text-right">
-                  Карт
-                </Label>
-                <Input
-                  type="number"
-                  id="card"
-                  min="0"
-                  value={cardAmountInput}
-                  onChange={(e) => setCardAmountInput(Number(e.target.value))}
-                  className="w-full"
-                  placeholder="0"
-                />
-                <Label htmlFor="transfer" className="text-right">
-                  Харилцах
-                </Label>
-                <Input
-                  type="number"
-                  id="transfer"
-                  min="0"
-                  value={transferAmountInput}
-                  onChange={(e) => setTransferAmountInput(Number(e.target.value))}
-                  className="w-full"
-                  placeholder="0"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Бэлэн мөнгө (₮)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={cashAmountInput}
+                onChange={(e) => setCashAmountInput(Number(e.target.value) || 0)}
+                placeholder="0"
+              />
             </div>
-            <div className="bg-muted p-4 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Нийт төлбөр:</span>
-                <span className="font-bold">
-                  {selectedRecord ? calculateParkingFeeForReport(selectedRecord).toLocaleString() : 0}₮
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Төлөх төлбөр:</span>
-                <span className="font-bold">
-                  {(cashAmountInput + cardAmountInput + transferAmountInput).toLocaleString()}₮
-                </span>
-              </div>
+            <div className="space-y-2">
+              <Label>Карт (₮)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={cardAmountInput}
+                onChange={(e) => setCardAmountInput(Number(e.target.value) || 0)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Харилцах (₮)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={transferAmountInput}
+                onChange={(e) => setTransferAmountInput(Number(e.target.value) || 0)}
+                placeholder="0"
+              />
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-sm font-medium">
+                Нийт төлбөр: {(cashAmountInput + cardAmountInput + transferAmountInput).toLocaleString()}₮
+              </p>
             </div>
           </div>
-          <DialogFooter className="dialog-footer">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
               Цуцлах
             </Button>
@@ -3079,7 +3072,7 @@ export default function ManagerPage() {
                   Хадгалж байна...
                 </>
               ) : (
-                "Хадгалах"
+                "Төлбөр бүртгэх"
               )}
             </Button>
           </DialogFooter>
