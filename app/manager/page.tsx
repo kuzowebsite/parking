@@ -156,7 +156,18 @@ export default function ManagerPage() {
   // Pricing states
   const [showPricingDialog, setShowPricingDialog] = useState(false)
   const [pricingConfig, setPricingConfig] = useState({
-    pricePerMinute: 0,
+    leather: {
+      firstHour: 0,
+      subsequentHour: 0,
+    },
+    spare: {
+      firstHour: 0,
+      subsequentHour: 0,
+    },
+    general: {
+      firstHour: 0,
+      subsequentHour: 0,
+    },
   })
   const [pricingLoading, setPricingLoading] = useState(false)
   // Payment status dialog states
@@ -216,7 +227,18 @@ export default function ManagerPage() {
       const data = snapshot.val()
       if (data) {
         setPricingConfig({
-          pricePerMinute: data.pricePerMinute || 0,
+          leather: {
+            firstHour: data.leather?.firstHour || 0,
+            subsequentHour: data.leather?.subsequentHour || 0,
+          },
+          spare: {
+            firstHour: data.spare?.firstHour || 0,
+            subsequentHour: data.spare?.subsequentHour || 0,
+          },
+          general: {
+            firstHour: data.general?.firstHour || 0,
+            subsequentHour: data.general?.subsequentHour || 0,
+          },
         })
       }
     })
@@ -750,7 +772,16 @@ export default function ManagerPage() {
     })
   }
   const calculateParkingFee = (entryTime: string, exitTime: string): number => {
-    if (!entryTime || !exitTime || pricingConfig.pricePerMinute === 0) {
+    if (
+      !entryTime ||
+      !exitTime ||
+      pricingConfig.leather.firstHour === 0 ||
+      pricingConfig.leather.subsequentHour === 0 ||
+      pricingConfig.spare.firstHour === 0 ||
+      pricingConfig.spare.subsequentHour === 0 ||
+      pricingConfig.general.firstHour === 0 ||
+      pricingConfig.general.subsequentHour === 0
+    ) {
       return 0
     }
     try {
@@ -776,7 +807,7 @@ export default function ManagerPage() {
       }
       const diffInMs = exitDate.getTime() - entryDate.getTime()
       const diffInMinutes = Math.ceil(diffInMs / (1000 * 60)) // Round up to next minute
-      return Math.max(0, diffInMinutes * pricingConfig.pricePerMinute)
+      return Math.max(0, diffInMinutes * pricingConfig.general.firstHour)
     } catch (error) {
       console.error("Error calculating parking fee:", error)
       return 0
@@ -1263,14 +1294,32 @@ export default function ManagerPage() {
     setSiteLoading(false)
   }
   const handleSavePricingConfig = async () => {
-    if (pricingConfig.pricePerMinute < 0) {
+    if (
+      pricingConfig.leather.firstHour < 0 ||
+      pricingConfig.leather.subsequentHour < 0 ||
+      pricingConfig.spare.firstHour < 0 ||
+      pricingConfig.spare.subsequentHour < 0 ||
+      pricingConfig.general.firstHour < 0 ||
+      pricingConfig.general.subsequentHour < 0
+    ) {
       alert("Үнэ сөрөг тоо байж болохгүй")
       return
     }
     setPricingLoading(true)
     try {
       await set(ref(database, "pricingConfig"), {
-        pricePerMinute: Number(pricingConfig.pricePerMinute),
+        leather: {
+          firstHour: Number(pricingConfig.leather.firstHour),
+          subsequentHour: Number(pricingConfig.leather.subsequentHour),
+        },
+        spare: {
+          firstHour: Number(pricingConfig.spare.firstHour),
+          subsequentHour: Number(pricingConfig.spare.subsequentHour),
+        },
+        general: {
+          firstHour: Number(pricingConfig.general.firstHour),
+          subsequentHour: Number(pricingConfig.general.subsequentHour),
+        },
         updatedAt: new Date().toISOString(),
         updatedBy: userProfile?.name || "Manager",
       })
@@ -1406,7 +1455,7 @@ export default function ManagerPage() {
                   <Settings className="w-5 h-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-purple-600/90 backdrop-white-md border-purple-500/50">
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
                   <UserIcon className="w-4 h-4 mr-2" />
                   Профайл
@@ -2961,23 +3010,150 @@ export default function ManagerPage() {
       </Dialog>
       {/* Pricing Configuration Dialog */}
       <Dialog open={showPricingDialog} onOpenChange={setShowPricingDialog}>
-        <DialogContent className="dialog-content">
+        <DialogContent className="dialog-content max-w-2xl">
           <DialogHeader className="dialog-header">
             <DialogTitle className="dialog-title">Үнийн тохиргоо</DialogTitle>
-            <DialogDescription className="dialog-description">Зогсоолын үнийг тохируулах</DialogDescription>
+            <DialogDescription className="dialog-description">
+              Бүсийн дагуу зогсоолын үнийг тохируулах
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Минут тутмын үнэ (₮)</Label>
-              <Input
-                type="number"
-                min="0"
-                step="1"
-                value={pricingConfig.pricePerMinute}
-                onChange={(e) => setPricingConfig({ ...pricingConfig, pricePerMinute: Number(e.target.value) })}
-                placeholder="Минут тутмын үнэ"
-              />
-              <p className="text-sm text-muted-foreground">Одоогийн тохиргоо: {pricingConfig.pricePerMinute}₮/минут</p>
+          <div className="space-y-6">
+            {/* Арьс бүс */}
+            <div className="space-y-4 p-4 border border-blue-200 rounded-lg bg-blue-50/50">
+              <h3 className="font-semibold text-blue-900">Арьс бүс</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Эхний цагийн үнэ (₮)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={pricingConfig.leather.firstHour}
+                    onChange={(e) =>
+                      setPricingConfig({
+                        ...pricingConfig,
+                        leather: { ...pricingConfig.leather, firstHour: Number(e.target.value) },
+                      })
+                    }
+                    placeholder="Эхний цагийн үнэ"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Дараагийн цаг тутмын үнэ (₮)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={pricingConfig.leather.subsequentHour}
+                    onChange={(e) =>
+                      setPricingConfig({
+                        ...pricingConfig,
+                        leather: { ...pricingConfig.leather, subsequentHour: Number(e.target.value) },
+                      })
+                    }
+                    placeholder="Дараагийн цагийн үнэ"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Сапари бүс */}
+            <div className="space-y-4 p-4 border border-green-200 rounded-lg bg-green-50/50">
+              <h3 className="font-semibold text-green-900">Сапари бүс</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Эхний цагийн үнэ (₮)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={pricingConfig.spare.firstHour}
+                    onChange={(e) =>
+                      setPricingConfig({
+                        ...pricingConfig,
+                        spare: { ...pricingConfig.spare, firstHour: Number(e.target.value) },
+                      })
+                    }
+                    placeholder="Эхний цагийн үнэ"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Дараагийн цаг тутмын үнэ (₮)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={pricingConfig.spare.subsequentHour}
+                    onChange={(e) =>
+                      setPricingConfig({
+                        ...pricingConfig,
+                        spare: { ...pricingConfig.spare, subsequentHour: Number(e.target.value) },
+                      })
+                    }
+                    placeholder="Дараагийн цагийн үнэ"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Талбай бүс */}
+            <div className="space-y-4 p-4 border border-orange-200 rounded-lg bg-orange-50/50">
+              <h3 className="font-semibold text-orange-900">Талбай бүс</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Эхний цагийн үнэ (₮)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={pricingConfig.general.firstHour}
+                    onChange={(e) =>
+                      setPricingConfig({
+                        ...pricingConfig,
+                        general: { ...pricingConfig.general, firstHour: Number(e.target.value) },
+                      })
+                    }
+                    placeholder="Эхний цагийн үнэ"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Дараагийн цаг тутмын үнэ (₮)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={pricingConfig.general.subsequentHour}
+                    onChange={(e) =>
+                      setPricingConfig({
+                        ...pricingConfig,
+                        general: { ...pricingConfig.general, subsequentHour: Number(e.target.value) },
+                      })
+                    }
+                    placeholder="Дараагийн цагийн үнэ"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-muted p-4 rounded-lg">
+              <h4 className="font-medium mb-2">Одоогийн тохиргоо:</h4>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="font-medium text-blue-600">Арьс:</p>
+                  <p>Эхний: {pricingConfig.leather.firstHour}₮</p>
+                  <p>Дараагийн: {pricingConfig.leather.subsequentHour}₮</p>
+                </div>
+                <div>
+                  <p className="font-medium text-green-600">Сапари:</p>
+                  <p>Эхний: {pricingConfig.spare.firstHour}₮</p>
+                  <p>Дараагийн: {pricingConfig.spare.subsequentHour}₮</p>
+                </div>
+                <div>
+                  <p className="font-medium text-orange-600">Талбай:</p>
+                  <p>Эхний: {pricingConfig.general.firstHour}₮</p>
+                  <p>Дараагийн: {pricingConfig.general.subsequentHour}₮</p>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter className="dialog-footer">
