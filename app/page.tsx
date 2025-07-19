@@ -13,11 +13,10 @@ export default function ParkingSystem() {
   const [loading, setLoading] = useState(true)
   const [showSplash, setShowSplash] = useState(true)
   const [loadingProgress, setLoadingProgress] = useState(0)
-  const router = useRouter()
+  const [router] = useRouter()
 
   // Home states
   const [carNumber, setCarNumber] = useState("")
-  const [parkingArea, setParkingArea] = useState("")
   const [recentRecords, setRecentRecords] = useState<ParkingRecord[]>([])
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -71,7 +70,18 @@ export default function ParkingSystem() {
 
   // Pricing state
   const [pricingConfig, setPricingConfig] = useState({
-    pricePerMinute: 0,
+    leather: {
+      firstHour: 0,
+      subsequentHour: 0,
+    },
+    spare: {
+      firstHour: 0,
+      subsequentHour: 0,
+    },
+    general: {
+      firstHour: 0,
+      subsequentHour: 0,
+    },
   })
 
   // Site configuration state
@@ -126,6 +136,9 @@ export default function ParkingSystem() {
   const [showImageViewer, setShowImageViewer] = useState(false)
   const [currentImages, setCurrentImages] = useState<string[]>([])
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
+  // Add new state
+  const [selectedArea, setSelectedArea] = useState("")
 
   useEffect(() => {
     // Splash screen loading animation
@@ -420,7 +433,18 @@ export default function ParkingSystem() {
             const data = snapshot.val()
             if (data) {
               setPricingConfig({
-                pricePerMinute: data.pricePerMinute || 0,
+                leather: {
+                  firstHour: data.leather?.firstHour || 0,
+                  subsequentHour: data.leather?.subsequentHour || 0,
+                },
+                spare: {
+                  firstHour: data.spare?.firstHour || 0,
+                  subsequentHour: data.spare?.subsequentHour || 0,
+                },
+                general: {
+                  firstHour: data.general?.firstHour || 0,
+                  subsequentHour: data.general?.subsequentHour || 0,
+                },
               })
             }
           })
@@ -484,10 +508,16 @@ export default function ParkingSystem() {
   }
 
   // Real-time parking fee calculation функцийг засварлах
-  const calculateCurrentParkingFee = (entryTime: string): number => {
-    if (!entryTime || pricingConfig.pricePerMinute === 0) {
+  const calculateCurrentParkingFee = (entryTime: string, area = "general"): number => {
+    if (!entryTime) {
       return 0
     }
+
+    const areaConfig = pricingConfig[area as keyof typeof pricingConfig] || pricingConfig.general
+    if (areaConfig.firstHour === 0) {
+      return 0
+    }
+
     try {
       const entryDate = parseFlexibleDate(entryTime)
       const currentTime = new Date()
@@ -496,10 +526,13 @@ export default function ParkingSystem() {
         return 0
       }
       const diffInMs = currentTime.getTime() - entryDate.getTime()
-      const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60)) // Calculate in hours and round up
-      // Хэрэв 1 цагаас бага бол 1 цаг гэж тооцох
-      const hoursToCharge = Math.max(1, diffInHours)
-      return hoursToCharge * (pricingConfig.pricePerMinute || 100) // pricePerMinute is now price per hour
+      const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60))
+
+      if (diffInHours <= 1) {
+        return areaConfig.firstHour
+      } else {
+        return areaConfig.firstHour + (diffInHours - 1) * areaConfig.subsequentHour
+      }
     } catch (error) {
       console.error("Error calculating current parking fee:", error)
       return 0
@@ -515,8 +548,7 @@ export default function ParkingSystem() {
         return 0
       }
       const diffInMs = endDate.getTime() - entryDate.getTime()
-      const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60)) // Calculate in hours and round up
-      // Хэрэв 1 цагаас бага бол 1 цаг гэж тооцох
+      const diffInHours = Math.ceil(diffInMs / (1000 * 60 * 60))
       return Math.max(1, diffInHours)
     } catch (error) {
       console.error("Error calculating parking duration:", error)
@@ -699,7 +731,7 @@ export default function ParkingSystem() {
     const record: Omit<ParkingRecord, "id"> = {
       carNumber: carNumber.trim().toUpperCase(),
       driverName: selectedEmployees.join(", "),
-      parkingArea: parkingArea.trim().toUpperCase(),
+      parkingArea: selectedArea, // Changed from parkingArea.trim().toUpperCase()
       entryTime: currentTime.toLocaleString("mn-MN", {
         year: "numeric",
         month: "2-digit",
@@ -724,7 +756,7 @@ export default function ParkingSystem() {
       }, 500)
       // Clear form after successful entry
       setCarNumber("")
-      setParkingArea("")
+      setSelectedArea("") // Changed from setParkingArea("")
       setSelectedEmployees([])
       setCapturedImages([]) // Clear captured images
     } catch (error) {
@@ -740,8 +772,8 @@ export default function ParkingSystem() {
       alert("Машины дугаарыг оруулна уу")
       return
     }
-    if (!parkingArea.trim()) {
-      alert("Машины маркийг оруулна уу")
+    if (!selectedArea) {
+      alert("Бүс сонгоно уу")
       return
     }
     if (selectedEmployees.length === 0) {
@@ -781,9 +813,15 @@ export default function ParkingSystem() {
   }
 
   // Function to calculate parking fee
-  const calculateParkingFee = (entryTime: string, exitTime: string): number => {
+  const calculateParkingFee = (entryTime: string, exitTime: string, area = "general"): number => {
     const duration = calculateParkingDuration(entryTime, exitTime)
-    return duration * (pricingConfig.pricePerMinute || 100) // pricePerMinute is now price per hour
+    const areaConfig = pricingConfig[area as keyof typeof pricingConfig] || pricingConfig.general
+
+    if (duration <= 1) {
+      return areaConfig.firstHour
+    } else {
+      return areaConfig.firstHour + (duration - 1) * areaConfig.subsequentHour
+    }
   }
 
   // Handle exit from records tab - show custom confirmation
@@ -797,7 +835,7 @@ export default function ParkingSystem() {
       minute: "2-digit",
     })
     // Calculate parking duration and fee
-    const calculatedFee = calculateParkingFee(record.entryTime || "", exitTimeFormatted)
+    const calculatedFee = calculateParkingFee(record.entryTime || "", exitTimeFormatted, record.parkingArea)
     const parkingDuration = calculateParkingDuration(record.entryTime || "", exitTimeFormatted)
     // Set exit details and show modal
     setExitingRecord({ ...record, id: recordId })
@@ -1301,13 +1339,25 @@ export default function ParkingSystem() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-white/70 text-sm md:text-base">Машины марк</label>
-                        <input
-                          value={parkingArea}
-                          onChange={(e) => setParkingArea(e.target.value.toUpperCase())}
-                          placeholder="Жишээ: Приус, Камри, Соната"
-                          className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm md:text-base"
-                        />
+                        <label className="text-white/70 text-sm md:text-base">Бүс сонгох</label>
+                        <select
+                          value={selectedArea}
+                          onChange={(e) => setSelectedArea(e.target.value)}
+                          className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm md:text-base"
+                        >
+                          <option value="" className="bg-gray-800 text-white">
+                            Бүс сонгоно уу
+                          </option>
+                          <option value="leather" className="bg-gray-800 text-white">
+                            Арьс бүс
+                          </option>
+                          <option value="spare" className="bg-gray-800 text-white">
+                            Сапари бүс
+                          </option>
+                          <option value="general" className="bg-gray-800 text-white">
+                            Талбай бүс
+                          </option>
+                        </select>
                       </div>
                     </div>
                     <div className="employee-dropdown-container">
@@ -1373,10 +1423,16 @@ export default function ParkingSystem() {
                                         )}
                                       </div>
                                       <div className="flex-1">
-                                        <div className="font-medium text-sm">{employee.name}</div>
-                                        {employee.phone && (
-                                          <div className="text-xs text-gray-400">{employee.phone}</div>
-                                        )}
+                                        <p className="font-medium text-white">{employee.name}</p>
+                                        <div className="flex items-center space-x-2 text-xs text-gray-300">
+                                          {employee.position && <span>{employee.position}</span>}
+                                          {employee.phone && (
+                                            <>
+                                              {employee.position && <span>•</span>}
+                                              <span>{employee.phone}</span>
+                                            </>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                   ))}
@@ -1385,6 +1441,40 @@ export default function ParkingSystem() {
                             </div>
                           )}
                         </div>
+                        {selectedEmployees.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {selectedEmployees.map((employeeName) => {
+                              const employee = employees.find((emp) => emp.name === employeeName)
+                              return (
+                                <span
+                                  key={employeeName}
+                                  className="inline-flex items-center px-3 py-1 bg-emerald-400/20 text-emerald-400 border border-emerald-400/30 rounded-lg text-sm"
+                                >
+                                  <div className="flex flex-col">
+                                    <span>{employeeName}</span>
+                                    {employee?.phone && <span className="text-xs opacity-70">{employee.phone}</span>}
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setSelectedEmployees(selectedEmployees.filter((name) => name !== employeeName))
+                                    }}
+                                    className="ml-2 hover:text-emerald-300"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="current" viewBox="0 0 24 24">
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                      />
+                                    </svg>
+                                  </button>
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {/* Image capture section */}
@@ -1392,63 +1482,61 @@ export default function ParkingSystem() {
                       <label className="text-white/70 text-sm md:text-base">Зураг авах (Заавал биш)</label>
                       <div className="flex flex-wrap gap-3">
                         {/* Camera button */}
-                        {capturedImages.length < 2 && (
-                          <button
-                            onClick={() => startCamera()}
-                            className="flex items-center space-x-2 px-4 py-3 bg-blue-500/20 border border-blue-400/30 rounded-xl text-blue-300 hover:bg-blue-500/30 transition-colors text-sm"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                            </svg>
-                            <span>Камер</span>
-                          </button>
-                        )}
-                        {/* File upload button */}
-                        {capturedImages.length < 2 && (
-                          <label className="flex items-center space-x-2 px-4 py-3 bg-green-500/20 border border-green-400/30 rounded-xl text-green-300 hover:bg-green-500/30 transition-colors cursor-pointer text-sm">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                              />
-                            </svg>
-                            <span>Файл</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleImageUploadFromFile}
-                              className="hidden"
+                        <button
+                          onClick={() => startCamera()}
+                          disabled={capturedImages.length >= 2}
+                          className="flex items-center space-x-2 px-4 py-2 bg-blue-500/20 border border-blue-400/30 rounded-lg text-blue-400 hover:bg-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
                             />
-                          </label>
-                        )}
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                          </svg>
+                          <span>Камер</span>
+                        </button>
+                        {/* File upload button */}
+                        <label className="flex items-center space-x-2 px-4 py-2 bg-green-500/20 border border-green-400/30 rounded-lg text-green-400 hover:bg-green-500/30 transition-colors cursor-pointer text-sm">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                            />
+                          </svg>
+                          <span>Файл</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUploadFromFile}
+                            className="hidden"
+                            disabled={capturedImages.length >= 2}
+                          />
+                        </label>
+                        <span className="text-white/50 text-xs self-center">({capturedImages.length}/2 зураг)</span>
                       </div>
                       {/* Display captured images */}
                       {capturedImages.length > 0 && (
                         <div className="flex flex-wrap gap-3">
                           {capturedImages.map((image, index) => (
-                            <div key={index} className="relative group">
+                            <div key={index} className="relative">
                               <img
                                 src={image || "/placeholder.svg"}
                                 alt={`Captured ${index + 1}`}
-                                className="w-20 h-20 object-cover rounded-lg border border-white/20 cursor-pointer"
-                                onClick={() => openImageViewer(capturedImages, index)}
+                                className="w-20 h-20 object-cover rounded-lg border border-white/20"
                               />
                               <button
                                 onClick={() => removeImage(index)}
-                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
                               >
                                 ×
                               </button>
@@ -1460,9 +1548,9 @@ export default function ParkingSystem() {
                     <button
                       onClick={handleEntry}
                       disabled={actionLoading}
-                      className="w-full px-6 py-4 md:px-8 md:py-5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white rounded-xl md:rounded-2xl font-medium transition-colors text-sm md:text-base"
+                      className="w-full px-6 py-4 md:px-8 md:py-5 bg-emerald-400 text-black font-semibold rounded-xl md:rounded-2xl hover:bg-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
                     >
-                      {actionLoading ? "Бүртгэж байна..." : "Орсон бүртгэл"}
+                      {actionLoading ? "Бүртгэж байна..." : "Орсон бүртгэл хийх"}
                     </button>
                   </div>
                 </div>
@@ -1471,15 +1559,15 @@ export default function ParkingSystem() {
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-10">
                 <div className="mb-6 md:mb-8">
                   <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-2">Сүүлийн бүртгэлүүд</h2>
-                  <p className="text-white/70 text-sm md:text-base">Таны сүүлийн 3 бүртгэл</p>
+                  <p className="text-white/70 text-sm md:text-base">Таны хийсэн сүүлийн 3 бүртгэл</p>
                 </div>
-                <div className="space-y-4 md:space-y-6">
+                <div className="space-y-4">
                   {recentRecords.length === 0 ? (
                     <div className="text-center py-8 md:py-12">
                       <div className="w-16 h-16 md:w-20 md:h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Car className="w-8 h-8 md:w-10 md:h-10 text-white/50" />
                       </div>
-                      <p className="text-white/70 text-sm md:text-base">Бүртгэл байхгүй байна</p>
+                      <p className="text-white/70 text-sm md:text-base">Одоогоор бүртгэл байхгүй байна</p>
                     </div>
                   ) : (
                     recentRecords.map((record) => (
@@ -1488,61 +1576,52 @@ export default function ParkingSystem() {
                         className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6"
                       >
                         <div className="flex flex-col md:flex-row md:items-center justify-between space-y-3 md:space-y-0">
-                          <div className="space-y-1 md:space-y-2">
+                          <div className="space-y-1">
                             <div className="flex items-center space-x-3">
-                              <span className="text-white font-medium text-sm md:text-base">{record.carNumber}</span>
+                              <span className="text-white font-semibold text-sm md:text-base">{record.carNumber}</span>
                               <span
-                                className={`px-2 py-1 rounded-full text-xs ${
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   record.type === "entry"
-                                    ? "bg-blue-500/20 text-blue-300"
+                                    ? "bg-blue-500/20 text-blue-400 border border-blue-400/30"
                                     : record.type === "completed"
-                                      ? "bg-green-500/20 text-green-300"
-                                      : "bg-gray-500/20 text-gray-300"
+                                      ? "bg-green-500/20 text-green-400 border border-green-400/30"
+                                      : "bg-gray-500/20 text-gray-400 border border-gray-400/30"
                                 }`}
                               >
-                                {record.type === "entry" ? "Орсон" : record.type === "completed" ? "Дууссан" : "Гарсан"}
+                                {record.type === "entry"
+                                  ? "Орсон"
+                                  : record.type === "completed"
+                                    ? "Гарсан"
+                                    : "Хаагдсан"}
                               </span>
                             </div>
-                            <div className="text-white/70 text-xs md:text-sm">
-                              <div>Орсон: {formatDetailedTime(record.entryTime || "")}</div>
-                              {record.exitTime && <div>Гарсан: {formatDetailedTime(record.exitTime)}</div>}
-                              {record.driverName && <div>Жолооч: {record.driverName}</div>}
-                              {record.parkingArea && <div>Марк: {record.parkingArea}</div>}
-                            </div>
+                            <p className="text-white/70 text-xs md:text-sm">
+                              {record.driverName} • {record.parkingArea}
+                            </p>
+                            <p className="text-white/50 text-xs">
+                              {formatDetailedTime(record.entryTime || record.timestamp)}
+                            </p>
                           </div>
-                          <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-4">
                             {record.type === "entry" && (
                               <div className="text-right">
-                                <div className="text-white/70 text-xs">Одоогийн төлбөр</div>
-                                <div className="text-emerald-400 font-medium text-sm md:text-base">
-                                  {calculateCurrentParkingFee(record.entryTime || "").toLocaleString()}₮
-                                </div>
+                                <p className="text-white/70 text-xs">Одоогийн төлбөр</p>
+                                <p className="text-emerald-400 font-semibold text-sm md:text-base">
+                                  {calculateCurrentParkingFee(
+                                    record.entryTime || record.timestamp,
+                                    record.parkingArea,
+                                  ).toLocaleString()}
+                                  ₮
+                                </p>
                               </div>
                             )}
-                            {record.amount !== undefined && record.amount > 0 && (
+                            {record.type === "completed" && record.amount && (
                               <div className="text-right">
-                                <div className="text-white/70 text-xs">Төлбөр</div>
-                                <div className="text-emerald-400 font-medium text-sm md:text-base">
+                                <p className="text-white/70 text-xs">Төлсөн дүн</p>
+                                <p className="text-emerald-400 font-semibold text-sm md:text-base">
                                   {record.amount.toLocaleString()}₮
-                                </div>
+                                </p>
                               </div>
-                            )}
-                            {/* Show images if available */}
-                            {record.images && record.images.length > 0 && (
-                              <button
-                                onClick={() => openImageViewer(record.images || [], 0)}
-                                className="flex items-center space-x-1 px-3 py-2 bg-blue-500/20 border border-blue-400/30 rounded-lg text-blue-300 hover:bg-blue-500/30 transition-colors text-xs"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                  />
-                                </svg>
-                                <span>{record.images.length}</span>
-                              </button>
                             )}
                           </div>
                         </div>
@@ -1573,14 +1652,14 @@ export default function ParkingSystem() {
                     />
                   </div>
                 </div>
-                <div className="space-y-4 md:space-y-6">
+                <div className="space-y-4">
                   {filteredActiveParkingRecords.length === 0 ? (
                     <div className="text-center py-8 md:py-12">
                       <div className="w-16 h-16 md:w-20 md:h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Car className="w-8 h-8 md:w-10 md:h-10 text-white/50" />
                       </div>
                       <p className="text-white/70 text-sm md:text-base">
-                        {activeRecordsSearch ? "Хайлтын үр дүн олдсонгүй" : "Идэвхтэй бүртгэл байхгүй байна"}
+                        {activeRecordsSearch ? "Хайлтын үр дүн олдсонгүй" : "Одоогоор идэвхтэй бүртгэл байхгүй байна"}
                       </p>
                     </div>
                   ) : (
@@ -1590,56 +1669,66 @@ export default function ParkingSystem() {
                         className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6"
                       >
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-                          <div className="space-y-2">
+                          <div className="flex-1 space-y-2">
                             <div className="flex items-center space-x-3">
-                              <span className="text-white font-medium text-base md:text-lg">{record.carNumber}</span>
-                              <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">
+                              <span className="text-white font-semibold text-lg md:text-xl">{record.carNumber}</span>
+                              <span className="px-3 py-1 bg-blue-500/20 text-blue-400 border border-blue-400/30 rounded-full text-xs font-medium">
                                 Идэвхтэй
                               </span>
                             </div>
-                            <div className="text-white/70 text-sm space-y-1">
-                              <div>Орсон: {formatDetailedTime(record.entryTime || "")}</div>
-                              {record.driverName && <div>Жолооч: {record.driverName}</div>}
-                              {record.parkingArea && <div>Марк: {record.parkingArea}</div>}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                              <p className="text-white/70">
+                                <span className="text-white/50">Жолооч:</span> {record.driverName}
+                              </p>
+                              <p className="text-white/70">
+                                <span className="text-white/50">Машины марк:</span> {record.parkingArea}
+                              </p>
+                              <p className="text-white/70">
+                                <span className="text-white/50">Орсон цаг:</span>{" "}
+                                {formatDetailedTime(record.entryTime || record.timestamp)}
+                              </p>
+                              <p className="text-white/70">
+                                <span className="text-white/50">Зогссон хугацаа:</span>{" "}
+                                {calculateParkingDuration(record.entryTime || record.timestamp)} цаг
+                              </p>
                             </div>
                           </div>
                           <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                            <div className="text-left sm:text-right">
-                              <div className="text-white/70 text-xs">Одоогийн төлбөр</div>
-                              <div className="text-emerald-400 font-medium text-lg">
-                                {calculateCurrentParkingFee(record.entryTime || "").toLocaleString()}₮
-                              </div>
-                              <div className="text-white/50 text-xs">
-                                {calculateParkingDuration(record.entryTime || "")} цаг
-                              </div>
+                            <div className="text-center sm:text-right">
+                              <p className="text-white/70 text-sm">Одоогийн төлбөр</p>
+                              <p className="text-emerald-400 font-bold text-xl md:text-2xl">
+                                {calculateCurrentParkingFee(
+                                  record.entryTime || record.timestamp,
+                                  record.parkingArea,
+                                ).toLocaleString()}
+                                ₮
+                              </p>
                             </div>
-                            <div className="flex items-center space-x-3">
-                              {/* Show images if available */}
-                              {record.images && record.images.length > 0 && (
-                                <button
-                                  onClick={() => openImageViewer(record.images || [], 0)}
-                                  className="flex items-center space-x-1 px-3 py-2 bg-blue-500/20 border border-blue-400/30 rounded-lg text-blue-300 hover:bg-blue-500/30 transition-colors text-xs"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z"
-                                    />
-                                  </svg>
-                                  <span>{record.images.length}</span>
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleExitFromRecord(record.id || "", record)}
-                                className="px-4 py-2 bg-red-500/20 border border-red-400/30 rounded-lg text-red-300 hover:bg-red-500/30 transition-colors text-sm"
-                              >
-                                Гарах
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => handleExitFromRecord(record.id!, record)}
+                              className="px-4 py-2 md:px-6 md:py-3 bg-red-500/20 border border-red-400/30 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors text-sm font-medium"
+                            >
+                              Гарсан
+                            </button>
                           </div>
                         </div>
+                        {/* Display images if available */}
+                        {record.images && record.images.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-white/10">
+                            <p className="text-white/70 text-sm mb-2">Зургууд:</p>
+                            <div className="flex space-x-2">
+                              {record.images.map((image, index) => (
+                                <img
+                                  key={index}
+                                  src={image || "/placeholder.svg"}
+                                  alt={`Record image ${index + 1}`}
+                                  className="w-16 h-16 object-cover rounded-lg border border-white/20 cursor-pointer hover:scale-110 transition-transform"
+                                  onClick={() => openImageViewer(record.images || [], index)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -1652,16 +1741,16 @@ export default function ParkingSystem() {
             <div className="space-y-6 md:space-y-8 lg:space-y-10 max-w-6xl mx-auto">
               <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl md:rounded-3xl p-6 md:p-8 lg:p-10">
                 <div className="mb-6 md:mb-8">
-                  <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-2">Түүх</h2>
-                  <p className="text-white/70 text-sm md:text-base">Бүх дууссан бүртгэлүүд</p>
+                  <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-2">Бүртгэлийн түүх</h2>
+                  <p className="text-white/70 text-sm md:text-base">Дууссан бүртгэлүүдийн жагсаалт</p>
                 </div>
                 {/* Filters */}
                 <div className="mb-6">
                   <button
                     onClick={() => setFilterCollapsed(!filterCollapsed)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white hover:bg-white/20 transition-colors text-sm md:text-base"
+                    className="flex items-center space-x-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white hover:bg-white/20 transition-colors mb-4"
                   >
-                    <span>Шүүлтүүр</span>
+                    <span className="text-sm md:text-base">Шүүлтүүр</span>
                     <svg
                       className={`w-4 h-4 transition-transform ${filterCollapsed ? "rotate-0" : "rotate-180"}`}
                       fill="none"
@@ -1672,13 +1761,13 @@ export default function ParkingSystem() {
                     </svg>
                   </button>
                   {!filterCollapsed && (
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl">
                       <div className="space-y-2">
                         <label className="text-white/70 text-sm">Жил</label>
                         <select
                           value={filterYear}
                           onChange={(e) => setFilterYear(e.target.value)}
-                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white focus:outline-none focus:border-emerald-400 text-sm"
+                          className="w-full px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400"
                         >
                           <option value="" className="bg-gray-800">
                             Бүх жил
@@ -1695,7 +1784,7 @@ export default function ParkingSystem() {
                         <select
                           value={filterMonth}
                           onChange={(e) => setFilterMonth(e.target.value)}
-                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white focus:outline-none focus:border-emerald-400 text-sm"
+                          className="w-full px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400"
                         >
                           <option value="" className="bg-gray-800">
                             Бүх сар
@@ -1713,19 +1802,20 @@ export default function ParkingSystem() {
                           value={filterCarNumber}
                           onChange={(e) => setFilterCarNumber(e.target.value)}
                           placeholder="Хайх..."
-                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 text-sm"
+                          className="w-full px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-white/50 text-sm focus:outline-none focus:border-emerald-400"
                         />
                       </div>
                     </div>
                   )}
                 </div>
-                <div className="space-y-4 md:space-y-6">
+                {/* Records List */}
+                <div className="space-y-4">
                   {filteredRecords.length === 0 ? (
                     <div className="text-center py-8 md:py-12">
                       <div className="w-16 h-16 md:w-20 md:h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
                         <History className="w-8 h-8 md:w-10 md:h-10 text-white/50" />
                       </div>
-                      <p className="text-white/70 text-sm md:text-base">Түүх байхгүй байна</p>
+                      <p className="text-white/70 text-sm md:text-base">Шүүлтэд тохирох бүртгэл олдсонгүй</p>
                     </div>
                   ) : (
                     filteredRecords.map((record) => (
@@ -1734,49 +1824,57 @@ export default function ParkingSystem() {
                         className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6"
                       >
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-                          <div className="space-y-2">
+                          <div className="flex-1 space-y-2">
                             <div className="flex items-center space-x-3">
-                              <span className="text-white font-medium text-base md:text-lg">{record.carNumber}</span>
-                              <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs">
+                              <span className="text-white font-semibold text-lg md:text-xl">{record.carNumber}</span>
+                              <span className="px-3 py-1 bg-green-500/20 text-green-400 border border-green-400/30 rounded-full text-xs font-medium">
                                 Дууссан
                               </span>
                             </div>
-                            <div className="text-white/70 text-sm space-y-1">
-                              <div>Орсон: {formatDetailedTime(record.entryTime || "")}</div>
-                              {record.exitTime && <div>Гарсан: {formatDetailedTime(record.exitTime)}</div>}
-                              {record.driverName && <div>Жолооч: {record.driverName}</div>}
-                              {record.parkingArea && <div>Марк: {record.parkingArea}</div>}
-                              {record.parkingDuration && <div>Хугацаа: {record.parkingDuration} цаг</div>}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
+                              <p className="text-white/70">
+                                <span className="text-white/50">Жолооч:</span> {record.driverName}
+                              </p>
+                              <p className="text-white/70">
+                                <span className="text-white/50">Машины марк:</span> {record.parkingArea}
+                              </p>
+                              <p className="text-white/70">
+                                <span className="text-white/50">Орсон:</span>{" "}
+                                {formatDetailedTime(record.entryTime || record.timestamp)}
+                              </p>
+                              <p className="text-white/70">
+                                <span className="text-white/50">Гарсан:</span>{" "}
+                                {record.exitTime ? formatDetailedTime(record.exitTime) : "Тодорхойгүй"}
+                              </p>
+                              <p className="text-white/70">
+                                <span className="text-white/50">Хугацаа:</span>{" "}
+                                {record.parkingDuration ||
+                                  calculateParkingDuration(record.entryTime || record.timestamp, record.exitTime)}{" "}
+                                цаг
+                              </p>
+                              <p className="text-emerald-400 font-semibold">
+                                <span className="text-white/50">Төлбөр:</span> {(record.amount || 0).toLocaleString()}₮
+                              </p>
                             </div>
                           </div>
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                            {record.amount !== undefined && record.amount > 0 && (
-                              <div className="text-left sm:text-right">
-                                <div className="text-white/70 text-xs">Төлсөн төлбөр</div>
-                                <div className="text-emerald-400 font-medium text-lg">
-                                  {record.amount.toLocaleString()}₮
-                                </div>
-                              </div>
-                            )}
-                            {/* Show images if available */}
-                            {record.images && record.images.length > 0 && (
-                              <button
-                                onClick={() => openImageViewer(record.images || [], 0)}
-                                className="flex items-center space-x-1 px-3 py-2 bg-blue-500/20 border border-blue-400/30 rounded-lg text-blue-300 hover:bg-blue-500/30 transition-colors text-xs"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z"
-                                  />
-                                </svg>
-                                <span>{record.images.length}</span>
-                              </button>
-                            )}
-                          </div>
                         </div>
+                        {/* Display images if available */}
+                        {record.images && record.images.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-white/10">
+                            <p className="text-white/70 text-sm mb-2">Зургууд:</p>
+                            <div className="flex space-x-2">
+                              {record.images.map((image, index) => (
+                                <img
+                                  key={index}
+                                  src={image || "/placeholder.svg"}
+                                  alt={`Record image ${index + 1}`}
+                                  className="w-16 h-16 object-cover rounded-lg border border-white/20 cursor-pointer hover:scale-110 transition-transform"
+                                  onClick={() => openImageViewer(record.images || [], index)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -1792,7 +1890,7 @@ export default function ParkingSystem() {
                   <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold text-white mb-2">Профайл</h2>
                   <p className="text-white/70 text-sm md:text-base">Хувийн мэдээлэл засах</p>
                 </div>
-                <div className="space-y-6 md:space-y-8">
+                <div className="space-y-6">
                   {/* Profile Image */}
                   <div className="flex flex-col items-center space-y-4">
                     <div className="w-24 h-24 md:w-32 md:h-32 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center overflow-hidden">
@@ -1809,14 +1907,14 @@ export default function ParkingSystem() {
                       )}
                     </div>
                     {editing && (
-                      <label className="px-4 py-2 bg-blue-500/20 border border-blue-400/30 rounded-xl text-blue-300 hover:bg-blue-500/30 transition-colors cursor-pointer text-sm">
+                      <label className="px-4 py-2 bg-blue-500/20 border border-blue-400/30 text-blue-400 rounded-lg cursor-pointer hover:bg-blue-500/30 transition-colors text-sm">
                         Зураг солих
                         <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                       </label>
                     )}
                   </div>
                   {/* Profile Form */}
-                  <div className="space-y-4 md:space-y-6">
+                  <div className="space-y-4">
                     <div className="space-y-2">
                       <label className="text-white/70 text-sm md:text-base">Нэр</label>
                       <input
@@ -1839,8 +1937,9 @@ export default function ParkingSystem() {
                       <label className="text-white/70 text-sm md:text-base">И-мэйл</label>
                       <input
                         value={profile.email}
-                        disabled
-                        className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white/50 disabled:opacity-50 text-sm md:text-base"
+                        onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                        disabled={!editing || profile.role === "employee"} // Employees can't change email
+                        className="w-full px-4 py-3 md:px-6 md:py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl md:rounded-2xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 disabled:opacity-50 text-sm md:text-base"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1855,8 +1954,8 @@ export default function ParkingSystem() {
                     </div>
                     {/* Password change section for employees */}
                     {editing && profile.role === "employee" && (
-                      <div className="space-y-4 border-t border-white/20 pt-6">
-                        <h3 className="text-white font-medium text-lg">Нууц үг солих</h3>
+                      <div className="space-y-4 pt-4 border-t border-white/10">
+                        <h3 className="text-white font-medium text-sm md:text-base">Нууц үг солих (Заавал биш)</h3>
                         <div className="space-y-2">
                           <label className="text-white/70 text-sm">Шинэ нууц үг</label>
                           <div className="relative">
@@ -1864,7 +1963,7 @@ export default function ParkingSystem() {
                               type={showNewPassword ? "text" : "password"}
                               value={passwordData.newPassword}
                               onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                              placeholder="Шинэ нууц үг (заавал биш)"
+                              placeholder="Шинэ нууц үг оруулах"
                               className="w-full px-4 py-3 pr-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm"
                             />
                             <button
@@ -1876,59 +1975,62 @@ export default function ParkingSystem() {
                             </button>
                           </div>
                         </div>
-                        {passwordData.newPassword && (
-                          <div className="space-y-2">
-                            <label className="text-white/70 text-sm">Нууц үг давтах</label>
-                            <div className="relative">
-                              <input
-                                type={showConfirmPassword ? "text" : "password"}
-                                value={passwordData.confirmPassword}
-                                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                placeholder="Нууц үг давтах"
-                                className="w-full px-4 py-3 pr-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
-                              >
-                                {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                              </button>
-                            </div>
+                        <div className="space-y-2">
+                          <label className="text-white/70 text-sm">Нууц үг давтах</label>
+                          <div className="relative">
+                            <input
+                              type={showConfirmPassword ? "text" : "password"}
+                              value={passwordData.confirmPassword}
+                              onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                              placeholder="Нууц үг давтах"
+                              className="w-full px-4 py-3 pr-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white"
+                            >
+                              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
                           </div>
-                        )}
+                        </div>
                       </div>
                     )}
-                    {/* Action Buttons */}
-                    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
-                      {editing ? (
-                        <>
-                          <button
-                            onClick={saveProfile}
-                            disabled={profileLoading}
-                            className="flex-1 px-6 py-3 md:py-4 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white rounded-xl md:rounded-2xl font-medium transition-colors text-sm md:text-base"
-                          >
-                            {profileLoading ? "Хадгалж байна..." : "Хадгалах"}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditing(false)
-                              setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
-                            }}
-                            className="flex-1 px-6 py-3 md:py-4 bg-white/10 hover:bg-white/20 text-white rounded-xl md:rounded-2xl font-medium transition-colors text-sm md:text-base"
-                          >
-                            Цуцлах
-                          </button>
-                        </>
-                      ) : (
+                  </div>
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+                    {editing ? (
+                      <>
                         <button
-                          onClick={() => setEditing(true)}
-                          className="w-full px-6 py-3 md:py-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl md:rounded-2xl font-medium transition-colors text-sm md:text-base"
+                          onClick={saveProfile}
+                          disabled={profileLoading}
+                          className="flex-1 px-6 py-3 md:py-4 bg-emerald-400 text-black font-semibold rounded-xl md:rounded-2xl hover:bg-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm md:text-base"
                         >
-                          Засах
+                          {profileLoading ? "Хадгалж байна..." : "Хадгалах"}
                         </button>
-                      )}
-                    </div>
+                        <button
+                          onClick={() => {
+                            setEditing(false)
+                            // Reset password fields when canceling
+                            setPasswordData({
+                              currentPassword: "",
+                              newPassword: "",
+                              confirmPassword: "",
+                            })
+                          }}
+                          className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl md:rounded-2xl hover:bg-white/20 transition-colors text-sm md:text-base"
+                        >
+                          Цуцлах
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setEditing(true)}
+                        className="w-full px-6 py-3 md:py-4 bg-blue-500/20 border border-blue-400/30 text-blue-400 rounded-xl md:rounded-2xl hover:bg-blue-500/30 transition-colors text-sm md:text-base"
+                      >
+                        Засах
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1938,25 +2040,25 @@ export default function ParkingSystem() {
 
         {/* Bottom Navigation - Mobile Only */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-sm border-t border-white/20">
-          <div className="flex justify-around items-center py-2 md:py-3">
+          <div className="flex justify-around items-center py-2">
             <button
               onClick={() => setActiveTab("home")}
-              className={`flex flex-col items-center p-2 md:p-3 rounded-xl transition-colors ${
+              className={`flex flex-col items-center p-3 rounded-xl transition-colors ${
                 activeTab === "home" ? "bg-emerald-400" : ""
               }`}
             >
-              <Home className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === "home" ? "text-black" : "text-white/70"}`} />
+              <Home className={`w-6 h-6 ${activeTab === "home" ? "text-black" : "text-white/70"}`} />
               <span className={`text-xs mt-1 ${activeTab === "home" ? "text-black" : "text-white/70"}`}>Нүүр</span>
             </button>
             {/* Hide records tab for employees */}
             {profile.role !== "employee" && (
               <button
                 onClick={() => setActiveTab("records")}
-                className={`flex flex-col items-center p-2 md:p-3 rounded-xl transition-colors ${
+                className={`flex flex-col items-center p-3 rounded-xl transition-colors ${
                   activeTab === "records" ? "bg-emerald-400" : ""
                 }`}
               >
-                <Car className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === "records" ? "text-black" : "text-white/70"}`} />
+                <Car className={`w-6 h-6 ${activeTab === "records" ? "text-black" : "text-white/70"}`} />
                 <span className={`text-xs mt-1 ${activeTab === "records" ? "text-black" : "text-white/70"}`}>
                   Бүртгэл
                 </span>
@@ -1964,31 +2066,29 @@ export default function ParkingSystem() {
             )}
             <button
               onClick={() => setActiveTab("history")}
-              className={`flex flex-col items-center p-2 md:p-3 rounded-xl transition-colors ${
+              className={`flex flex-col items-center p-3 rounded-xl transition-colors ${
                 activeTab === "history" ? "bg-emerald-400" : ""
               }`}
             >
-              <History
-                className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === "history" ? "text-black" : "text-white/70"}`}
-              />
+              <History className={`w-6 h-6 ${activeTab === "history" ? "text-black" : "text-white/70"}`} />
               <span className={`text-xs mt-1 ${activeTab === "history" ? "text-black" : "text-white/70"}`}>Түүх</span>
             </button>
             <button
               onClick={() => setActiveTab("profile")}
-              className={`flex flex-col items-center p-2 md:p-3 rounded-xl transition-colors ${
+              className={`flex flex-col items-center p-3 rounded-xl transition-colors ${
                 activeTab === "profile" ? "bg-emerald-400" : ""
               }`}
             >
-              <User className={`w-5 h-5 md:w-6 md:h-6 ${activeTab === "profile" ? "text-black" : "text-white/70"}`} />
+              <User className={`w-6 h-6 ${activeTab === "profile" ? "text-black" : "text-white/70"}`} />
               <span className={`text-xs mt-1 ${activeTab === "profile" ? "text-black" : "text-white/70"}`}>
                 Профайл
               </span>
             </button>
             <button
               onClick={handleLogoutClick}
-              className="flex flex-col items-center p-2 md:p-3 rounded-xl transition-colors hover:bg-red-500/20"
+              className="flex flex-col items-center p-3 rounded-xl transition-colors hover:bg-red-500/20"
             >
-              <LogOut className="w-5 h-5 md:w-6 md:h-6 text-white/70 hover:text-red-400" />
+              <LogOut className="w-6 h-6 text-white/70 hover:text-red-400" />
               <span className="text-xs mt-1 text-white/70">Гарах</span>
             </button>
           </div>
@@ -1999,8 +2099,8 @@ export default function ParkingSystem() {
       {showCamera && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 w-full max-w-md">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-white text-lg font-medium">Зураг авах</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold text-lg">Зураг авах</h3>
               <button
                 onClick={stopCamera}
                 className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors"
@@ -2016,73 +2116,49 @@ export default function ParkingSystem() {
                   playsInline
                   muted
                   className="w-full h-64 object-cover"
-                  style={{ transform: `scale(${cameraZoom})` }}
+                  style={{
+                    transform: `${cameraFacing === "user" ? "scaleX(-1)" : ""} scale(${cameraZoom})`,
+                    transformOrigin: "center center",
+                  }}
                 />
-                {/* Zoom level indicator */}
-                <div className="absolute top-2 left-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
-                  {cameraZoom.toFixed(1)}x
-                </div>
+                <canvas ref={canvasRef} className="hidden" />
               </div>
-              {/* Camera controls */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={zoomOut}
-                    disabled={cameraZoom <= 1}
-                    className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-50"
-                  >
-                    <span className="text-lg">-</span>
-                  </button>
-                  <button
-                    onClick={resetZoom}
-                    className="px-3 py-1 bg-white/10 rounded-full text-white text-sm hover:bg-white/20 transition-colors"
-                  >
-                    1x
-                  </button>
-                  <button
-                    onClick={zoomIn}
-                    disabled={cameraZoom >= 3}
-                    className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-50"
-                  >
-                    <span className="text-lg">+</span>
-                  </button>
-                </div>
+              <div className="flex justify-center space-x-2 flex-wrap gap-2">
                 <button
                   onClick={switchCamera}
-                  className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                  className="px-3 py-2 bg-blue-500/20 border border-blue-400/30 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
+                  Камер солих
+                </button>
+                <button
+                  onClick={zoomOut}
+                  disabled={cameraZoom <= 1}
+                  className="px-3 py-2 bg-purple-500/20 border border-purple-400/30 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Zoom -
+                </button>
+                <button
+                  onClick={resetZoom}
+                  className="px-3 py-2 bg-gray-500/20 border border-gray-400/30 text-gray-400 rounded-lg hover:bg-gray-500/30 transition-colors text-sm"
+                >
+                  {cameraZoom.toFixed(1)}x
+                </button>
+                <button
+                  onClick={zoomIn}
+                  disabled={cameraZoom >= 3}
+                  className="px-3 py-2 bg-purple-500/20 border border-purple-400/30 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Zoom +
                 </button>
                 <button
                   onClick={captureImage}
-                  className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center text-white hover:bg-emerald-600 transition-colors"
+                  className="px-4 py-2 bg-emerald-400 text-black font-semibold rounded-lg hover:bg-emerald-300 transition-colors text-sm"
                 >
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
+                  Зураг авах
                 </button>
               </div>
             </div>
           </div>
-          <canvas ref={canvasRef} className="hidden" />
         </div>
       )}
 
@@ -2095,19 +2171,19 @@ export default function ParkingSystem() {
                 <LogOut className="w-8 h-8 text-red-400" />
               </div>
               <div>
-                <h3 className="text-white text-lg font-medium mb-2">Системээс гарах</h3>
+                <h3 className="text-white font-semibold text-lg mb-2">Системээс гарах</h3>
                 <p className="text-white/70 text-sm">Та системээс гарахдаа итгэлтэй байна уу?</p>
               </div>
               <div className="flex space-x-3">
                 <button
                   onClick={cancelLogout}
-                  className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors text-sm"
+                  className="flex-1 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-lg hover:bg-white/20 transition-colors text-sm"
                 >
                   Цуцлах
                 </button>
                 <button
                   onClick={confirmLogout}
-                  className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium transition-colors text-sm"
+                  className="flex-1 px-4 py-2 bg-red-500/20 border border-red-400/30 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors text-sm"
                 >
                   Гарах
                 </button>
@@ -2123,46 +2199,62 @@ export default function ParkingSystem() {
           <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 w-full max-w-md">
             <div className="space-y-6">
               <div className="text-center">
-                <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Car className="w-8 h-8 text-red-400" />
+                <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Car className="w-8 h-8 text-green-400" />
                 </div>
-                <h3 className="text-white text-lg font-medium mb-2">Гарсан бүртгэл</h3>
-                <p className="text-white/70 text-sm">Машины гарсан бүртгэл хийх</p>
+                <h3 className="text-white font-semibold text-xl mb-2">Гарсан бүртгэл</h3>
+                <p className="text-white/70 text-sm">Дараах мэдээллийг шалгаад баталгаажуулна уу</p>
               </div>
-              <div className="space-y-4">
-                <div className="bg-white/5 rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-white/70 text-sm">Машины дугаар:</span>
-                    <span className="text-white font-medium">{exitingRecord.carNumber}</span>
+
+              <div className="space-y-4 bg-white/5 rounded-xl p-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-white/50">Машины дугаар:</p>
+                    <p className="text-white font-semibold text-lg">{exitingRecord.carNumber}</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/70 text-sm">Орсон цаг:</span>
-                    <span className="text-white text-sm">{formatDetailedTime(exitingRecord.entryTime || "")}</span>
+                  <div>
+                    <p className="text-white/50">Машины марк:</p>
+                    <p className="text-white">{exitingRecord.parkingArea}</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/70 text-sm">Гарах цаг:</span>
+                  <div>
+                    <p className="text-white/50">Жолооч:</p>
+                    <p className="text-white">{exitingRecord.driverName}</p>
+                  </div>
+                  <div>
+                    <p className="text-white/50">Зогссон хугацаа:</p>
+                    <p className="text-white font-semibold">{exitDetails.duration} цаг</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-white/10 pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/70">Орсон цаг:</span>
+                    <span className="text-white text-sm">
+                      {formatDetailedTime(exitingRecord.entryTime || exitingRecord.timestamp)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/70">Гарах цаг:</span>
                     <span className="text-white text-sm">{formatDetailedTime(exitDetails.exitTime)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/70 text-sm">Зогссон хугацаа:</span>
-                    <span className="text-white font-medium">{exitDetails.duration} цаг</span>
-                  </div>
-                  <div className="flex justify-between border-t border-white/20 pt-2">
-                    <span className="text-white/70 text-sm">Төлөх төлбөр:</span>
-                    <span className="text-emerald-400 font-bold text-lg">{exitDetails.fee.toLocaleString()}₮</span>
-                  </div>
+                </div>
+
+                <div className="bg-emerald-500/10 border border-emerald-400/30 rounded-lg p-4 text-center">
+                  <p className="text-emerald-400 text-sm mb-1">Нийт төлбөр</p>
+                  <p className="text-emerald-400 font-bold text-2xl">{exitDetails.fee.toLocaleString()}₮</p>
                 </div>
               </div>
+
               <div className="flex space-x-3">
                 <button
                   onClick={cancelExit}
-                  className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors text-sm"
+                  className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors text-sm"
                 >
                   Цуцлах
                 </button>
                 <button
                   onClick={confirmExit}
-                  className="flex-1 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-medium transition-colors text-sm"
+                  className="flex-1 px-4 py-3 bg-emerald-400 text-black font-semibold rounded-xl hover:bg-emerald-300 transition-colors text-sm"
                 >
                   Баталгаажуулах
                 </button>
@@ -2181,44 +2273,53 @@ export default function ParkingSystem() {
                 <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Car className="w-8 h-8 text-yellow-400" />
                 </div>
-                <h3 className="text-white text-lg font-medium mb-2">Давхардсан машин</h3>
-                <p className="text-white/70 text-sm">Энэ машин өнөөдөр аль хэдийн бүртгэгдсэн байна</p>
+                <h3 className="text-white font-semibold text-xl mb-2">Анхааруулга</h3>
+                <p className="text-white/70 text-sm">
+                  <span className="text-yellow-400 font-semibold">{duplicateCarData.carNumber}</span> дугаартай машин
+                  өнөөдөр бүртгэгдсэн байна.
+                </p>
               </div>
-              <div className="space-y-4">
-                <div className="bg-white/5 rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-white/70 text-sm">Машины дугаар:</span>
-                    <span className="text-white font-medium">{duplicateCarData.carNumber}</span>
+
+              {duplicateCarData.existingRecord && (
+                <div className="space-y-3 bg-white/5 rounded-xl p-4">
+                  <h4 className="text-white font-medium text-sm">Өмнөх бүртгэл:</h4>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="text-white/50">Жолооч:</p>
+                      <p className="text-white">{duplicateCarData.existingRecord.driverName}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/50">Машины марк:</p>
+                      <p className="text-white">{duplicateCarData.existingRecord.parkingArea}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-white/50">Орсон цаг:</p>
+                      <p className="text-white">
+                        {formatDetailedTime(
+                          duplicateCarData.existingRecord.entryTime || duplicateCarData.existingRecord.timestamp,
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  {duplicateCarData.existingRecord && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-white/70 text-sm">Орсон цаг:</span>
-                        <span className="text-white text-sm">
-                          {formatDetailedTime(duplicateCarData.existingRecord.entryTime || "")}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-white/70 text-sm">Жолооч:</span>
-                        <span className="text-white text-sm">{duplicateCarData.existingRecord.driverName}</span>
-                      </div>
-                    </>
-                  )}
                 </div>
-                <p className="text-white/70 text-sm text-center">Та дахин бүртгэхийг хүсэж байна уу?</p>
+              )}
+
+              <div className="text-center">
+                <p className="text-white text-sm mb-4">Энэ машинийг дахин бүртгэх үү?</p>
               </div>
+
               <div className="flex space-x-3">
                 <button
                   onClick={handleDuplicateCancel}
-                  className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors text-sm"
+                  className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors text-sm"
                 >
-                  Цуцлах
+                  Үгүй
                 </button>
                 <button
                   onClick={handleDuplicateConfirm}
-                  className="flex-1 px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl font-medium transition-colors text-sm"
+                  className="flex-1 px-4 py-3 bg-yellow-500/20 border border-yellow-400/30 text-yellow-400 rounded-xl hover:bg-yellow-500/30 transition-colors text-sm font-semibold"
                 >
-                  Дахин бүртгэх
+                  Тийм
                 </button>
               </div>
             </div>
@@ -2227,22 +2328,23 @@ export default function ParkingSystem() {
       )}
 
       {/* Image Viewer Modal */}
-      {showImageViewer && currentImages.length > 0 && (
+      {showImageViewer && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="relative w-full h-full flex items-center justify-center">
+          <div className="relative max-w-4xl max-h-full">
             {/* Close button */}
             <button
               onClick={closeImageViewer}
-              className="absolute top-4 right-4 w-10 h-10 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10"
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors"
             >
-              <X className="w-6 h-6" />
+              <X className="w-5 h-5" />
             </button>
+
             {/* Navigation buttons */}
             {currentImages.length > 1 && (
               <>
                 <button
                   onClick={prevImage}
-                  className="absolute left-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10"
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 w-12 h-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -2250,7 +2352,7 @@ export default function ParkingSystem() {
                 </button>
                 <button
                   onClick={nextImage}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 w-12 h-12 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -2258,18 +2360,25 @@ export default function ParkingSystem() {
                 </button>
               </>
             )}
-            {/* Image counter */}
-            {currentImages.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                {currentImageIndex + 1} / {currentImages.length}
-              </div>
-            )}
+
             {/* Main image */}
             <img
               src={currentImages[currentImageIndex] || "/placeholder.svg"}
               alt={`Image ${currentImageIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
+              className="max-w-full max-h-[80vh] object-contain rounded-lg"
             />
+
+            {/* Image counter */}
+            {currentImages.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white text-sm">
+                {currentImageIndex + 1} / {currentImages.length}
+              </div>
+            )}
+
+            {/* Instructions */}
+            <div className="absolute bottom-4 right-4 text-white/70 text-xs">
+              <p>ESC - Хаах | ← → - Навигаци</p>
+            </div>
           </div>
         </div>
       )}
