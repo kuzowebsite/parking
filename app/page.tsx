@@ -6,14 +6,16 @@ import { ref, push, onValue, set, update } from "firebase/database"
 import { auth, database } from "@/lib/firebase"
 import type { ParkingRecord, UserProfile } from "@/types"
 import { Home, History, User, LogOut, Search, X, Car, Eye, EyeOff } from "lucide-react"
-import { useRouter } from "next/navigation"
+// Remove the useRouter import line completely
+// import { useRouter } from "next/navigation"
 
 export default function ParkingSystem() {
   const [user, setUser] = useState<FirebaseUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [showSplash, setShowSplash] = useState(true)
   const [loadingProgress, setLoadingProgress] = useState(0)
-  const [router] = useRouter()
+  // Remove this line completely
+  // const [router] = useRouter()
 
   // Home states
   const [carNumber, setCarNumber] = useState("")
@@ -167,12 +169,12 @@ export default function ParkingSystem() {
           loadProfile() // Эхлээд profile ачаалах, дараа нь records ачаалагдана
         } else {
           // Redirect to login page if not authenticated
-          router.push("/login")
+          window.location.href = "/login"
         }
       })
       return unsubscribe
     }
-  }, [showSplash, router])
+  }, [showSplash])
 
   // Filter records based on year, month, car number, and type
   useEffect(() => {
