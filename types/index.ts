@@ -15,6 +15,31 @@ export interface UserData {
   profileImage?: string
 }
 
+export interface UserProfile {
+  id: string
+  name: string
+  email: string
+  phone: string
+  role: "manager" | "employee" | "driver"
+  active: boolean
+  createdAt: string
+  updatedAt?: string
+  profileImage?: string
+  position?: string
+  startDate?: string
+  tempPassword?: string
+  needsPasswordSetup?: boolean
+}
+
+export interface DriverRegistration {
+  email: string
+  password: string
+  name: string
+  phone: string
+  role: "manager" | "employee" | "driver"
+  createdAt: string
+}
+
 export interface ParkingRecord {
   id: string
   plateNumber: string
