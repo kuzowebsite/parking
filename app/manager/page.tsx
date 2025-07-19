@@ -115,7 +115,8 @@ export default function ManagerPage() {
     createdAt: "",
   })
   const [registrationLoading, setRegistrationLoading] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<"manager" | "driver" | "employee">("employee")
+  // Add "director" to the selectedRole type
+  const [selectedRole, setSelectedRole] = useState<"manager" | "driver" | "employee" | "director">("employee")
   // Add this after the existing states, around line 100
   const [availableEmployees, setAvailableEmployees] = useState<any[]>([])
   // Edit driver states
@@ -1146,8 +1147,9 @@ export default function ManagerPage() {
         updatedAt: new Date().toISOString(),
       }
       await set(ref(database, `users/${newUserId}`), userData)
+      // Update the alert message to include "director"
       alert(
-        `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Бүртгэл" : "Ажилчин"} амжилттай бүртгэгдлээ`,
+        `${selectedRole === "manager" ? "Менежер" : selectedRole === "driver" ? "Бүртгэл" : selectedRole === "director" ? "Захирал" : "Ажилчин"} амжилттай бүртгэгдлээ`,
       )
       // Form цэвэрлэх
       setNewDriver({
@@ -1707,7 +1709,7 @@ export default function ManagerPage() {
                         <div key={index} className="flex items-center justify-between py-2">
                           <div>
                             <p className="font-medium">{stat.period}</p>
-                            <p className="text-sm text-muted-foreground">{stat.customers} үйлчлүүлэгч</p>
+                            <p className="text-sm text-muted-foreground">{stat.customers} ү��лчлүүлэгч</p>
                           </div>
                           <div className="text-right">
                             <p className="font-bold">{stat.revenue.toLocaleString()}₮</p>
@@ -2190,15 +2192,19 @@ export default function ManagerPage() {
                           <Label htmlFor="role" className="text-base font-medium">
                             Хэрэглэгчийн төрөл
                           </Label>
+                          {/* Update the Role Selection dropdown to include "director" */}
                           <select
                             id="role"
                             className="w-full px-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-all"
                             value={selectedRole}
-                            onChange={(e) => setSelectedRole(e.target.value as "manager" | "driver" | "employee")}
+                            onChange={(e) =>
+                              setSelectedRole(e.target.value as "manager" | "driver" | "employee" | "director")
+                            }
                           >
                             <option value="employee">Ажилчин</option>
                             <option value="driver">Бүртгэл</option>
                             <option value="manager">Менежер</option>
+                            <option value="director">Захирал</option>
                           </select>
                         </div>
                         {/* Employee Selection (Conditional) */}
@@ -2283,7 +2289,7 @@ export default function ManagerPage() {
                           />
                           <p className="text-sm text-muted-foreground">Нууц үг хамгийн багадаа 6 тэмдэгт байх ёстой</p>
                         </div>
-                        {/* Submit Button */}
+                        {/* Update the Submit button text to include "director" */}
                         <Button
                           type="submit"
                           className="w-full py-3 text-base"
@@ -2302,7 +2308,9 @@ export default function ManagerPage() {
                                 ? "Менежер"
                                 : selectedRole === "driver"
                                   ? "Бүртгэл"
-                                  : "Ажилчин"}{" "}
+                                  : selectedRole === "director"
+                                    ? "Захирал"
+                                    : "Ажилчин"}{" "}
                               бүртгэх
                             </>
                           )}
@@ -2348,6 +2356,16 @@ export default function ManagerPage() {
                             <p className="text-sm text-orange-700">Зогсоолын бүртгэл хийх, бүх түүх харах эрх</p>
                           </div>
                         </div>
+                        {/* Add Director Role Information */}
+                        <div className="flex items-start space-x-3 p-4 border rounded-lg bg-purple-50/50">
+                          <div className="p-2 bg-purple-100 rounded-lg">
+                            <Shield className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-purple-900">Захирал</h4>
+                            <p className="text-sm text-purple-700">Бүх системийн дээд удирдлага, бүх эрх</p>
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -2379,6 +2397,14 @@ export default function ManagerPage() {
                             <span className="font-medium">Бүртгэл</span>
                           </div>
                           <span className="text-2xl font-bold text-orange-600">{drivers.length}</span>
+                        </div>
+                        {/* Add Director Statistics */}
+                        <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Shield className="w-5 h-5 text-purple-600" />
+                            <span className="font-medium">Захирал</span>
+                          </div>
+                          <span className="text-2xl font-bold text-purple-600">0</span>
                         </div>
                       </div>
                     </CardContent>
